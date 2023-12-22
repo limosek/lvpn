@@ -1,0 +1,9 @@
+psutil
+configargparse
+ptw
+pynacl
+requests
+kivy[base]
+kivy-garden.qrcode
+proxy.py
+cx_freeze

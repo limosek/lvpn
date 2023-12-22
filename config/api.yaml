@@ -1,0 +1,311 @@
+openapi: 3.0.3
+info:
+  title: Lethean VPN OpenAPI
+  description: |-
+    This is Lethean VPN API definition
+  license:
+      name: GPLv3
+  version: "1.0"
+
+paths:
+  /api/gates:
+    get:
+      summary: Get gates info
+      description: Get info about available gates in JSON format
+      operationId: getGates
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gates'
+
+  /api/spaces:
+    get:
+      summary: Get spaces info
+      description: Get info about available spaces in JSON format
+      operationId: getSpaces
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spaces'
+
+  /api/vdp:
+    get:
+      summary: Get VDP
+      description: Get VPN Description Protocol containing all Spaces and Gateways
+      operationId: getVdp
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+
+  /api/connect:
+    post:
+      summary: Prepare client to connect to Space using Gate
+      description: Get client prepare information
+      operationId: Connect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionRequest'
+      responses:
+        '200':
+          description: Connected
+        '400':
+          description: Bad request
+        '402':
+          description: Waiting for payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionInfo'
+        '460':
+          description: Unknown/bad space
+        '461':
+          description: Unknown/bad gate
+        '462':
+          description: Cannot use this space/gate combination
+        '422':
+          description: Bad signature
+        '500':
+          description: Server error
+
+components:
+  schemas:
+    Gate:
+      type: object
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanGateway
+        version:
+          type: string
+          enum:
+            - "1.0"
+        ca:
+          type: string
+        gateid:
+          type: string
+        name:
+          type: string
+        price:
+          type: object
+          properties:
+            per-day:
+              type: number
+        type:
+          type: string
+          enum:
+            - wg
+            - http-proxy
+            - socks-proxy
+            - daemon-rpc-proxy
+            - daemon-p2p-proxy
+            - wg-tcp
+        manager:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        wg:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tcp_port:
+              type: integer
+            public_key:
+              type: string
+        http-proxy:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        socks-proxy:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        daemon-p2p-proxy:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        daemon-rpc-proxy:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        spaces:
+          type: array
+          items:
+            type: string
+      required:
+        - gateid
+        - version
+        - filetype
+        - ca
+        - type
+        - spaces
+        - manager
+
+    Gates:
+      type: array
+      items:
+        $ref: '#/components/schemas/Gate'
+
+    Space:
+      type: object
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanSpace
+        version:
+          type: string
+          enum:
+            - "1.0"
+        ca:
+          type: string
+        manager:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+        spaceid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: object
+          properties:
+            per-day:
+              type: number
+        ips:
+          type: array
+          items:
+            type: string
+        dns_servers:
+          type: array
+          items:
+            type: string
+      required:
+        - spaceid
+        - filetype
+        - version
+        - manager
+
+    Spaces:
+      type: array
+      items:
+        $ref: '#/components/schemas/Space'
+
+    Vdp:
+      type: object
+      properties:
+        filetype:
+          type: string
+          enum:
+            - VPNDescriptionProtocol
+        version:
+          type: string
+          enum:
+            - "1.0"
+        spaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Space'
+        gateways:
+          type: array
+          items:
+            $ref: '#/components/schemas/Gates'
+      required:
+        - filetype
+        - version
+
+    ConnectionRequest:
+      type: object
+      properties:
+        time:
+          type: integer
+        gateid:
+          type: string
+        spaceid:
+          type: string
+        wg_public:
+          type: string
+        days:
+          type: integer
+        sessionid:
+          type: string
+      required:
+        - gateid
+        - spaceid
+        - days
+
+    ConnectionInfo:
+      type: object
+      properties:
+        time:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        bearer:
+          type: string
+        wallet:
+          type: string
+        price:
+          type: number
+        paymentid:
+          type: string
+        wg_ip:
+          type: string
+        wg_network_bits:
+          type: integer
+        wg_gw:
+          type: string
+        wg_dns:
+          type: string
+        sessionid:
+          type: string
+        expires:
+          type: integer
+      required:
+        - time
+        - sessionid
+        - paymentid
+        - wallet
+        - username
+        - password
+        - price
+        - expires
+        - bearer

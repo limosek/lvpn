@@ -1,0 +1,59 @@
+global
+        maxconn         100
+        daemon
+        ssl-default-bind-ciphers ECDH+AESGCM
+        ssl-default-bind-options force-tlsv13
+        #log stdout format raw local0 notice
+        #log /dev/log	local0 info
+
+ defaults
+        log global
+        timeout client 30
+        timeout connect 30
+        timeout server 30
+        option                  http-keep-alive
+        http-reuse              safe
+
+frontend httpproxy
+        bind            127.0.0.1:8181
+        mode            http
+        option          nolinger
+        option          contstats
+        use_backend http-proxy
+
+frontend socksproxy
+        bind            127.0.0.1:8182
+        mode            tcp
+        option          nolinger
+        option          contstats
+        use_backend socks-proxy
+
+frontend p2p-proxy
+        bind            127.0.0.1:8183
+        mode            tcp
+        use_backend daemon-p2p
+
+frontend rpc-proxy
+        bind            127.0.0.1:8184
+        mode            tcp
+        use_backend daemon-rpc
+
+# Backend for proxying requests to another proxy
+backend http-proxy
+        mode            http
+        retries         2
+        option          nolinger
+        http-request add-header X-Lthn-bearer abcd1234
+        server hatls {https_endpoint} force-tlsv13 ca-file {ca_file} ssl verify required
+
+backend socks-proxy
+        mode            tcp
+        server hatls {socks_endpoint} force-tlsv13 ca-file {ca_file} ssl verify required
+
+backend daemon-p2p
+        mode            tcp
+        server hatls {daemon_p2p_endpoint} force-tlsv13 ca-file {ca_file} ssl verify required
+
+backend daemon-rpc
+        mode            tcp
+        server hatls {daemon_rpc_endpoint} force-tlsv13 ca-file {ca_file} ssl verify required

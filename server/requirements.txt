@@ -1,0 +1,6 @@
+flask
+configargparser
+python_dateutil == 2.6.0
+setuptools >= 21.0.0
+pynacl
+openapi-core==0.19.0a1
