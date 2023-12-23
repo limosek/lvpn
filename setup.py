@@ -1,6 +1,6 @@
 import sys
-from cx_Freeze import setup, Executable
-#import setuptools
+#from cx_Freeze import setup, Executable
+import setuptools
 
 # base="Win32GUI" should be used only for Windows GUI app
 #base = "Win32GUI" if sys.platform == "win32" else None
@@ -32,7 +32,6 @@ bdist_msi_options = {
     "data": msi_data
 }
 
-"""
 setuptools.setup(
     name="lvpn",
     version="0.3",
@@ -47,8 +46,9 @@ setuptools.setup(
     ],
     python_requires='>=3.7'
 )
-"""
 
+
+"""
 setup(
     executables=[
         Executable("client.py", base=base, shortcut_name="LVPN", shortcut_dir="DesktopFolder")
@@ -57,4 +57,5 @@ setup(
         "bdist_msi": bdist_msi_options
     }
 )
+"""
 
