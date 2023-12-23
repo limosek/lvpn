@@ -1,0 +1,270 @@
+
+<BoxLayout>:
+  size_hint_y: 0.1
+  canvas.before:
+    Color:
+      rgba: .5, .5, .5, 1
+    Line:
+      width: 2
+      rectangle: self.x, self.y, self.width, self.height
+
+<Button>:
+  size_hint_y: 0.1
+
+<Label>:
+  size_hint_y: 0.1
+  pos_hint: {'top': 0.5}
+
+<Switcher>:
+  cols: 3
+  BoxLayout:
+    orientation: "vertical"
+    Label:
+      text: "VPN client home"
+    Button:
+      text: "Setup"
+      on_press: root.show_wizard()
+    Button:
+      text: "Status"
+      on_press: root.show_status()
+    Button:
+      text: "Connect"
+      on_press: root.show_connect()
+    Button:
+      text: "Wallet"
+      on_press: root.show_wallet()
+    Button:
+      text: "Exit"
+      on_press: app.stop()
+
+<Wizard>:
+  cols: 3
+  BoxLayout:
+    orientation: "vertical"
+    Label:
+      text: "LVPN wallet wizard"
+    BoxLayout:
+      size_hint_y: 0.3
+      orientation: "horizontal"
+      TextInput:
+        id: wallet_seed
+        write_tab: False
+        multiline: True
+      Button:
+        size_hint_y: 0.3
+        id: wallet_seed_restore
+        text: "Restore from seed"
+        on_press: root.restore_wallet()
+    Button:
+      id: wallet_create
+      text: "Create wallet"
+      on_press: root.create_wallet()
+    BoxLayout:
+      size_hint_y: 0.2
+      orientation: "horizontal"
+      TextInput:
+        id: vdp_url
+        write_tab: False
+        multiline: False
+      Button:
+        id: import_vdp
+        text: "Import VDP"
+        on_press: root.import_vdp()
+    Button:
+      text: "Main"
+      on_press: root.main()
+
+<Status>:
+  cols: 3
+  BoxLayout:
+    size_hint_y: 0.1
+    orientation: "vertical"
+    BoxLayout:
+      Label:
+        text: "Height"
+      Label:
+        id: height
+        text: ""
+    BoxLayout:
+      Label:
+        text: "Balance"
+      Label:
+        id: balance
+        text: ""
+    BoxLayout:
+      Label:
+        text: "Unlocked balance"
+      Label:
+        id: unlocked_balance
+        text: ""
+    BoxLayout:
+      orientation: "horizontal"
+      Label:
+        id: sync_progress_info
+        text: "Sync progress"
+      ProgressBar:
+        id: wallet_sync_progress
+        max: 1
+        value: 0
+    BoxLayout:
+      orientation: "vertical"
+      Label:
+        text: "Log Window"
+      TextInput:
+        id: log
+        size_hint_y: 0.6
+        multiline: True
+        readonly: True
+        text: ""
+    Button:
+      text: "Main"
+      on_press: root.main()
+
+<Connect>:
+  cols: 3
+  id: connect_gui
+  BoxLayout:
+    orientation: "vertical"
+
+    BoxLayout:
+      size_hint_y: 0.05
+      orientation: "horizontal"
+      Label:
+        text: "Choose Space"
+      TextInput:
+        id: space_filter
+        multiline: False
+    BoxLayout:
+      id: choose_space
+      orientation: "vertical"
+      # Available spaces list
+
+    BoxLayout:
+      size_hint_y: 0.05
+      orientation: "horizontal"
+      Label:
+        text: "Choose Gate"
+      TextInput:
+        id: gate_filter
+        multiline: False
+    BoxLayout:
+      id: choose_gate
+      orientation: "vertical"
+      # Available gates list
+
+    BoxLayout:
+      orientation: "horizontal"
+      Label:
+        text: "Payment"
+      Label:
+        id: payment_state
+        text: "Unknown"
+      BoxLayout:
+        size_hint_y: 1
+        id: pay_buttons
+        canvas.before:
+          Color:
+            rgba: .9, .9, .9, 1
+          Line:
+            width: 2
+            rectangle: self.x, self.y, self.width, self.height
+        orientation: "vertical"
+        Button:
+          id: pay_1
+          text: "Pay for 1 day"
+          disabled: True
+          on_press: root.pay_1()
+          gateid: ""
+          spaceid: ""
+          days: 1
+        Button:
+          id: pay_30
+          text: "Pay for 30 days"
+          on_press: root.pay_30()
+          gateid: ""
+          spaceid: ""
+          days: 30
+          disabled: True
+
+    Button:
+      id: connect_button
+      text: "Connect"
+      disabled: True
+
+    BoxLayout:
+      orientation: "vertical"
+      Label:
+        text: "Active connections"
+      BoxLayout:
+        orientation: "vertical"
+        id: connections_info
+        # Available gates list
+
+    Button:
+      text: "Main"
+      on_press: root.main()
+
+<Wallet>:
+  cols: 3
+  id: wallet_gui
+  BoxLayout:
+    orientation: "vertical"
+    BoxLayout:
+      size_hint_y: 0.1
+      orientation: "horizontal"
+      Label:
+        text: "Coins to send"
+      TextInput:
+        id: amount_to_send
+        write_tab: False
+        multiline: False
+    BoxLayout:
+      size_hint_y: 0.1
+      orientation: "horizontal"
+      Label:
+        text: "PaymentID to send"
+      TextInput:
+        id: paymentid_to_send
+        write_tab: False
+        multiline: False
+    BoxLayout:
+      size_hint_y: 0.1
+      orientation: "horizontal"
+      Label:
+        text: "Wallet to send"
+      TextInput:
+        id: wallet_to_send
+        write_tab: False
+        multiline: False
+
+    Button:
+      id: pay_button
+      size_hint_y: 0.2
+      text: "Send"
+      disabled: True
+      on_press: root.pay()
+    QRCodeWidget:
+      size_hint_y: 0.3
+      id: qr_send
+      disabled: True
+      data: "None"
+
+    BoxLayout:
+      Label:
+        text: "Receive"
+    BoxLayout:
+      TextInput:
+        id: receive_address
+        text: "Address"
+        readonly: True
+    QRCodeWidget:
+      size_hint_y: 0.3
+      id: qr_get
+      disabled: True
+      data: "None"
+
+    Button:
+      size_hint_y: 0.2
+      text: "Main"
+      on_press: root.main()
+
