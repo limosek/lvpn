@@ -23,9 +23,12 @@ from lib.wizard import Wizard
 
 def test_binary(args):
     try:
-        ret = subprocess.run(args, shell=False, capture_output=True)
+        try:
+            ret = subprocess.run(args, shell=False, capture_output=True, timeout=3)
+        except subprocess.TimeoutExpired:
+            return True
         if ret.returncode == 0 or ret.returncode == 1:
-            pass
+            return True
         else:
             logging.getLogger().error("Missing binary %s" % args[0])
             sys.exit(1)
@@ -82,7 +85,9 @@ def main():
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
     cfg = p.parse_args()
-    logging.basicConfig(level=cfg.l)
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    logging.basicConfig(level=cfg.l,  filename=vardir + "/lvpn-client.log", filemode="w")
     logging.getLogger("client").setLevel(cfg.l)
     if not cfg.wallet_rpc_password:
         cfg.wallet_rpc_password = secrets.token_urlsafe(12)

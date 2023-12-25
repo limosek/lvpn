@@ -1,0 +1,31 @@
+FROM tobix/pywine:3.11
+
+MAINTAINER Limos <lukas@macura.cz>
+
+LABEL version="1.0"
+LABEL description="LVPN"
+
+ENV DISPLAY :1
+
+RUN useradd -ms /bin/bash lvpn; \
+  echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \
+  mkdir /home/lvpn/app;
+
+RUN apt update && apt install -y tightvncserver
+RUN Xvnc :1 &
+
+COPY bin/* /home/lvpn/src/bin/
+COPY client/* /home/lvpn/src/client/
+COPY server/* /home/lvpn/src/server/
+COPY lib/* /home/lvpn/src/lib/
+COPY config/ /home/lvpn/src/config/
+COPY server.py client.py setup.cfg setup.py /home/lvpn/src/
+COPY build-msi.cmd /home/lvpn/src/
+COPY requirements.txt /home/lvpn/src/
+
+RUN chown -R lvpn /home/lvpn
+
+WORKDIR /home/lvpn/src
+
+RUN wine cmd /c build-msi.cmd
+
