@@ -1,8 +1,12 @@
 import logging
+import os
 import subprocess
+import sys
 import time
 import threading
 from kivy.app import App
+from kivy.lang import Builder
+import kivy.resources
 
 # Must be here for msi builds
 import kivy.weakmethod
@@ -39,6 +43,8 @@ class GUI(Service):
         cls.processes.append(b)
         for p in cls.processes:
             p.start()
+
+        Builder.load_file(cls.ctrl["cfg"].app_dir + '/config/lvpn.kv')
         LVpn().run()
         cls.exit = True
 

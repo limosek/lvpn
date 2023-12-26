@@ -9,7 +9,6 @@ import logging
 import logging.handlers
 import secrets
 import subprocess
-
 from lib.authids import AuthIDs
 from lib.queue import Queue
 from lib.shared import Messages
@@ -38,6 +37,14 @@ def test_binary(args):
 
 
 def main():
+    if getattr(sys, 'frozen', False):
+        # If the application is run as a bundle, the PyInstaller bootloader
+        # extends the sys module by a flag frozen=True and sets the app
+        # path into variable _MEIPASS'.
+        appdir = sys._MEIPASS
+    else:
+        appdir = os.path.dirname(os.path.abspath(__file__))
+
     if os.getenv("WLC_VAR_DIR"):
         vardir = os.getenv("WLC_VAR_DIR")
     else:
@@ -52,7 +59,7 @@ def main():
     if os.getenv("WLC_BIN_DIR"):
         bindir = os.getenv("WLC_BIN_DIR")
     else:
-        bindir = os.path.dirname(__file__) + "/bin/"
+        bindir = appdir + "/bin/"
 
     p = configargparse.ArgParser(default_config_files=['/etc/lvpn/client.ini', cfgdir + "/client.ini", vardir + "/client.ini"])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path')
@@ -60,7 +67,7 @@ def main():
     p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file')
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
     p.add_argument('--daemon-rpc-bin', help='Daemon binary file')
-    p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
+    p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
     p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs", default=os.path.abspath(vardir + "/spaces"))
     p.add_argument("--gates-dir", help="Directory containing all gateway SDPs", default=os.path.abspath(vardir + "/gates"))
@@ -84,20 +91,37 @@ def main():
     p.add_argument('--wallet-password', help='Wallet password')
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
-    cfg = p.parse_args()
+    try:
+        cfg = p.parse_args()
+    except SystemExit:
+        print("Bad configuration or commandline argument.")
+        print(p.format_usage())
+        sys.exit(1)
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
-    logging.basicConfig(level=cfg.l,  filename=vardir + "/lvpn-client.log", filemode="w")
-    logging.getLogger("client").setLevel(cfg.l)
+    fh = logging.FileHandler(vardir + "/lvpn-client.log")
+    fh.setLevel(cfg.l)
+    formatter = logging.Formatter('%(name)s:%(levelname)s:%(message)s')
+    fh.setFormatter(formatter)
+    logging.root.setLevel(logging.NOTSET)
+    logging.basicConfig(level=logging.NOTSET, handlers=[fh])
+    print("Logging into: %s" % vardir + "/lvpn-client.log")
+    print("Appdir: %s" % appdir)
+    print("Vardir: %s" % vardir)
+
     if not cfg.wallet_rpc_password:
         cfg.wallet_rpc_password = secrets.token_urlsafe(12)
 
     cfg.var_dir = vardir
     cfg.bin_dir = bindir
+    cfg.app_dir = appdir
     wizard = False
-    if not os.path.exists(vardir):
+    if not os.path.exists(vardir) or not os.path.exists(cfg.gates_dir) or not os.path.exists(cfg.spaces_dir):
         Wizard().files(cfg, vardir)
         wizard = True
+
+    if not os.path.exists(vardir + "/client.ini"):
+        Wizard().cfg(cfg, p, vardir)
 
     os.environ['PATH'] += os.path.pathsep + (os.path.abspath(os.path.dirname(__file__) + "/bin"))
 
@@ -186,6 +210,14 @@ def main():
             else:
                 logging.error(
                     "Use import-vdp file-or-url")
+
+        elif cfg.cmd[0] == "test-gui":
+            cfg.authids = AuthIDs(cfg.authids_dir)
+            cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
+            ctrl["cfg"] = cfg
+            ctrl["tmpdir"] = tmpdir
+            GUI.run(ctrl=ctrl, queue=queue, myqueue=gui_queue)
+            sys.exit()
 
         elif cfg.cmd[0] == "run":
             print("run")
@@ -304,8 +336,12 @@ def main():
         while p.is_alive():
             time.sleep(0.1)
     time.sleep(3)
-    shutil.rmtree(tmpdir)
+    try:
+        shutil.rmtree(tmpdir)
+    except Exception as e:
+        pass
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()

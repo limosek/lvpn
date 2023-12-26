@@ -13,3 +13,4 @@ kivy[base]
 kivy-garden.qrcode
 kivy-garden
 proxy.py
+pyinstaller

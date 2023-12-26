@@ -1,4 +1,5 @@
 import copy
+import multiprocessing
 import os
 import signal
 import subprocess
@@ -7,6 +8,7 @@ import sys
 import time
 import socket
 from contextlib import closing
+import ptw
 
 from lib.service import Service
 from lib.shared import Messages
@@ -24,6 +26,12 @@ class Proxy(Service):
             return s.getsockname()[1]
 
     @classmethod
+    def run_ptw(cls, args):
+        """Not used now, we call external ptw binary"""
+        sys.argv = args
+        ptw.main()
+
+    @classmethod
     def run_http_proxy(cls, cafile, localport, endpoint):
         (host, port) = endpoint.split(":")
         args = [
@@ -36,6 +44,7 @@ class Proxy(Service):
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw http-proxy subprocess: %s" % " ".join(args))
+        #p = multiprocessing.Process(target=cls.run_ptw, args=args)
         p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
         return p
 
