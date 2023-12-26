@@ -123,7 +123,8 @@ def main():
     if not os.path.exists(vardir + "/client.ini"):
         Wizard().cfg(cfg, p, vardir)
 
-    os.environ['PATH'] += os.path.pathsep + (os.path.abspath(os.path.dirname(__file__) + "/bin"))
+    os.environ['PATH'] += os.path.pathsep + appdir + "/bin"
+    os.environ['PATH'] += os.path.pathsep + os.path.dirname(sys.executable)
 
     if cfg.coin_type == "lethean":
         if not cfg.wallet_rpc_bin:
