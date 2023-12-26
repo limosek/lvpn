@@ -42,11 +42,13 @@ class Service:
         cls.ctrl = ctrl
         cls.queue = queue
         cls.myqueue = myqueue
+        for handler in logging.getLogger(cls.myname).handlers[:]:
+            logging.getLogger(cls.myname).removeHandler(handler)
         fh = logging.FileHandler(cls.ctrl["cfg"].var_dir + "/lvpn-client.log")
         fh.setLevel(cls.ctrl["cfg"].l)
         formatter = logging.Formatter('%(name)s:%(levelname)s:%(message)s')
         fh.setFormatter(formatter)
-        logging.basicConfig(level=cls.ctrl["cfg"].l)
+        logging.getLogger(cls.myname).addHandler(fh)
         logging.getLogger(cls.myname).debug("Starting Service %s" % cls.myname)
         try:
             cls.postinit()

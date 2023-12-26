@@ -8,7 +8,10 @@ import sys
 import time
 import socket
 from contextlib import closing
-import ptw
+
+import setproctitle
+from ptw.__main__ import main as ptw
+from unittest.mock import patch
 
 from lib.service import Service
 from lib.shared import Messages
@@ -26,10 +29,10 @@ class Proxy(Service):
             return s.getsockname()[1]
 
     @classmethod
-    def run_ptw(cls, args):
-        """Not used now, we call external ptw binary"""
-        sys.argv = args
-        ptw.main()
+    def run_ptw(cls, *args):
+        with patch.object(sys, 'argv', list(args)):
+            setproctitle.setproctitle("ptw")
+            ptw()
 
     @classmethod
     def run_http_proxy(cls, cafile, localport, endpoint):
@@ -44,8 +47,8 @@ class Proxy(Service):
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw http-proxy subprocess: %s" % " ".join(args))
-        #p = multiprocessing.Process(target=cls.run_ptw, args=args)
-        p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+        p = multiprocessing.Process(target=cls.run_ptw, args=args)
+        p.start()
         return p
 
     @classmethod
@@ -61,7 +64,8 @@ class Proxy(Service):
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw socks-proxy subprocess: %s" % " ".join(args))
-        p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+        p = multiprocessing.Process(target=cls.run_ptw, args=args)
+        p.start()
         return p
 
     @classmethod
@@ -77,7 +81,8 @@ class Proxy(Service):
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw daemon-p2p-proxy subprocess: %s" % " ".join(args))
-        p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+        p = multiprocessing.Process(target=cls.run_ptw, args=args)
+        p.start()
         return p
 
     @classmethod
@@ -93,7 +98,8 @@ class Proxy(Service):
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw daemon-rpc-proxy subprocess: %s" % " ".join(args))
-        p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+        p = multiprocessing.Process(target=cls.run_ptw, args=args)
+        p.start()
         return p
 
     @classmethod
@@ -192,13 +198,13 @@ class Proxy(Service):
             logging.getLogger("proxy").debug("Proxy loop")
             connections = []
             for pinfo in cls.processes.copy():
-                if pinfo["process"] and pinfo["process"].poll():
+                if pinfo["process"] and not pinfo["process"].is_alive():
                     logging.getLogger("proxy").warning(
                         "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
-                                                                     pinfo["process"].returncode))
+                                                                     pinfo["process"].exitcode))
                     cls.log_message("proxy",
                                     "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
-                                                                                 pinfo["process"].returncode))
+                                                                                 pinfo["process"].exitcode))
                     cls.processes.remove(pinfo)
                     break
                 pinfo2 = copy.copy(pinfo)
@@ -233,4 +239,4 @@ class Proxy(Service):
             if pinfo["process"] and not pinfo["process"].returncode:
                 logging.getLogger("proxy").warning("Killing subprocess with PID %s" % pinfo["process"].pid)
                 os.kill(pinfo["process"].pid, signal.SIGINT)
-                pinfo["process"].communicate()
+                #pinfo["process"].communicate()
