@@ -234,7 +234,6 @@ def main():
     # Test binaries
     test_binary([cfg.wallet_cli_bin, "--version"])
     test_binary([cfg.wallet_rpc_bin, "--rpc-bind-port=1111", "--version"])
-    #test_binary(["ptw", "-h"])
 
     cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
     if default_cmd:

@@ -1,5 +1,8 @@
 import logging
 import time
+
+import setproctitle
+
 from lib.shared import Messages
 
 
@@ -52,6 +55,7 @@ class Service:
         logging.getLogger(cls.myname).debug("Starting Service %s" % cls.myname)
         try:
             cls.postinit()
+            setproctitle.setproctitle("lvpn-%s" % cls.myname)
             cls.loop()
 
         except Exception as e:

@@ -31,7 +31,7 @@ class Proxy(Service):
     @classmethod
     def run_ptw(cls, *args):
         with patch.object(sys, 'argv', list(args)):
-            setproctitle.setproctitle("ptw")
+            setproctitle.setproctitle("lvpn-ptw-endpoint".replace(":","-"))
             ptw()
 
     @classmethod

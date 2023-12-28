@@ -22,7 +22,7 @@ COPY lvpn/server/* /home/lvpn/src/server/
 COPY lvpn/lib/* /home/lvpn/src/lib/
 COPY config/ /home/lvpn/src/config/
 COPY lvpn/server.py client.py setup.cfg setup.py /home/lvpn/src/
-COPY build-msi.cmd /home/lvpn/src/
+COPY build-exe.cmd /home/lvpn/src/
 
 RUN wget -nc -c $DAEMON_BIN_URL
 RUN mkdir -p /home/lvpn/src/bin/ && tar -xf $(basename $DAEMON_BIN_URL) -C /home/lvpn/src/bin/
