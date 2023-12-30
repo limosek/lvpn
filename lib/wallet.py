@@ -8,6 +8,7 @@ import time
 import requests
 from requests.auth import HTTPDigestAuth
 
+from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
 from lib.shared import Messages
 
@@ -89,7 +90,7 @@ class Wallet(Service):
             "rescan_bc"
         ]
         logging.getLogger("wallet").warning("Running wallet-cli process: %s" % " ".join(args))
-        cls.pc = subprocess.Popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
+        cls.pc = RunCmd.popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
 
     @classmethod
     def get_balance(cls, walletid=0):
@@ -167,7 +168,8 @@ class Wallet(Service):
             "--trusted-daemon"
         ]
         logging.getLogger("wallet").warning("Running wallet subprocess: %s" % " ".join(args))
-        cls.p = subprocess.Popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+        RunCmd.init(cls.ctrl["cfg"])
+        cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
         cls.pc = None
 
     @classmethod

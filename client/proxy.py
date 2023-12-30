@@ -1,5 +1,4 @@
 import copy
-import multiprocessing
 import os
 import signal
 import subprocess
@@ -9,10 +8,7 @@ import time
 import socket
 from contextlib import closing
 
-import setproctitle
-from ptw.__main__ import main as ptw
-from unittest.mock import patch
-
+from lib.runcmd import RunCmd
 from lib.service import Service
 from lib.shared import Messages
 
@@ -29,10 +25,15 @@ class Proxy(Service):
             return s.getsockname()[1]
 
     @classmethod
-    def run_ptw(cls, *args):
-        with patch.object(sys, 'argv', list(args)):
-            setproctitle.setproctitle("lvpn-ptw-endpoint".replace(":","-"))
-            ptw()
+    def run_ptw(cls, *pargs):
+        args = list(*pargs)
+        if cls.ctrl["cfg"].l == "DEBUG":
+            args.extend(["-v", "debug"])
+        elif cls.ctrl["cfg"].l == "INFO":
+            args.extend(["-v", "info"])
+        else:
+            args.extend(["-v", "warning"])
+        return RunCmd.popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
 
     @classmethod
     def run_http_proxy(cls, cafile, localport, endpoint):
@@ -42,14 +43,11 @@ class Proxy(Service):
             "-C", cafile,
             "-p", str(localport),
             "-n", "5",
-            "-v", "error",
             "-T", "300",
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw http-proxy subprocess: %s" % " ".join(args))
-        p = multiprocessing.Process(target=cls.run_ptw, args=args)
-        p.start()
-        return p
+        return cls.run_ptw(args)
 
     @classmethod
     def run_socks_proxy(cls, cafile, localport, endpoint):
@@ -59,14 +57,11 @@ class Proxy(Service):
             "-C", cafile,
             "-p", str(localport),
             "-n", "5",
-            "-v", "error",
             "-T", "300",
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw socks-proxy subprocess: %s" % " ".join(args))
-        p = multiprocessing.Process(target=cls.run_ptw, args=args)
-        p.start()
-        return p
+        return cls.run_ptw(args)
 
     @classmethod
     def run_daemon_p2p_proxy(cls, cafile, localport, endpoint):
@@ -76,14 +71,11 @@ class Proxy(Service):
             "-C", cafile,
             "-p", str(localport),
             "-n", "1",
-            "-v", "error",
             "-T", "30",
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw daemon-p2p-proxy subprocess: %s" % " ".join(args))
-        p = multiprocessing.Process(target=cls.run_ptw, args=args)
-        p.start()
-        return p
+        return cls.run_ptw(args)
 
     @classmethod
     def run_daemon_rpc_proxy(cls, cafile, localport, endpoint):
@@ -93,14 +85,11 @@ class Proxy(Service):
             "-C", cafile,
             "-p", str(localport),
             "-n", "1",
-            "-v", "error",
             "-T", "30",
             host, port
         ]
         logging.getLogger("proxy").warning("Running ptw daemon-rpc-proxy subprocess: %s" % " ".join(args))
-        p = multiprocessing.Process(target=cls.run_ptw, args=args)
-        p.start()
-        return p
+        return cls.run_ptw(args)
 
     @classmethod
     def run(cls, ctrl, queue, myqueue, cafile=None, localhttp=None, localsocks=None, localrpc=None, localp2p=None, httpendpoint=None, socksendpoint=None, rpcendpoint=None, p2pendpoint=None):
@@ -110,14 +99,7 @@ class Proxy(Service):
         cls.processes = []
         cls.ctrl["connections"] = []
         logging.basicConfig(level=ctrl["cfg"].l)
-        if httpendpoint:
-            cls.run_http_proxy(cafile, localhttp, httpendpoint)
-        if socksendpoint:
-            cls.run_socks_proxy(cafile, localsocks, socksendpoint)
-        if p2pendpoint:
-            cls.run_daemon_p2p_proxy(cafile, localp2p, p2pendpoint)
-        if rpcendpoint:
-            cls.run_daemon_rpc_proxy(cafile, localrpc, rpcendpoint)
+        RunCmd.init(cls.ctrl["cfg"])
         super().run(ctrl, queue, myqueue)
 
     @classmethod
@@ -198,13 +180,13 @@ class Proxy(Service):
             logging.getLogger("proxy").debug("Proxy loop")
             connections = []
             for pinfo in cls.processes.copy():
-                if pinfo["process"] and not pinfo["process"].is_alive():
+                if pinfo["process"] and pinfo["process"].poll():
                     logging.getLogger("proxy").warning(
                         "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
-                                                                     pinfo["process"].exitcode))
+                                                                     pinfo["process"].returncode))
                     cls.log_message("proxy",
                                     "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
-                                                                                 pinfo["process"].exitcode))
+                                                                                 pinfo["process"].returncode))
                     cls.processes.remove(pinfo)
                     break
                 pinfo2 = copy.copy(pinfo)

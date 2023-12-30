@@ -15,6 +15,9 @@
   size_hint_y: 0.1
   pos_hint: {'top': 0.5}
 
+<TextInput>:
+  padding : 6,self.height/2 - self.font_size/2,6,6
+
 <Switcher>:
   cols: 3
   BoxLayout:
@@ -42,14 +45,16 @@
   BoxLayout:
     orientation: "vertical"
     Label:
-      text: "LVPN wallet wizard"
-    BoxLayout:
-      size_hint_y: 0.3
-      orientation: "horizontal"
+      text: "LVPN setup"
+    GridLayout:
+      cols: 2
+      size_hint_y: 0.2
+      #orientation: "horizontal"
       TextInput:
         id: wallet_seed
         write_tab: False
         multiline: True
+        size_hint_y: 0.3
       Button:
         size_hint_y: 0.3
         id: wallet_seed_restore
@@ -59,9 +64,10 @@
       id: wallet_create
       text: "Create wallet"
       on_press: root.create_wallet()
-    BoxLayout:
-      size_hint_y: 0.2
-      orientation: "horizontal"
+    GridLayout:
+      size_hint_y: 0.1
+      #orientation: "horizontal"
+      cols: 2
       TextInput:
         id: vdp_url
         write_tab: False
@@ -222,7 +228,7 @@
       size_hint_y: 0.1
       orientation: "horizontal"
       Label:
-        text: "PaymentID to send"
+        text: "PaymentID to send (8 byte hex string)"
       TextInput:
         id: paymentid_to_send
         write_tab: False

@@ -16,7 +16,7 @@ class Wallet(GridLayout):
         self.ids.amount_to_send.bind(text=self.check_validity)
         self.ids.paymentid_to_send.bind(text=self.check_validity)
         self.ids.wallet_to_send.bind(text=self.check_validity)
-        Clock.schedule_once(self.check_validity, 3)
+        Clock.schedule_once(self.check_validity, 1)
 
     @staticmethod
     def get_tx_uri(wallet, amount, paymentid):
@@ -49,7 +49,6 @@ class Wallet(GridLayout):
             else:
                 self.ids.qr_get.disabled = False
 
-            error = False
             try:
                 amount = float(self.ids.amount_to_send.text)
             except Exception as e:
@@ -58,16 +57,25 @@ class Wallet(GridLayout):
                 error = True
                 amount = 0
 
-            if len(self.ids.paymentid_to_send.text) != 16:
-                self.ids.paymentid_to_send.background_color = (0.7, 0, 0)
-                error = True
+            if len(self.ids.paymentid_to_send.text) == 0:
+                perror = False
+                error = False
             else:
-                try:
-                    a = codecs.decode(self.ids.paymentid_to_send.text, "hex")
-                    self.ids.paymentid_to_send.background_color = (0, 0.7, 0)
-                except Exception as e:
-                    self.ids.paymentid_to_send.background_color = (0.7, 0, 0)
+                if len(self.ids.paymentid_to_send.text) != 16:
+                    perror = True
                     error = True
+                else:
+                    try:
+                        codecs.decode(self.ids.paymentid_to_send.text, "hex")
+                        error = False
+                        perror = False
+                    except Exception as e:
+                        error = True
+                        perror = True
+            if perror:
+                self.ids.paymentid_to_send.background_color = (0.7, 0, 0)
+            else:
+                self.ids.paymentid_to_send.background_color = (0, 0.7, 0)
 
             if len(self.ids.wallet_to_send.text) >= 90 and self.ids.wallet_to_send.text.startswith("iz"):
                 self.ids.wallet_to_send.background_color = (0, 0.7, 0)
@@ -84,9 +92,9 @@ class Wallet(GridLayout):
                 self.ids.qr_send.disabled = False
             else:
                 self.ids.pay_button.disabled = False
-                self.ids.qr_send.data = self.get_tx_uri(self.ids.wallet_to_send.text, self.ids.amount_to_send.text, self.ids.paymentid_to_send.text)
+                self.ids.qr_send.data = self.get_tx_uri(self.ids.wallet_to_send.text, self.ids.amount_to_send.text,
+                                                    self.ids.paymentid_to_send.text)
                 self.ids.qr_send.disabled = False
 
         except Exception as e:
-            pass
-
+            logging.getLogger("gui").error(e)
