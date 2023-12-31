@@ -81,6 +81,7 @@ def main():
     p.add_argument('--run-wallet', default=1, type=int, choices=[0, 1], help='Run local wallet')
     p.add_argument('--run-daemon', default=0, type=int, choices=[0, 1], help='Run local daemon RPC')
     p.add_argument('--chromium-bin', help='Chromium browser binary')
+    p.add_argument('--edge-bin', help='Edge browser binary', default="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
     p.add_argument('--daemon-host', help='Daemon host', default='localhost')
     p.add_argument('--daemon-p2p-port', help='Daemon P2P port', type=int)
     p.add_argument('--daemon-rpc-url', help='Daemon RPC URL')
@@ -90,6 +91,12 @@ def main():
     p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random')
     p.add_argument('--wallet-name', help='Wallet name')
     p.add_argument('--wallet-password', help='Wallet password')
+    p.add_argument('--auto-connect', type=str, action="append", help='Auto connect strings',
+                   default=[
+                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-rpc-http/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
+                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p2p-tls/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
+                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-socks/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean"
+                   ])
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
     try:
@@ -117,9 +124,7 @@ def main():
     cfg.bin_dir = bindir
     cfg.app_dir = appdir
     wizard = False
-    if not os.path.exists(vardir) or not os.path.exists(cfg.gates_dir) or not os.path.exists(cfg.spaces_dir):
-        Wizard().files(cfg, vardir)
-        wizard = True
+    Wizard().files(cfg, vardir)
 
     if not os.path.exists(vardir + "/client.ini"):
         Wizard().cfg(cfg, p, vardir)
@@ -167,7 +172,6 @@ def main():
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
     tmpdir = cfg.tmp_dir
-    default_cmd = False
     ctrl["log"] = ""
     ctrl["daemon_height"] = -1
     ctrl["selected_gate"] = None
@@ -233,7 +237,6 @@ def main():
             sys.exit(1)
     else:
         cfg.cmd = ["run"]
-        default_cmd = True
 
     # Test binaries
     test_binary([cfg.wallet_cli_bin, "--version"])
@@ -241,17 +244,15 @@ def main():
     test_binary(["ptw", "-h"])
 
     cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
-    if default_cmd:
-        if "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-rpc-http" in cfg.vdp.gate_ids() \
-                and "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean" in cfg.vdp.space_ids():
-            proxy_queue.put(Messages.connect("fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                                             "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-rpc-http",
-                                             None))
-        if "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p1p-tls" in cfg.vdp.gate_ids() \
-                and "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean" in cfg.vdp.space_ids():
-            proxy_queue.put(Messages.connect("fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                                         "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p1p-tls",
-                                         None))
+    for url in cfg.auto_connect:
+        try:
+            (gateid, spaceid) = url.split("/")
+            if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
+                proxy_queue.put(Messages.connect(spaceid, gateid, None))
+            else:
+                logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+        except Exception as e:
+            logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
     cfg.authids = AuthIDs(cfg.authids_dir)
     os.chdir(tmpdir)
     ctrl["cfg"] = cfg

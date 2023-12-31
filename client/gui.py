@@ -1,17 +1,9 @@
-import logging
-import os
-import subprocess
-import sys
 import time
 import threading
 from kivy.app import App
 from kivy.lang import Builder
-import kivy.resources
-
-# Must be here for msi builds
-import kivy.weakmethod
-import kivy.core.image
-
+from kivy.config import Config
+from lib.runcmd import RunCmd
 from lib.service import Service
 import client
 
@@ -19,6 +11,8 @@ import client
 class LVpn(App):
 
     def build(self):
+        Config.set('graphics', 'width', '1000')
+        Config.set('graphics', 'height', '800')
         return client.gui_switcher.Switcher()
 
 
@@ -26,18 +20,8 @@ class GUI(Service):
     myname = "gui"
 
     @classmethod
-    def run_chromium(cls):
-        args = [
-            cls.ctrl["cfg"].chromium_bin,
-            "--incognito",
-            "--user-data-dir=%s" % cls.ctrl["cfg"].tmp_dir,
-            "--proxy-server=http://localhost:8181",
-            "https://www.seznam.cz"
-        ]
-        p = subprocess.run(args)
-
-    @classmethod
     def postinit(cls):
+        RunCmd.init(cls.ctrl["cfg"])
         cls.processes = []
         b = threading.Thread(target=cls.loop)
         cls.processes.append(b)

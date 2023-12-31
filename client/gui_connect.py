@@ -1,12 +1,15 @@
 import logging
 
 from kivy.clock import Clock
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 
 import client
 from lib.mngrrpc import ManagerRpcCall
+from lib.runcmd import RunCmd
 from lib.shared import Messages
 
 
@@ -27,6 +30,13 @@ class DisconnectButton(Button):
         super().__init__(**kwargs)
         self.gateid = gateid
         self.spaceid = spaceid
+
+
+class BrowserButton(Button):
+    def __init__(self, proxy, url=None, **kwargs):
+        super().__init__(**kwargs)
+        self.proxy = proxy
+        self.url = url
 
 
 class PayButton(Button):
@@ -53,6 +63,19 @@ class Connect(GridLayout):
     def disconnect(self, instance):
         logging.getLogger("gui").warning("Disconnect %s/%s" % (instance.gateid, instance.spaceid))
         client.gui.GUI.queue.put(Messages.disconnect(gateid=instance.gateid, spaceid=instance.spaceid))
+
+    def run_edge(self, instance):
+        args = [
+            client.gui.GUI.ctrl["cfg"].edge_bin,
+            "--inprivate",
+            "--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir,
+            "--proxy-server=%s" % instance.proxy,
+            instance.url
+        ]
+        try:
+            RunCmd.popen(args, shell=False)
+        except Exception as e:
+            logging.getLogger("gui").error(e)
 
     def main(self):
         self.clear_widgets()
@@ -135,5 +158,21 @@ class Connect(GridLayout):
     def fill_connections(self, dt):
         self.ids.connections_info.clear_widgets()
         for c in client.gui.GUI.ctrl["connections"]:
-            btn = DisconnectButton(text="Disconnect " + c["gate"].get_name() + "/" + c["space"].get_name(), on_press=self.disconnect, gateid=c["gate"].get_id(), spaceid=c["space"].get_id())
-            self.ids.connections_info.add_widget(btn)
+            row = GridLayout(cols=3, rows=1, size_hint_y=0.2)
+            lbl = Label(text="%s/%s [%s]" % (c["gate"].get_name(), c["space"].get_name(), c["port"]), color=(0, 0.7, 0))
+            row.add_widget(lbl)
+            if c["gate"].get_type() == "http-proxy":
+                bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c["port"], url="http://www.lthn",
+                                     on_press=self.run_edge)
+                row.add_widget(bbtn)
+            elif c["gate"].get_type() == "socks-proxy":
+                bbtn = BrowserButton(text="Run browser", proxy="socks5://127.0.0.1:%s" % c["port"], url="http://www.lthn",
+                                     on_press=self.run_edge)
+                row.add_widget(bbtn)
+            else:
+                bbtn = BrowserButton(text="N/A", proxy=0, url="http://www.lthn",
+                                     disabled=True)
+                row.add_widget(bbtn)
+            dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, gateid=c["gate"].get_id(), spaceid=c["space"].get_id())
+            row.add_widget(dbtn)
+            self.ids.connections_info.add_widget(row)

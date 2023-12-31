@@ -109,7 +109,7 @@ class Proxy(Service):
             cls.log_message("proxy", "Gate %s is not allowed to connect to space %s" % (gate, space))
             return
         if gate.get_type() == "http-proxy":
-            port = cls.find_free_port()
+            port = "8080"
             cls.processes.append(
               {
                 "process": cls.run_http_proxy(gate.get_cafile(cls.ctrl["tmpdir"]), port,
@@ -139,13 +139,26 @@ class Proxy(Service):
         elif gate.get_type() == "daemon-p2p-proxy":
             cls.processes.append(
                 {
-                    "process": cls.run_daemon_p2p_proxy(gate.get_cafile(cls.ctrl["tmpdir"]), 48772,
+                    "process": cls.run_socks_proxy(gate.get_cafile(cls.ctrl["tmpdir"]), 48772,
                                                         gate.get_endpoint()),
                     "space": space,
                     "gate": gate,
                     "endpoint": gate.get_endpoint(),
                     "authid": authid,
                     "port": 48772
+                }
+            )
+            cls.log_message("proxy", "Connecting to gate %s and space %s" % (gate, space))
+        elif gate.get_type() == "socks-proxy":
+            cls.processes.append(
+                {
+                    "process": cls.run_daemon_p2p_proxy(gate.get_cafile(cls.ctrl["tmpdir"]), 8081,
+                                                        gate.get_endpoint()),
+                    "space": space,
+                    "gate": gate,
+                    "endpoint": gate.get_endpoint(),
+                    "authid": authid,
+                    "port": 8081
                 }
             )
             cls.log_message("proxy", "Connecting to gate %s and space %s" % (gate, space))

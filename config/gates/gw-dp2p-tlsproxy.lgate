@@ -2,7 +2,7 @@
   "filetype": "LetheanGateway",
   "type": "daemon-p2p-proxy",
   "version": "1.0",
-  "gateid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p1p-tls",
+  "gateid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p2p-tls",
   "name": "Daemon P2P Lethean Gateway",
   "description": "Free Lethean Gateway to access daemon P2P",
   "manager": {
