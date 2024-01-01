@@ -184,10 +184,10 @@ class Wallet(Service):
     def stop(cls):
         cls.exit = True
         if cls.p and not cls.p.returncode:
-            logging.getLogger("wallet").warning("Killing wallet subprocess with PID %s" % cls.p.pid)
+            logging.getLogger(cls.myname).warning("Killing wallet subprocess with PID %s" % cls.p.pid)
             os.kill(cls.p.pid, signal.SIGINT)
         if cls.pc and not cls.pc.returncode:
-            logging.getLogger("wallet").warning("Killing wallet-cli subprocess with PID %s" % cls.pc.pid)
+            logging.getLogger(cls.myname).warning("Killing wallet-cli subprocess with PID %s" % cls.pc.pid)
             os.kill(cls.pc.pid, signal.SIGINT)
         try:
             if cls.p:

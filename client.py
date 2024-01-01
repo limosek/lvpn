@@ -67,7 +67,8 @@ def main():
     p.add_argument('--ptw-bin', default="ptw")
     p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file')
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
-    p.add_argument('--daemon-rpc-bin', help='Daemon binary file')
+    p.add_argument('--daemon-rpc-bin', help='Daemon-RPC binary file')
+    p.add_argument('--daemon-bin', help='Daemon binary file')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
     p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs", default=os.path.abspath(vardir + "/spaces"))
@@ -142,6 +143,8 @@ def main():
             cfg.wallet_cli_bin = "lethean-wallet-cli"
         if not cfg.daemon_rpc_url:
             cfg.daemon_rpc_url = "http://localhost:48782/json_rpc"
+        if not cfg.daemon_bin:
+            cfg.daemon_bin = "letheand"
         if not cfg.daemon_p2p_port:
             cfg.daemon_p2p_port = 48772
         if not cfg.wallet_name:
@@ -242,6 +245,8 @@ def main():
     test_binary([cfg.wallet_cli_bin, "--version"])
     test_binary([cfg.wallet_rpc_bin, "--rpc-bind-port=1111", "--version"])
     test_binary(["ptw", "-h"])
+    if cfg.run_daemon:
+        test_binary([cfg.daemon_bin, "--version"])
 
     cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
     for url in cfg.auto_connect:
@@ -255,14 +260,11 @@ def main():
             logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
     cfg.authids = AuthIDs(cfg.authids_dir)
     os.chdir(tmpdir)
+    cfg.env = os.environ.copy()
     ctrl["cfg"] = cfg
     ctrl["tmpdir"] = tmpdir
     os.environ["TEMP"] = tmpdir
     logging.getLogger().debug("Using TEMP dir %s" % tmpdir)
-
-    if cfg.run_daemon:
-        logging.error("Running local daemon is not supported yet.")
-        sys.exit(1)
 
     if cfg.run_gui:
         gui = multiprocessing.Process(target=GUI.run, args=[ctrl, queue, gui_queue], name="GUI")
@@ -275,8 +277,7 @@ def main():
         processes["proxy"] = proxy
 
     if cfg.run_wallet:
-        wallet = multiprocessing.Process(target=ClientWallet.run, args=[ctrl, queue, wallet_queue], kwargs=
-        {}, name="Wallet")
+        wallet = multiprocessing.Process(target=ClientWallet.run, args=[ctrl, queue, wallet_queue], kwargs={}, name="Wallet")
         wallet.start()
         processes["wallet"] = wallet
         cd = multiprocessing.Process(target=ClientDaemon.run, args=[ctrl, queue, cd_queue], kwargs=

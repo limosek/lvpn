@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import setproctitle
@@ -53,6 +54,7 @@ class Service:
         fh.setFormatter(formatter)
         logging.getLogger(cls.myname).addHandler(fh)
         logging.getLogger(cls.myname).debug("Starting Service %s" % cls.myname)
+        os.environ = ctrl["cfg"].env
         try:
             cls.postinit()
             setproctitle.setproctitle("lvpn-%s" % cls.myname)

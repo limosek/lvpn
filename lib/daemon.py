@@ -1,7 +1,12 @@
 import json
 import logging
+import os
+import signal
+import sys
+
 import requests
 
+from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
 
 
@@ -11,6 +16,7 @@ class DaemonException(ServiceException):
 
 class Daemon(Service):
 
+    p = None
     myname = "daemon-rpc"
 
     @classmethod
@@ -55,3 +61,30 @@ class Daemon(Service):
     def get_info(cls, exc=False):
         i = cls.rpc("get_info", exc=exc)
         return i
+
+    @classmethod
+    def postinit(cls):
+        args = [
+            cls.ctrl["cfg"].daemon_bin,
+            "--log-file=%s/daemon.log" % cls.ctrl["cfg"].var_dir,
+            "--data-dir=%s/data" % cls.ctrl["cfg"].var_dir,
+            "--add-exclusive-node=127.0.0.1:48772",
+            "--p2p-bind-ip=127.0.0.1",
+            "--no-igd"
+        ]
+        if cls.ctrl["cfg"].run_daemon:
+            logging.getLogger(cls.myname).warning("Running daemon subprocess: %s" % " ".join(args))
+            RunCmd.init(cls.ctrl["cfg"])
+            cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
+
+    @classmethod
+    def stop(cls):
+        cls.exit = True
+        if cls.p and not cls.p.returncode:
+            logging.getLogger(cls.myname).warning("Killing daemon subprocess with PID %s" % cls.p.pid)
+            os.kill(cls.p.pid, signal.SIGINT)
+        try:
+            if cls.p:
+                cls.p.communicate()
+        except Exception as e:
+            pass

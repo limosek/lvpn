@@ -15,7 +15,7 @@
   },
   "http-proxy": {
     "host": "vpn.lethean.space",
-    "port": 8778
+    "port": 8779
   },
   "spaces": [
     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean"
