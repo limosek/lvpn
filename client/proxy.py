@@ -42,7 +42,7 @@ class Proxy(Service):
             cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
-            "-n", "5",
+            "-n", "10",
             "-T", "300",
             host, port
         ]
@@ -56,7 +56,7 @@ class Proxy(Service):
             cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
-            "-n", "5",
+            "-n", "10",
             "-T", "300",
             host, port
         ]
@@ -84,7 +84,7 @@ class Proxy(Service):
             cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
-            "-n", "1",
+            "-n", "5",
             "-T", "30",
             host, port
         ]

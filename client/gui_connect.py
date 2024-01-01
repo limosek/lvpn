@@ -163,16 +163,16 @@ class Connect(GridLayout):
             row.add_widget(lbl)
             if c["gate"].get_type() == "http-proxy":
                 bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c["port"], url="http://www.lthn",
-                                     on_press=self.run_edge)
+                                     on_press=self.run_edge, size_hint_x=0.1)
                 row.add_widget(bbtn)
             elif c["gate"].get_type() == "socks-proxy":
                 bbtn = BrowserButton(text="Run browser", proxy="socks5://127.0.0.1:%s" % c["port"], url="http://www.lthn",
-                                     on_press=self.run_edge)
+                                     on_press=self.run_edge, size_hint_x=0.1)
                 row.add_widget(bbtn)
             else:
                 bbtn = BrowserButton(text="N/A", proxy=0, url="http://www.lthn",
-                                     disabled=True)
+                                     disabled=True, size_hint_x=0.1)
                 row.add_widget(bbtn)
-            dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, gateid=c["gate"].get_id(), spaceid=c["space"].get_id())
+            dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, gateid=c["gate"].get_id(), spaceid=c["space"].get_id(), size_hint_x=0.2)
             row.add_widget(dbtn)
             self.ids.connections_info.add_widget(row)

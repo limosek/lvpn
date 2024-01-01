@@ -96,7 +96,8 @@ def main():
                    default=[
                        "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-rpc-http/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
                        "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p2p-tls/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-socks/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean"
+                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-socks/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
+                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-http/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean"
                    ])
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
@@ -167,6 +168,8 @@ def main():
         wizard = True
 
     processes = {}
+    # Hack for multiprocessing to work
+    sys._base_executable = sys.executable
     ctrl = multiprocessing.Manager().dict()
     queue = Queue(multiprocessing.get_context(), "general")
     gui_queue = Queue(multiprocessing.get_context(), "gui")
