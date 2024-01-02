@@ -8,6 +8,8 @@ import time
 import socket
 from contextlib import closing
 
+import _queue
+
 from lib.runcmd import RunCmd
 from lib.service import Service
 from lib.shared import Messages
@@ -25,21 +27,21 @@ class Proxy(Service):
             return s.getsockname()[1]
 
     @classmethod
-    def run_ptw(cls, *pargs):
-        args = list(*pargs)
+    def run_ptw(cls, pargs):
+        args = [sys.executable, cls.ctrl["cfg"].app_dir + "/ptwbin.py"]
         if cls.ctrl["cfg"].l == "DEBUG":
             args.extend(["-v", "debug"])
         elif cls.ctrl["cfg"].l == "INFO":
             args.extend(["-v", "info"])
         else:
             args.extend(["-v", "warning"])
+        args.extend(list(pargs))
         return RunCmd.popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
 
     @classmethod
     def run_http_proxy(cls, cafile, localport, endpoint):
         (host, port) = endpoint.split(":")
         args = [
-            cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
             "-n", "10",
@@ -53,7 +55,6 @@ class Proxy(Service):
     def run_socks_proxy(cls, cafile, localport, endpoint):
         (host, port) = endpoint.split(":")
         args = [
-            cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
             "-n", "10",
@@ -67,7 +68,6 @@ class Proxy(Service):
     def run_daemon_p2p_proxy(cls, cafile, localport, endpoint):
         (host, port) = endpoint.split(":")
         args = [
-            cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
             "-n", "1",
@@ -81,7 +81,6 @@ class Proxy(Service):
     def run_daemon_rpc_proxy(cls, cafile, localport, endpoint):
         (host, port) = endpoint.split(":")
         args = [
-            cls.ctrl["cfg"].ptw_bin,
             "-C", cafile,
             "-p", str(localport),
             "-n", "5",
@@ -206,24 +205,29 @@ class Proxy(Service):
                 del(pinfo2["process"])
                 connections.append(pinfo2)
             cls.set_value("connections", connections)
-
-            if not cls.myqueue.empty():
-                msg = cls.myqueue.get()
-                if msg == Messages.EXIT:
-                    break
-                elif msg.startswith(Messages.CONNECT):
-                    cdata = Messages.get_msg_data(msg)
-                    space = cls.ctrl["cfg"].vdp.get_space(cdata["spaceid"])
-                    gate = cls.ctrl["cfg"].vdp.get_gate(cdata["gateid"])
-                    if "authid" in cdata:
-                        authid = cls.ctrl["cfg"].authids.find(cdata["gateid"])
-                    else:
-                        authid = None
-                    cls.connect(space, gate, authid)
-                elif msg.startswith(Messages.DISCONNECT):
-                    cdata = Messages.get_msg_data(msg)
-                    cls.disconnect(cdata["gateid"], cdata["spaceid"])
             time.sleep(1)
+            if not cls.myqueue.empty():
+                try:
+                    msg = cls.myqueue.get()
+                    if not msg:
+                        continue
+                    if msg == Messages.EXIT:
+                        break
+                    elif msg.startswith(Messages.CONNECT):
+                        cdata = Messages.get_msg_data(msg)
+                        space = cls.ctrl["cfg"].vdp.get_space(cdata["spaceid"])
+                        gate = cls.ctrl["cfg"].vdp.get_gate(cdata["gateid"])
+                        if "authid" in cdata:
+                            authid = cls.ctrl["cfg"].authids.find(cdata["gateid"])
+                        else:
+                            authid = None
+                        cls.connect(space, gate, authid)
+                    elif msg.startswith(Messages.DISCONNECT):
+                        cdata = Messages.get_msg_data(msg)
+                        cls.disconnect(cdata["gateid"], cdata["spaceid"])
+                except _queue.Empty:
+                    continue
+
         cls.log_message("proxy", "Proxy process exited")
         cls.stop()
 

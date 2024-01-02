@@ -4,6 +4,8 @@ import shutil
 import sys
 import tempfile
 import time
+
+import _queue
 import configargparse
 import logging
 import logging.handlers
@@ -64,7 +66,6 @@ def main():
 
     p = configargparse.ArgParser(default_config_files=['/etc/lvpn/client.ini', cfgdir + "/client.ini", vardir + "/client.ini"])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path')
-    p.add_argument('--ptw-bin', default="ptw")
     p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file')
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
     p.add_argument('--daemon-rpc-bin', help='Daemon-RPC binary file')
@@ -247,7 +248,7 @@ def main():
     # Test binaries
     test_binary([cfg.wallet_cli_bin, "--version"])
     test_binary([cfg.wallet_rpc_bin, "--rpc-bind-port=1111", "--version"])
-    test_binary(["ptw", "-h"])
+    test_binary([sys.executable, appdir + "/ptwbin.py", "-h"])
     if cfg.run_daemon:
         test_binary([cfg.daemon_bin, "--version"])
 
@@ -312,8 +313,12 @@ def main():
                 break
             time.sleep(1)
             if not queue.empty():
-                msg = queue.get()
-                print(msg)
+                try:
+                    msg = queue.get()
+                except _queue.Empty:
+                    continue
+                if not msg:
+                    continue
                 if Messages.is_for_main(msg):
                     if msg == Messages.EXIT:
                         should_exit = True

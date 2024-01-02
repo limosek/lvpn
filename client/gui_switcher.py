@@ -56,7 +56,7 @@ class Switcher(GridLayout):
         if not client.gui.GUI.myqueue.empty():
             logging.getLogger("gui").debug("Switcher queue get")
             msg = client.gui.GUI.myqueue.get(block=False, timeout=0.01)
-            if msg.startswith("GUI/Popup"):
+            if msg and msg.startswith("GUI/Popup"):
                 data = Messages.get_msg_data(msg)
                 box = BoxLayout(orientation='vertical', padding=(10))
                 btn1 = Button(text="OK")

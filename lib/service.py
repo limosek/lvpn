@@ -2,6 +2,7 @@ import logging
 import os
 import time
 
+import _queue
 import setproctitle
 
 from lib.shared import Messages
@@ -29,7 +30,10 @@ class Service:
         """ Default loop for every service. """
         while not cls.exit:
             if not cls.myqueue.empty():
-                msg = cls.myqueue.get(block=False, timeout=0.01)
+                try:
+                    msg = cls.myqueue.get(block=False, timeout=0.01)
+                except _queue.Empty:
+                    pass
                 if msg == Messages.EXIT:
                     break
             time.sleep(1)

@@ -5,6 +5,8 @@ import subprocess
 import logging
 import sys
 import time
+
+import _queue
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -125,36 +127,41 @@ class Wallet(Service):
     def loop(cls):
         logging.getLogger("wallet").debug("Wallet loop")
         while not cls.p.poll():
-            if not cls.myqueue.empty():
-                msg = cls.myqueue.get(block=False, timeout=0.01)
-                if msg.startswith("Wallet/Pay"):
-                    data = Messages.get_msg_data(msg)
-                    cls.transfer(data["wallet"], data["amount"], data["authid"])
-                elif msg.startswith("Wallet/RestoreFromSeed"):
-                    data = Messages.get_msg_data(msg)
-                    try:
-                        cls.restore(data["seed"])
-                        cls.open()
-                    except Exception as e:
-                        logging.getLogger("wallet").error(e)
-                        cls.queue.put(Messages.gui_popup(str(e)))
-                elif msg.startswith("Wallet/Create"):
-                    try:
-                        try:
-                            cls.create()
-                        except WalletException as e:
-                            cls.queue.put(Messages.gui_popup(str(e)))
-                        cls.open()
-                    except Exception as e:
-                        logging.getLogger("wallet").error(e)
-                elif msg == Messages.EXIT:
-                    break
             if cls.pc:
                 try:
                     logging.getLogger("wallet").error(cls.pc.communicate(input=b"\n\r\n\r", timeout=1))
                 except Exception as e:
                     logging.getLogger("wallet").error(e)
             time.sleep(1)
+            if not cls.myqueue.empty():
+                try:
+                    msg = cls.myqueue.get(block=False, timeout=0.01)
+                    if not msg:
+                        continue
+                    if msg.startswith("Wallet/Pay"):
+                        data = Messages.get_msg_data(msg)
+                        cls.transfer(data["wallet"], data["amount"], data["authid"])
+                    elif msg.startswith("Wallet/RestoreFromSeed"):
+                        data = Messages.get_msg_data(msg)
+                        try:
+                            cls.restore(data["seed"])
+                            cls.open()
+                        except Exception as e:
+                            logging.getLogger("wallet").error(e)
+                            cls.queue.put(Messages.gui_popup(str(e)))
+                    elif msg.startswith("Wallet/Create"):
+                        try:
+                            try:
+                                cls.create()
+                            except WalletException as e:
+                                cls.queue.put(Messages.gui_popup(str(e)))
+                            cls.open()
+                        except Exception as e:
+                            logging.getLogger("wallet").error(e)
+                    elif msg == Messages.EXIT:
+                        break
+                except _queue.Empty:
+                    pass
 
     @classmethod
     def postinit(cls):

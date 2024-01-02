@@ -1,3 +1,4 @@
+import platform
 import subprocess
 
 
@@ -11,16 +12,19 @@ class RunCmd:
 
     @classmethod
     def popen(cls, args, **kwargs):
-        if cls.cfg.l == "DEBUG":
-            info = subprocess.STARTUPINFO()
-        elif cls.cfg.l == "INFO":
-            SW_MINIMIZE = 6
-            info = subprocess.STARTUPINFO()
-            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = SW_MINIMIZE
+        if platform.platform() == "Windows":
+            if cls.cfg.l == "DEBUG":
+                info = subprocess.STARTUPINFO()
+            elif cls.cfg.l == "INFO":
+                SW_MINIMIZE = 6
+                info = subprocess.STARTUPINFO()
+                info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                info.wShowWindow = SW_MINIMIZE
+            else:
+                SW_HIDE = 0
+                info = subprocess.STARTUPINFO()
+                info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                info.wShowWindow = SW_HIDE
         else:
-            SW_HIDE = 0
-            info = subprocess.STARTUPINFO()
-            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = SW_HIDE
+            info = None
         return subprocess.Popen(args, startupinfo=info, **kwargs)

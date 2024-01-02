@@ -1,6 +1,8 @@
 import multiprocessing.queues
 import logging
 
+import _queue
+
 
 class Queue(multiprocessing.queues.Queue):
 
@@ -16,7 +18,10 @@ class Queue(multiprocessing.queues.Queue):
         return super().put(msg, block, timeout)
 
     def get(self, block=True, timeout=False):
-        msg = super().get(block, timeout)
+        try:
+            msg = super().get(block, timeout)
+        except _queue.Empty:
+            return None
         if msg:
             logging.getLogger().debug("Queue %s/get: %s" % (self._name, msg))
         return msg

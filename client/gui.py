@@ -3,7 +3,6 @@ import threading
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.config import Config
-from kivy_deps import sdl2, glew
 
 from lib.runcmd import RunCmd
 from lib.service import Service
