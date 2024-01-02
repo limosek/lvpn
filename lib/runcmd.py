@@ -10,7 +10,7 @@ class RunCmd:
         cls.cfg = cfg
 
     @classmethod
-    def popen(cls, *args, **kwargs):
+    def popen(cls, args, **kwargs):
         if cls.cfg.l == "DEBUG":
             info = subprocess.STARTUPINFO()
         elif cls.cfg.l == "INFO":
@@ -23,4 +23,4 @@ class RunCmd:
             info = subprocess.STARTUPINFO()
             info.dwFlags = subprocess.STARTF_USESHOWWINDOW
             info.wShowWindow = SW_HIDE
-        return subprocess.Popen(*args, startupinfo=info, **kwargs)
+        return subprocess.Popen(args, startupinfo=info, **kwargs)

@@ -18,8 +18,8 @@ Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
 .\Lib\site-packages
 import site
 "@ | Out-File -Encoding utf8 -FilePath python312._pth -Append
-.\python -m pip install virtualenv
-.\python -m virtualenv ../virtualenv
+.\python -m pip install venv
+.\python -m venv ../virtualenv
 . ..\virtualenv\Scripts\activate.ps1
 
 Set-Location ..
@@ -35,6 +35,7 @@ python -m pip install -r ..\..\requirements.txt
 
 Copy-Item ../../*py ./
 Copy-Item ../../*cmd ./
+Copy-Item ../../*ps1 ./
 Copy-Item -Recurse ../../lib ./
 Copy-Item -Recurse ../../server ./
 Copy-Item -Recurse ../../client ./
@@ -46,7 +47,10 @@ if (-not (Test-Path "lethean-cli-windows.zip"))
     Invoke-WebRequest "https://github.com/letheanVPN/blockchain-iz/releases/download/v5.0.1/lethean-cli-windows.zip" -OutFile lethean-cli-windows.zip
 }
 Expand-Archive lethean-cli-windows.zip
-Copy-Item lethean-cli-windows\lethean-cli-windows\* lvpn/bin/
+Copy-Item lethean-cli-windows\lethean-cli-windows\lethean-wallet-rpc.exe lvpn/bin/
+Copy-Item lethean-cli-windows\lethean-cli-windows\lethean-wallet-cli.exe lvpn/bin/
+#Copy-Item lethean-cli-windows\lethean-cli-windows\letheand.exe lvpn/bin/
+Copy-Item lethean-cli-windows\lethean-cli-windows\lib* lvpn/bin/
 python client.py
 Remove-Item lethean-cli-windows -Recurse
 
@@ -67,6 +71,7 @@ function addDir {
            New-InstallerFile $dir\server.py -Id "serverPy"
            New-InstallerFile $dir\mgmt.py -Id "mgmtPy"
            New-InstallerFile $dir\ptwbin.py -Id "ptwPy"
+           New-InstallerFile $dir\setup.ps1 -Id "setupscript"
       } else {
           Get-ChildItem $dir -file -Recurse -Depth 0 | ForEach-Object { write-host "addFile: $dir/$_"; New-InstallerFile $dir/$_ }
       }
@@ -74,7 +79,7 @@ function addDir {
   }
 }
 
-New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672fe9ec-7d23-4d80-a194-fabe5dcc4dc6" -UpgradeCode '111a932a-b7dc-4276-a42c-241250f33483' -Version 0.1 -Content {
+New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672fe9ec-7d23-4d80-a194-fabe5dcc4dc6" -UpgradeCode '111a932a-b7dc-4276-a42c-241250f33483' -Version 0.3 -Content {
     New-InstallerDirectory -PredefinedDirectory "LocalAppDataFolder"  -Content {
         addDir lvpn 1
         New-InstallerDirectory -PredefinedDirectory "DesktopFolder" -Content {
@@ -82,4 +87,8 @@ New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672f
             New-InstallerShortcut -Name "LVPN-Debug" -FileId "mainFileDbg" -IconPath "$pwd\..\config\icon.ico"
         }
     }
+    New-InstallerCustomAction -FileId 'setupscript' -RunOnInstall
  } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\icon.ico"
+
+mkdir zip
+Compress-Archive -Path .\lvpn -DestinationPath zip\lvpn-0.3.zip
