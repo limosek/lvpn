@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
+import os
 import time
+os.environ["NO_KIVY"] = "1"
 
 from lib.authids import AuthIDs
 from lib.queue import Queue
@@ -21,6 +23,9 @@ def main():
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
                    env_var='WLS_LOGLEVEL')
     p.add_argument("--haproxy-cfg", help="HAProxy config file to generate", default="/etc/haproxy/haproxy.cfg")
+    p.add_argument("--var-dir", help="Var directory", default=os.path.expanduser("~") + "/lvpn")
+    p.add_argument("--cfg-dir", help="Cfg directory", default="/etc/lthn")
+    p.add_argument("--app-dir", help="App directory", default=os.path.basename(__file__))
     p.add_argument("--haproxy-mgmt", help="HAProxy mgmt sock to use", default="/var/run/haproxy/mgmt")
     p.add_argument("--http-port", help="HTTP port to use", default=8123)
     p.add_argument("--provider-private-key", help="Private provider key", default="/etc/lthn/provider.private")

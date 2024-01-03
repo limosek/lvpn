@@ -1,5 +1,5 @@
 
-from client.wallet import Wallet
+from lib.wallet import Wallet
 
 
 class ServerWallet(Wallet):

@@ -17,12 +17,12 @@ RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \
   mkdir /home/lvpn/app;
 
-COPY lvpn/client/* /home/lvpn/src/client/
-COPY lvpn/server/* /home/lvpn/src/server/
-COPY lvpn/lib/* /home/lvpn/src/lib/
+COPY client/* /home/lvpn/src/client/
+COPY server/* /home/lvpn/src/server/
+COPY lib/* /home/lvpn/src/lib/
 COPY config/ /home/lvpn/src/config/
-COPY lvpn/server.py client.py setup.cfg setup.py /home/lvpn/src/
-COPY build-exe.cmd /home/lvpn/src/
+COPY server.py client.py setup.cfg setup.py /home/lvpn/src/
+COPY requirements.txt /home/lvpn/src/
 
 RUN wget -nc -c $DAEMON_BIN_URL
 RUN mkdir -p /home/lvpn/src/bin/ && tar -xf $(basename $DAEMON_BIN_URL) -C /home/lvpn/src/bin/
