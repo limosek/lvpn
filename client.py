@@ -110,6 +110,10 @@ def main():
         sys.exit(1)
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
+    try:
+        os.mkdir(vardir) # We need to have vardir created for logs
+    except Exception as e:
+        pass
     fh = logging.FileHandler(vardir + "/lvpn-client.log")
     fh.setLevel(cfg.l)
     formatter = logging.Formatter('%(name)s:%(levelname)s:%(message)s')
