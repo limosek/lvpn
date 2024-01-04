@@ -10,3 +10,4 @@ base-exec-prefix = ${env:LOCALAPPDATA}\lvpn\python
 base-executable = ${env:LOCALAPPDATA}\lvpn\python\python.exe
 "@ | Out-File -Encoding utf8 -FilePath ${env:LOCALAPPDATA}\lvpn\virtualenv\pyvenv.cfg
 
+mkdir ${env:HOMEDRIVE}${env:HOMEPATH}\lvpn

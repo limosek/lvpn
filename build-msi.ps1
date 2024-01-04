@@ -1,12 +1,26 @@
+# Basic variables
 $Env:PATH = ""
+$version = "0.4"
+$python_version = "3.12.1"
+$lethean_version = "v5.0.1"
+
+# Cleanup
+Remove-Item zip -Recurse -Force
+Remove-Item msi -Recurse -Force
+Remove-Item lvpn -Recurse -Force
+
+# Basic creation of dirs
 mkdir dist
 mkdir dist/lvpn
 mkdir dist/lvpn/python
 Set-Location dist
 
+# Stop on any error
+$ErrorActionPreference = "Stop"
+
 if (-not (Test-Path "python.zip"))
 {
-    Invoke-WebRequest "https://www.python.org/ftp/python/3.12.1/python-3.12.1-embed-amd64.zip" -OutFile "python.zip"
+    Invoke-WebRequest "https://www.python.org/ftp/python/${python_version}/python-${python_version}-embed-amd64.zip" -OutFile "python.zip"
 }
 Expand-Archive python.zip -DestinationPath lvpn/python
 Set-Location lvpn/python
@@ -18,8 +32,8 @@ Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
 .\Lib\site-packages
 import site
 "@ | Out-File -Encoding utf8 -FilePath python312._pth -Append
-.\python -m pip install venv
-.\python -m venv ../virtualenv
+.\python -m pip install virtualenv
+.\python -m virtualenv ../virtualenv
 . ..\virtualenv\Scripts\activate.ps1
 
 Set-Location ..
@@ -44,15 +58,19 @@ Copy-Item -Recurse ../../config ./
 Set-Location ..
 if (-not (Test-Path "lethean-cli-windows.zip"))
 {
-    Invoke-WebRequest "https://github.com/letheanVPN/blockchain-iz/releases/download/v5.0.1/lethean-cli-windows.zip" -OutFile lethean-cli-windows.zip
+    Invoke-WebRequest "https://github.com/letheanVPN/blockchain-iz/releases/download/${lethean_version}/lethean-cli-windows.zip" -OutFile lethean-cli-windows.zip
 }
 Expand-Archive lethean-cli-windows.zip
 Copy-Item lethean-cli-windows\lethean-cli-windows\lethean-wallet-rpc.exe lvpn/bin/
 Copy-Item lethean-cli-windows\lethean-cli-windows\lethean-wallet-cli.exe lvpn/bin/
 #Copy-Item lethean-cli-windows\lethean-cli-windows\letheand.exe lvpn/bin/
 Copy-Item lethean-cli-windows\lethean-cli-windows\lib* lvpn/bin/
-python client.py
 Remove-Item lethean-cli-windows -Recurse
+
+# Tests
+.\lvpn\virtualenv\scripts\python lvpn/client.py -h
+.\lvpn\virtualenv\scripts\python lvpn/server.py -h
+.\lvpn\virtualenv\scripts\python lvpn/ptwbin.py -h
 
 function addDir {
   param (
@@ -79,7 +97,7 @@ function addDir {
   }
 }
 
-New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672fe9ec-7d23-4d80-a194-fabe5dcc4dc6" -UpgradeCode '111a932a-b7dc-4276-a42c-241250f33483' -Version 0.3 -Content {
+New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672fe9ec-7d23-4d80-a194-fabe5dcc4dc6" -UpgradeCode '111a932a-b7dc-4276-a42c-241250f33483' -Version ${version} -Content {
     New-InstallerDirectory -PredefinedDirectory "LocalAppDataFolder"  -Content {
         addDir lvpn 1
         New-InstallerDirectory -PredefinedDirectory "DesktopFolder" -Content {
@@ -91,4 +109,7 @@ New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672f
  } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\icon.ico"
 
 mkdir zip
-Compress-Archive -Path .\lvpn -DestinationPath zip\lvpn-0.3.zip
+Compress-Archive -Path .\lvpn -DestinationPath zip\lvpn-${version}.zip
+
+Get-FileHash zip\lvpn-${version}.zip
+Get-FileHash msi\lvpn.${version}.x86.msi
