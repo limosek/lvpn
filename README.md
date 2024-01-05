@@ -1,6 +1,6 @@
 # LVPN
 
-Blockchain powered VPN with anonymization for sharing.
+Blockchain powered VPN for sharing and anonymity with decentralisation.
 See [Homepage](https://lethean.space)
 
 ## Installation
@@ -10,9 +10,9 @@ See [Install guide](https://lethean.space/client-install)
 ## Support
 Use GitHub issue tracker. You can earn coins by reporting bugs! 
 
-## I want to donate!
+## I want to donate development!
 Great! We will do our best to make software great!
-Thank you! Use this [Stripe link](https://donate.stripe.com/6oEeWV3aM0mE1IA8ww).
+See [Possibiliies](https://lethean.space)
 
 ## Contributing
 Do you want to contribute? Create a pull request!  You can earn coins by creating pull request!
