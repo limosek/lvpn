@@ -4,13 +4,14 @@ import shutil
 import sys
 import tempfile
 import time
-
 import _queue
 import configargparse
 import logging
 import logging.handlers
 import secrets
 import subprocess
+
+from client.tlsproxy import TLSProxy
 from lib.authids import AuthIDs
 from lib.queue import Queue
 from lib.runcmd import RunCmd
@@ -20,6 +21,7 @@ from client.proxy import Proxy
 from client.wallet import ClientWallet
 from client.daemon import ClientDaemon
 from lib.vdp import VDP
+from lib.vdpobject import VDPException
 from lib.wizard import Wizard
 
 
@@ -72,8 +74,10 @@ def main():
     p.add_argument('--daemon-bin', help='Daemon binary file')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
-    p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs", default=os.path.abspath(vardir + "/spaces"))
-    p.add_argument("--gates-dir", help="Directory containing all gateway SDPs", default=os.path.abspath(vardir + "/gates"))
+    p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs", default=os.path.abspath(vardir + "/spaces"))
+    p.add_argument("--gates-dir", help="Directory containing all gateway VDPs", default=os.path.abspath(vardir + "/gates"))
+    p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
+                   default=os.path.abspath(vardir + "/providers"))
     p.add_argument("--authids-dir", help="Directory containing all authids", default=os.path.abspath(vardir + "/authids"))
     p.add_argument("--coin-type", help="Coin type to sue", default="lethean", type=str, choices=["lethean", "monero"],
                    env_var="WLC_COINTYPE")
@@ -82,8 +86,9 @@ def main():
     p.add_argument('--run-proxy', default=1, type=int, choices=[0, 1], help='Run local proxy')
     p.add_argument('--run-wallet', default=1, type=int, choices=[0, 1], help='Run local wallet')
     p.add_argument('--run-daemon', default=0, type=int, choices=[0, 1], help='Run local daemon RPC')
-    p.add_argument('--chromium-bin', help='Chromium browser binary')
-    p.add_argument('--edge-bin', help='Edge browser binary', default="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
+    p.add_argument('--edge-bin', help='Edge browser binary',
+                   default="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
+    p.add_argument('--chromium-bin', help='Chromium browser binary', default="chromium")
     p.add_argument('--daemon-host', help='Daemon host', default='localhost')
     p.add_argument('--daemon-p2p-port', help='Daemon P2P port', type=int)
     p.add_argument('--daemon-rpc-url', help='Daemon RPC URL')
@@ -93,13 +98,10 @@ def main():
     p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random')
     p.add_argument('--wallet-name', help='Wallet name')
     p.add_argument('--wallet-password', help='Wallet password')
-    p.add_argument('--auto-connect', type=str, action="append", help='Auto connect strings',
-                   default=[
-                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-rpc-http/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-daemon-p2p-tls/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-socks/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean",
-                       "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean-http/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-lethean"
-                   ])
+    p.add_argument('--use-http-proxy', type=str, help='Use HTTP proxy (CONNECT) to services', env_var="HTTP_PROXY")
+    p.add_argument('--auto-connect', type=str, help='Auto connect uris',
+                       default="fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-ssh/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+                   )
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
     try:
@@ -108,21 +110,22 @@ def main():
         print("Bad configuration or commandline argument.")
         print(p.format_usage())
         sys.exit(1)
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
     try:
         os.mkdir(vardir) # We need to have vardir created for logs
     except Exception as e:
         pass
     fh = logging.FileHandler(vardir + "/lvpn-client.log")
     fh.setLevel(cfg.l)
-    formatter = logging.Formatter('%(name)s:%(levelname)s:%(message)s')
+    sh = logging.StreamHandler()
+    sh.setLevel(cfg.l)
+    formatter = logging.Formatter('%(name)s[%(process)d]:%(levelname)s:%(message)s')
     fh.setFormatter(formatter)
+    sh.setFormatter(formatter)
     logging.root.setLevel(logging.NOTSET)
-    logging.basicConfig(level=logging.NOTSET, handlers=[fh])
-    print("Logging into: %s" % vardir + "/lvpn-client.log")
-    print("Appdir: %s" % appdir)
-    print("Vardir: %s" % vardir)
+    logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
+    print("Logging into: %s" % vardir + "/lvpn-client.log", file=sys.stderr)
+    print("Appdir: %s" % appdir, file=sys.stderr)
+    print("Vardir: %s" % vardir, file=sys.stderr)
 
     if not cfg.wallet_rpc_password:
         cfg.wallet_rpc_password = secrets.token_urlsafe(12)
@@ -138,7 +141,7 @@ def main():
 
     os.environ['PATH'] += os.path.pathsep + appdir + "/bin"
     os.environ['PATH'] += os.path.pathsep + os.path.dirname(sys.executable)
-    print("PATH: %s" % os.environ['PATH'])
+    print("PATH: %s" % os.environ['PATH'], file=sys.stderr)
     # Initialize RunCmd
     RunCmd.init(cfg)
 
@@ -172,6 +175,12 @@ def main():
     if not os.path.exists(cfg.var_dir + "/" + cfg.wallet_name):
         wizard = True
 
+    try:
+        cfg.vdp = VDP(cfg)
+    except VDPException as e:
+        print(e)
+        sys.exit(1)
+
     processes = {}
     # Hack for multiprocessing to work
     sys._base_executable = sys.executable
@@ -182,6 +191,7 @@ def main():
     wallet_queue = Queue(multiprocessing.get_context(), "wallet")
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
+    cfg.authids = AuthIDs(cfg.authids_dir)
     tmpdir = cfg.tmp_dir
     ctrl["log"] = ""
     ctrl["daemon_height"] = -1
@@ -199,7 +209,31 @@ def main():
     if cfg.cmd:
 
         if cfg.cmd[0] == "connect":
-            print("connect")
+            if len(cfg.cmd) == 2:
+                ctrl["cfg"] = cfg
+                url = cfg.cmd[1]
+                (gateid, spaceid) = url.split("/")
+                if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
+                    proxy_queue.put(Messages.connect(cfg.vdp.get_space(spaceid), cfg.vdp.get_gate(gateid), None))
+                else:
+                    logging.getLogger("Cannot connect to connect uri %s: gate or space does not exists." % (url))
+                Proxy.run(ctrl, queue, proxy_queue)
+                sys.exit()
+            else:
+                logging.getLogger().error("You need to specify connect uri")
+                sys.exit(1)
+
+        elif cfg.cmd[0] == "list-spaces":
+            print("id,name")
+            for s in cfg.vdp.spaces():
+                print("%s,%s" % (s.get_id(), s.get_name()))
+            sys.exit()
+
+        elif cfg.cmd[0] == "list-gates":
+            print("id,type,internal,name")
+            for s in cfg.vdp.gates():
+                print("%s,%s,%s,%s" % (s.get_id(), s.get_type(), s.is_internal(), s.get_name()))
+            sys.exit()
 
         elif cfg.cmd[0] == "create-wallet":
             if cfg.wallet_name and cfg.wallet_password:
@@ -256,17 +290,18 @@ def main():
     if cfg.run_daemon:
         test_binary([cfg.daemon_bin, "--version"])
 
-    cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
-    for url in cfg.auto_connect:
+    for url in cfg.auto_connect.split(","):
+        print("Trying to connect to %s" % url)
         try:
             (gateid, spaceid) = url.split("/")
             if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                proxy_queue.put(Messages.connect(spaceid, gateid, None))
+                proxy_queue.put(Messages.connect(cfg.vdp.get_space(spaceid), cfg.vdp.get_gate(gateid), None))
             else:
                 logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+                print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
         except Exception as e:
             logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
-    cfg.authids = AuthIDs(cfg.authids_dir)
+
     os.chdir(tmpdir)
     cfg.env = os.environ.copy()
     ctrl["cfg"] = cfg

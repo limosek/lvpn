@@ -8,9 +8,6 @@
       width: 2
       rectangle: self.x, self.y, self.width, self.height
 
-#<Button>:
-#  size_hint_y: 0.1
-
 <Label>:
   size_hint_y: 0.1
   pos_hint: {'top': 0.5}
@@ -202,7 +199,9 @@
       size_hint_y: 0.3
       Label:
         text: "Active connections"
+        size_hint_y: 0.1
       BoxLayout:
+        size_hint_y: 0.3
         orientation: "vertical"
         id: connections_info
         # Available gates list

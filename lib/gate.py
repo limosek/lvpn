@@ -1,31 +1,44 @@
-import json
 import logging
-import os
-import sys
-import tempfile
+import socket
 
-from lib.vdpobject import VDPObject
+from lib.vdpobject import VDPObject, VDPException
 
 
 class Gateway(VDPObject):
 
-    def __init__(self, gwinfo):
+    def __init__(self, cfg, gwinfo):
+        self.cfg = cfg
         try:
             self._data = gwinfo
-            if "filetype" in self._data and self._data["filetype"] == 'LetheanGateway':
-                pass
+            if "filetype" in self._data and self._data["filetype"] == 'LetheanGateway' and "type" in self._data and "providerid" in self._data and "spaces" in self._data:
+                if self._data["type"] in self._data:
+                    pass
+                else:
+                    logging.error("Bad Gateway definition: %s" % gwinfo)
+                    raise VDPException("Bad Gateway definition: %s" % gwinfo)
             else:
                 logging.error("Bad Gateway definition: %s" % gwinfo)
-                sys.exit(1)
+                raise VDPException("Bad Gateway definition: %s" % gwinfo)
         except Exception as e:
             logging.error("Bad Gateway definition: %s(%s)" % (gwinfo, e))
-            sys.exit(1)
+            raise VDPException("Bad Gateway definition: %s(%s)" % (gwinfo, e))
 
     def get_id(self):
-        return self._data["gateid"]
+        return self.get_provider_id() + "." + self._data["gateid"]
 
-    def get_endpoint(self):
-        return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
+    def get_ca(self):
+        return self.get_provider()["ca"]
+
+    def get_endpoint(self, resolve=False):
+        if not resolve:
+            return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
+        else:
+            ip = socket.gethostbyname(self._data[self.get_type()]["host"])
+            return tuple([ip, self._data[self.get_type()]["port"]])
+
+    def set_endpoint(self, host, port):
+        self._data[self.get_type()]["host"] = host
+        self._data[self.get_type()]["port"] = port
 
     def is_for_space(self, spaceid):
         if spaceid in self._data["spaces"]:
@@ -33,10 +46,36 @@ class Gateway(VDPObject):
         else:
             return False
 
-    def save(self, gates_dir):
-        fname = "%s/%s.lgate" % (gates_dir, self.get_id())
+    def is_tls(self):
+        if "tls" in self._data[self.get_type()]:
+            if self._data[self.get_type()]["tls"]:
+                return True
+            else:
+                return False
+        else:
+            return True
+
+    def get_local_port(self):
+        if self.get_type() == "http-proxy":
+            return 8080
+        elif self.get_type() == "daemon-rpc":
+            return 48782
+        elif self.get_type() == "daemon-p2p":
+            return 48772
+        elif self.get_type() == "socks-proxy":
+            return 8081
+        else:
+            return None
+
+    def space_ids(self):
+        return self._data["spaces"]
+
+    def save(self, cfg=None):
+        if cfg:
+            self.cfg = cfg
+        fname = "%s/%s.lgate" % (self.cfg.gates_dir, self.get_id())
         with open(fname, "w") as f:
             f.write(self.get_json())
 
     def __repr__(self):
-        return("Gateway %s/%s" % (self._data["gateid"], self._data["name"]))
+        return "Gateway %s/%s" % (self._data["gateid"], self._data["name"])

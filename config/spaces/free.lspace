@@ -1,0 +1,16 @@
+{
+  "filetype": "LetheanSpace",
+  "version": "1.0",
+  "spaceid": "free",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "Free Lethean Space",
+  "description": "Free Lethean Space used to getch internal resources",
+  "manager": {
+    "host": "vpn.lethean.space",
+    "port": 8780
+  },
+  "price": {
+    "per-day": 0
+  }
+}
+

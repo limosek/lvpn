@@ -1,0 +1,20 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "http-proxy",
+  "version": "1.0",
+  "gateid": "http-proxy",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "1st Lethean Gateway HTTP proxy endpoint",
+  "description": "First Lethean Gateway used for testing and Proof of concept. Use this gate as HTTP proxy.",
+  "price": {
+    "per-day": 0.1
+  },
+  "internal": true,
+  "http-proxy": {
+    "host": "vpn.lethean.space",
+    "port": 8774
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.1st"
+  ]
+}

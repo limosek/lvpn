@@ -1,0 +1,21 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "socks-proxy",
+  "version": "1.0",
+  "gateid": "free-socks-proxy",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "SOCKS5 proxy to access other Lethean instances",
+  "description": "SOCKS5 proxy to access other Lethean instances",
+  "internal": true,
+  "price": {
+    "per-day": 0.0
+  },
+  "socks-proxy": {
+    "host": "freesocks",
+    "port": 1080,
+    "tls": false
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ]
+}

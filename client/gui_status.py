@@ -15,7 +15,7 @@ class Status(GridLayout):
         self.add_widget(client.gui_switcher.Switcher())
 
     def refresh_values(self, dt):
-        logging.getLogger("gui").info("Refreshing Status info")
+        logging.getLogger("gui").debug("Refreshing Status info")
         try:
             self.ids.balance.text = str(client.gui.GUI.ctrl["balance"])
             self.ids.unlocked_balance.text = str(client.gui.GUI.ctrl["unlocked_balance"])

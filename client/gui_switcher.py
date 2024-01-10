@@ -56,14 +56,15 @@ class Switcher(GridLayout):
         if not client.gui.GUI.myqueue.empty():
             logging.getLogger("gui").debug("Switcher queue get")
             msg = client.gui.GUI.myqueue.get(block=False, timeout=0.01)
-            if msg and msg.startswith("GUI/Popup"):
-                data = Messages.get_msg_data(msg)
-                box = BoxLayout(orientation='vertical', padding=(10))
-                btn1 = Button(text="OK")
-                box.add_widget(btn1)
-                popup = Popup(title=data, title_size=(30),
-                              title_align='center', content=box)
-                btn1.bind(on_press=popup.dismiss)
-                popup.open()
+            if msg:
+                if msg.startswith(Messages.GUI_POPUP):
+                    data = Messages.get_msg_data(msg)
+                    box = BoxLayout(orientation='vertical', padding=(10))
+                    btn1 = Button(text="OK")
+                    box.add_widget(btn1)
+                    popup = Popup(title=data, title_size=(30),
+                                  title_align='center', content=box)
+                    btn1.bind(on_press=popup.dismiss)
+                    popup.open()
         if client.gui.GUI.ctrl["wizard"]:
             self.show_wizard()

@@ -12,6 +12,7 @@ class Messages:
     EXIT = "All/Exit"
     CONNECT = "Proxy/Connect"
     DISCONNECT = "Proxy/Disconnect"
+    CONNECT_INFO = "Proxy/InfoConnect"
     PAY = "Wallet/Pay"
     RESTORE_WALLET = "Wallet/RestoreFromSeed"
     CREATE_WALLET = "Wallet/Create"
@@ -19,8 +20,8 @@ class Messages:
     GUI_POPUP = "GUI/Popup"
 
     @classmethod
-    def connect(cls, spaceid, gateid, authid):
-        data = pickle.dumps({"spaceid": spaceid, "gateid": gateid, "authid": authid})
+    def connect(cls, space, gate, authid):
+        data = pickle.dumps({"space": space, "gate": gate, "authid": authid})
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.CONNECT, tdata)
         return msg.strip()
@@ -30,6 +31,13 @@ class Messages:
         data = pickle.dumps({"spaceid": spaceid, "gateid": gateid})
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.DISCONNECT, tdata)
+        return msg.strip()
+
+    @classmethod
+    def connect_info(cls, space, gate, authid, data):
+        data = pickle.dumps({"space": space, "gate": gate, "authid": authid, "data": data})
+        tdata = codecs.encode(data, "base64").decode("utf-8")
+        msg = "%s:%s" % (cls.CONNECT_INFO, tdata)
         return msg.strip()
 
     @classmethod

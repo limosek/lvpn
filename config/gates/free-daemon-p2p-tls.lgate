@@ -1,0 +1,19 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "daemon-p2p",
+  "version": "1.0",
+  "gateid": "free-daemon-p2p-tls",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "Daemon P2P Lethean Gateway [TLS]",
+  "description": "Free Lethean Gateway to access daemon P2P [TLS]",
+  "price": {
+    "per-day": 0
+  },
+  "daemon-p2p": {
+    "host": "vpn.lethean.space",
+    "port": 8776
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ]
+}

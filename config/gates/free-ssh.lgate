@@ -1,0 +1,32 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "ssh",
+  "version": "1.0",
+  "gateid": "free-ssh",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "Lethean SSH gateway",
+  "description": "Free Lethean Gateway to multiplex more streams using SSH",
+  "manager": {
+    "host": "vpn.lethean.space",
+    "port": 8780
+  },
+  "price": {
+    "per-day": 0
+  },
+  "ssh": {
+    "host": "vpn.lethean.space",
+    "port": 443,
+    "username": "lvpn",
+    "ecdsa-server-public-key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBG6cVw7CnM6Z6EF3VWwOk3elUIhngMW4unl5PTFBABW3xviLj6G1TAzacbH6y7ww1q5jrs3UUK90IZn4l94PIsE= root@897960bf90cf",
+    "client-private-key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PAAAAJBDRLv7Q0S7\n+wAAAAtzc2gtZWQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PA\nAAAEAcGtT9/Q/nu/Wpzi82UN3ZuQxuTpTbRiNFdNygagf4AwaSY+UZAtVUhtZr0bhpnwm/\nx1HGlDKbRayzU5N/gb88AAAADGxtLWFAbnRiMS1sbQE=\n-----END OPENSSH PRIVATE KEY-----"
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ],
+  "gates": [
+     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-socks-proxy",
+     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-http-proxy",
+     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-daemon-p2p",
+     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-daemon-rpc"
+  ]
+}

@@ -20,20 +20,21 @@ class ClientDaemon(Daemon):
                     cls.set_value("daemon_connection", True)
                     cls.set_value("daemon_height", i["height"])
                     if last != "OK":
-                        cls.log_message("daemon", "Connected")
+                        cls.log_gui("daemon", "Connected")
                     last = "OK"
                 else:
                     cls.set_value("daemon_connection", False)
-                    cls.log_message("daemon", "No connection")
+                    cls.log_gui("daemon", "No connection")
                     last = "No connection"
             except Exception as e:
                 logging.getLogger(cls.myname).error(e)
-            time.sleep(5)
+            time.sleep(30)
 
     @classmethod
     def postinit(cls):
         cls.processes = []
         cls.exit = False
+        time.sleep(5)
         di = threading.Thread(target=cls.update_info)
         cls.processes.append(di)
         for p in cls.processes:

@@ -1,0 +1,21 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "daemon-rpc",
+  "version": "1.0",
+  "gateid": "free-daemon-rpc",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "Daemon RPC Lethean Gateway",
+  "description": "Free Lethean Gateway to access daemon RPC",
+  "internal": true,
+  "price": {
+    "per-day": 0
+  },
+  "daemon-rpc": {
+    "host": "daemon",
+    "port": 48782,
+    "tls": false
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ]
+}

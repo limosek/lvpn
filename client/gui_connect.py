@@ -1,4 +1,5 @@
 import logging
+import shutil
 
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -57,8 +58,10 @@ class Connect(GridLayout):
         Clock.schedule_interval(self.fill_connections, 1)
 
     def connect(self, instance):
+        gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
+        space = client.gui.GUI.ctrl["cfg"].vdp.get_space(client.gui.GUI.ctrl["selected_space"])
         logging.getLogger("gui").warning("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
-        client.gui.GUI.queue.put(Messages.connect(client.gui.GUI.ctrl["selected_space"], client.gui.GUI.ctrl["selected_gate"], None))
+        client.gui.GUI.queue.put(Messages.connect(space, gate, None))
 
     def disconnect(self, instance):
         logging.getLogger("gui").warning("Disconnect %s/%s" % (instance.gateid, instance.spaceid))
@@ -72,10 +75,34 @@ class Connect(GridLayout):
             "--proxy-server=%s" % instance.proxy,
             instance.url
         ]
+        logging.getLogger().debug("Running %s" % " ".join(args))
         try:
             RunCmd.popen(args, shell=False)
         except Exception as e:
             logging.getLogger("gui").error(e)
+
+    def run_chromium(self, instance):
+        args = [
+            client.gui.GUI.ctrl["cfg"].chromium_bin,
+            "--incognito",
+            "--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir,
+            "--proxy-server=%s" % instance.proxy,
+            instance.url
+        ]
+        logging.getLogger().debug("Running %s" % " ".join(args))
+        print(args)
+        try:
+            RunCmd.popen(args, shell=False)
+        except Exception as e:
+            logging.getLogger("gui").error(e)
+
+    def run_browser(self, instance):
+        if shutil.which(client.gui.GUI.ctrl["cfg"].chromium_bin):
+            self.run_chromium(instance)
+        elif shutil.which(client.gui.GUI.ctrl["cfg"].edge_bin):
+            self.run_edge(instance)
+        else:
+            pass
 
     def main(self):
         self.clear_widgets()
@@ -143,7 +170,7 @@ class Connect(GridLayout):
             disabled = False
         else:
             disabled = True
-        for g in client.gui.GUI.ctrl["cfg"].vdp.gates(self.ids.gate_filter.text, client.gui.GUI.ctrl["selected_space"]):
+        for g in client.gui.GUI.ctrl["cfg"].vdp.gates(self.ids.gate_filter.text, client.gui.GUI.ctrl["selected_space"], internal=False):
             btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled)
             setattr(self.ids, g.get_id(), btn)
             self.ids.choose_gate.add_widget(btn)
@@ -159,15 +186,11 @@ class Connect(GridLayout):
         self.ids.connections_info.clear_widgets()
         for c in client.gui.GUI.ctrl["connections"]:
             row = GridLayout(cols=3, rows=1, size_hint_y=0.2)
-            lbl = Label(text="%s/%s [%s]" % (c["gate"].get_name(), c["space"].get_name(), c["port"]), color=(0, 0.7, 0))
+            lbl = Label(text="%s/%s [127.0.0.1:%s->%s]" % (c["gate"].get_name(), c["space"].get_name(), c["port"], c["endpoint"]), color=(0, 0.7, 0))
             row.add_widget(lbl)
             if c["gate"].get_type() == "http-proxy":
                 bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c["port"], url="http://www.lthn",
-                                     on_press=self.run_edge, size_hint_x=0.1)
-                row.add_widget(bbtn)
-            elif c["gate"].get_type() == "socks-proxy":
-                bbtn = BrowserButton(text="Run browser", proxy="socks5://127.0.0.1:%s" % c["port"], url="http://www.lthn",
-                                     on_press=self.run_edge, size_hint_x=0.1)
+                                     on_press=self.run_browser, size_hint_x=0.1)
                 row.add_widget(bbtn)
             else:
                 bbtn = BrowserButton(text="N/A", proxy=0, url="http://www.lthn",

@@ -21,13 +21,13 @@ class ClientWallet(Wallet):
                     cls.ctrl["wizard"] = False
                 else:
                     cls.set_value("wallet_connection", False)
-                    cls.log_message("wallet", "No connection")
+                    cls.log_gui("wallet", "No connection")
                     last = "No connection or sync in progress"
                 j = cls.get_unlocked_balance()
                 if type(j) is float:
                     cls.set_value("unlocked_balance", str(j))
                 if last != "OK":
-                    cls.log_message("wallet", "Connected")
+                    cls.log_gui("wallet", "Connected")
                 last = "OK"
                 h = cls.get_height()
                 if h:
@@ -40,7 +40,7 @@ class ClientWallet(Wallet):
                 if e.code == -13:
                     cls.ctrl["no_wallet"] = True
                 if last == "OK":
-                    cls.log_message("wallet", "No connection")
+                    cls.log_gui("wallet", "No connection")
                     last = "No connection or sync in progress"
             time.sleep(5)
 
@@ -53,7 +53,7 @@ class ClientWallet(Wallet):
             cls.open()
             cls.set_value("wallet_address", cls.get_address())
         except WalletException as e:
-            cls.log_message("wallet", str(e))
+            cls.log_gui("wallet", str(e))
         b = threading.Thread(target=cls.update_wallet_info)
         cls.processes.append(b)
         for p in cls.processes:

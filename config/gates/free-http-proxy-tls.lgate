@@ -1,0 +1,19 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "http-proxy",
+  "version": "1.0",
+  "gateid": "free-http-proxy-tls",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "HTTP proxy to access other Lethean instances [TLS]",
+  "description": "Used to access internal Lethean infrastructure [TLS]",
+  "price": {
+    "per-day": 0
+  },
+  "http-proxy": {
+    "host": "vpn.lethean.space",
+    "port": 8779
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ]
+}

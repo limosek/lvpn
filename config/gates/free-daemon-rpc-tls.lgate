@@ -1,0 +1,19 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "daemon-rpc",
+  "version": "1.0",
+  "gateid": "free-daemon-rpc-tls",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "Daemon RPC Lethean Gateway [TLS]",
+  "description": "Free Lethean Gateway to access daemon RPC [TLS]",
+  "price": {
+    "per-day": 0
+  },
+  "daemon-rpc": {
+    "host": "vpn.lethean.space",
+    "port": 8777
+  },
+  "spaces": [
+    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+  ]
+}

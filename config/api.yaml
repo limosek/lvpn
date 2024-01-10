@@ -49,8 +49,8 @@ paths:
 
   /api/connect:
     post:
-      summary: Prepare client to connect to Space using Gate
-      description: Get client prepare information
+      summary: Prepare and connect to Space using Gate
+      description: Prepare and connect to Space using Gate
       operationId: Connect
       requestBody:
         required: true
@@ -82,6 +82,48 @@ paths:
 
 components:
   schemas:
+
+    Provider:
+      type: object
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanProvider
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        ca:
+          type: array
+          items:
+            type: string
+        manager-url:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+      required:
+        - filetype
+        - version
+        - providerid
+        - name
+        - manager-url
+        - spaces
+        - ca
+
+    Providers:
+      type: array
+      items:
+        $ref: '#/components/schemas/Provider'
+
     Gate:
       type: object
       properties:
@@ -93,17 +135,22 @@ components:
           type: string
           enum:
             - "1.0"
-        ca:
+        providerid:
           type: string
         gateid:
           type: string
         name:
+          type: string
+        description:
           type: string
         price:
           type: object
           properties:
             per-day:
               type: number
+        internal:
+          type: boolean
+          default: false
         type:
           type: string
           enum:
@@ -113,13 +160,8 @@ components:
             - daemon-rpc-proxy
             - daemon-p2p-proxy
             - wg-tcp
-        manager:
-          type: object
-          properties:
-            host:
-              type: string
-            port:
-              type: integer
+            - ssh
+            - tls-ssh
         wg:
           type: object
           properties:
@@ -138,6 +180,8 @@ components:
               type: string
             port:
               type: integer
+            tls:
+              type: boolean
         socks-proxy:
           type: object
           properties:
@@ -145,32 +189,85 @@ components:
               type: string
             port:
               type: integer
-        daemon-p2p-proxy:
+            tls:
+              type: boolean
+        daemon-p2p:
           type: object
           properties:
             host:
               type: string
             port:
               type: integer
-        daemon-rpc-proxy:
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        daemon-rpc:
           type: object
           properties:
             host:
               type: string
             port:
               type: integer
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        ssh:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            rsa-server-public-key:
+              type: string
+            ecdsa-server-public-key:
+              type: string
+            username:
+              type: string
+            client-private-key:
+              type: string
+            tls:
+              type: boolean
+          required:
+            - host
+            - port
+            - username
+            - client-private-key
         spaces:
           type: array
           items:
             type: string
+        gate-types:
+          type: array
+          items:
+            type: string
+            enum:
+              - wg
+              - http-proxy
+              - socks-proxy
+              - daemon-rpc
+              - daemon-p2p
+              - wg-tcp
+              - ssh
+              - ssh-tls
       required:
         - gateid
+        - name
+        - providerid
         - version
         - filetype
-        - ca
         - type
         - spaces
-        - manager
 
     Gates:
       type: array
@@ -188,15 +285,8 @@ components:
           type: string
           enum:
             - "1.0"
-        ca:
+        providerid:
           type: string
-        manager:
-          type: object
-          properties:
-            host:
-              type: string
-            port:
-              type: integer
         spaceid:
           type: string
         name:
@@ -218,9 +308,9 @@ components:
             type: string
       required:
         - spaceid
+        - providerid
         - filetype
         - version
-        - manager
 
     Spaces:
       type: array
@@ -246,6 +336,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Gates'
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Providers'
       required:
         - filetype
         - version

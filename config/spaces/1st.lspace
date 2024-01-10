@@ -1,0 +1,16 @@
+{
+  "filetype": "LetheanSpace",
+  "version": "1.0",
+  "spaceid": "1st",
+  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "name": "1st Lethean Space",
+  "description": "First Lethean Space used for testing and Proof of concept",
+  "ips": ["172.31.129.0/24"],
+  "dns_servers": ["172.31.129.16"],
+  "price": {
+    "per-day": 0.1
+  },
+  "signed_by": [
+    {"id": "abcd", "time": 1701879034, "hash": "somehash"}
+  ]
+}
