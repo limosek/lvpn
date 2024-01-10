@@ -18,25 +18,35 @@ from server.wallet import ServerWallet
 
 
 def main():
-    p = configargparse.ArgParser(default_config_files=['/etc/lthn/server.conf'])
+    if not os.getenv("WLS_CFG_DIR"):
+        os.environ["WLS_CFG_DIR"] = "/etc/lthn"
+    p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/server.conf'])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
                    env_var='WLS_LOGLEVEL')
-    p.add_argument("--haproxy-cfg", help="HAProxy config file to generate", default="/etc/haproxy/haproxy.cfg")
-    p.add_argument("--var-dir", help="Var directory", default=os.path.expanduser("~") + "/lvpn")
-    p.add_argument("--cfg-dir", help="Cfg directory", default="/etc/lthn")
+    p.add_argument("--haproxy-cfg", help="HAProxy config file to generate",
+                   default=os.getenv("WLS_CFG_DIR") + "/haproxy/haproxy.cfg")
+    p.add_argument("--var-dir", help="Var directory", default=os.path.expanduser("~") + "/lvpn", env_var="WLS_VAR_DIR")
+    p.add_argument("--cfg-dir", help="Cfg directory", default=os.getenv("WLS_CFG_DIR"), env_var="WLS_CONF_DIR")
     p.add_argument("--app-dir", help="App directory", default=os.path.basename(__file__))
     p.add_argument("--haproxy-mgmt", help="HAProxy mgmt sock to use", default="/var/run/haproxy/mgmt")
     p.add_argument("--http-port", help="HTTP port to use", default=8123)
-    p.add_argument("--provider-private-key", help="Private provider key", default="/etc/lthn/provider.private")
-    p.add_argument("--provider-public-key", help="Public provider key", default="/etc/lthn/provider.public")
-    p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs", default="/etc/lthn/spaces")
-    p.add_argument("--gates-dir", help="Directory containing all gateway SDPs", default="/etc/lthn/gates")
-    p.add_argument("--authids-dir", help="Directory containing all authids", default="/etc/lthn/authids")
+    p.add_argument("--provider-private-key", help="Private provider key",
+                   default=os.getenv("WLS_CFG_DIR") + "/provider.private")
+    p.add_argument("--provider-public-key", help="Public provider key",
+                   default=os.getenv("WLS_CFG_DIR") + "/provider.public")
+    p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs",
+                   default=os.getenv("WLS_CFG_DIR") + "/spaces")
+    p.add_argument("--gates-dir", help="Directory containing all gateway SDPs",
+                   default=os.getenv("WLS_CFG_DIR") + "/gates")
+    p.add_argument("--authids-dir", help="Directory containing all authids",
+                   default=os.getenv("WLS_CFG_DIR") + "/authids")
+    p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
+                   default=os.getenv("WLS_CFG_DIR") + "/providers")
 
     cfg = p.parse_args()
     logging.basicConfig(level=cfg.l)
-    cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
+    cfg.vdp = VDP(cfg)
     cfg.authids = AuthIDs(cfg.authids_dir)
     processes = {}
 

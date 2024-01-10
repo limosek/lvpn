@@ -11,12 +11,17 @@ import logging.handlers
 import secrets
 import subprocess
 
-from client.tlsproxy import TLSProxy
+os.environ["KIVY_NO_ARGS"] = "1"
+os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
+# os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
+# os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
+
 from lib.authids import AuthIDs
 from lib.queue import Queue
 from lib.runcmd import RunCmd
 from lib.shared import Messages
-from client.gui import GUI
+if "NO_KIVY" not in os.environ:
+    from client.gui import GUI
 from client.proxy import Proxy
 from client.wallet import ClientWallet
 from client.daemon import ClientDaemon
@@ -34,10 +39,10 @@ def test_binary(args):
         if ret.returncode == 0 or ret.returncode == 1:
             return True
         else:
-            logging.getLogger().error("Missing binary %s" % args[0])
+            logging.getLogger().error("Missing binary %s" % " ".join(args))
             sys.exit(1)
     except Exception as e:
-        logging.getLogger().error("Missing binary %s: %s" % (args[0], e))
+        logging.getLogger().error("Missing binary %s: %s" % (" ".join(args), e))
         sys.exit(1)
 
 
@@ -104,16 +109,13 @@ def main():
                    )
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
-    try:
-        cfg = p.parse_args()
-    except SystemExit:
-        print("Bad configuration or commandline argument.")
-        print(p.format_usage())
-        sys.exit(1)
+    cfg = p.parse_args()
     try:
         os.mkdir(vardir) # We need to have vardir created for logs
     except Exception as e:
         pass
+    if "NO_KIVY" in os.environ:
+        cfg.run_gui = 0
     fh = logging.FileHandler(vardir + "/lvpn-client.log")
     fh.setLevel(cfg.l)
     sh = logging.StreamHandler()
@@ -286,7 +288,6 @@ def main():
     # Test binaries
     test_binary([cfg.wallet_cli_bin, "--version"])
     test_binary([cfg.wallet_rpc_bin, "--rpc-bind-port=1111", "--version"])
-    test_binary([sys.executable, appdir + "/ptwbin.py", "-h"])
     if cfg.run_daemon:
         test_binary([cfg.daemon_bin, "--version"])
 

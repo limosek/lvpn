@@ -9,9 +9,10 @@ RUN apt-get update; \
     apt-get install -y sudo joe less net-tools wget python3-venv;
 
 ARG DAEMON_BIN_URL="https://github.com/letheanVPN/blockchain-iz/releases/latest/download/lethean-cli-linux.tar"
-ARG DAEMON_HOST="seed.lethean.io"
 
-ENV DAEMON_HOST="$DAEMON_HOST"
+ENV LVPNC_ARGS=""
+ENV LVPNS_ARGS=""
+ENV MODE="client"
 
 RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \
@@ -23,7 +24,11 @@ COPY lib/* /home/lvpn/src/lib/
 COPY config/ /home/lvpn/src/config/
 COPY server.py client.py setup.cfg setup.py /home/lvpn/src/
 COPY requirements.txt /home/lvpn/src/
+COPY requirements-lite.txt /home/lvpn/src/
+COPY build/* /home/lvpn/src/build/
+COPY ./entrypoint.sh /
 
+WORKDIR /home/lvpn/src/build/
 RUN wget -nc -c $DAEMON_BIN_URL
 RUN mkdir -p /home/lvpn/src/bin/ && tar -xf $(basename $DAEMON_BIN_URL) -C /home/lvpn/src/bin/
 
@@ -34,11 +39,10 @@ USER lvpn
 
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
-    pip3 install -r requirements.txt && \
-    python3 client.py -h && \
-    python3 server.py -h
+    pip3 install -r requirements-lite.txt
 
-COPY ./entrypoint.sh /entrypoint.sh
+RUN . venv/bin/activate && python client.py -h
+RUN . venv/bin/activate && python server.py -h
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["client"]

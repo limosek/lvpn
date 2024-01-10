@@ -1,9 +1,7 @@
 import logging
 import time
 import threading
-from kivy_garden.qrcode import QRCodeWidget
 
-from lib.shared import Messages
 from lib.wallet import Wallet, WalletException
 
 
