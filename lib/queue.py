@@ -14,7 +14,7 @@ class Queue(multiprocessing.queues.Queue):
         super().__init__(ctx=ctx)
 
     def put(self, msg, block=True, timeout=False):
-        logging.getLogger().debug("Queue %s/put: %s" % (self._name, msg))
+        logging.getLogger().debug("Queue %s/put: %s" % (self._name, str(msg)[:64]))
         return super().put(msg, block, timeout)
 
     def get(self, block=True, timeout=False):
@@ -23,6 +23,6 @@ class Queue(multiprocessing.queues.Queue):
         except _queue.Empty:
             return None
         if msg:
-            logging.getLogger().debug("Queue %s/get: %s" % (self._name, msg))
+            logging.getLogger().debug("Queue %s/get: %s" % (self._name, str(msg)[:64]))
         return msg
 

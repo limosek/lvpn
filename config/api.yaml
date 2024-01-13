@@ -8,37 +8,16 @@ info:
   version: "1.0"
 
 paths:
-  /api/gates:
-    get:
-      summary: Get gates info
-      description: Get info about available gates in JSON format
-      operationId: getGates
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Gates'
-
-  /api/spaces:
-    get:
-      summary: Get spaces info
-      description: Get info about available spaces in JSON format
-      operationId: getSpaces
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Spaces'
-
   /api/vdp:
     get:
       summary: Get VDP
       description: Get VPN Description Protocol containing all Spaces and Gateways
       operationId: getVdp
+      parameters:
+        - in: query
+          name: checkOnly
+          schema:
+            type: boolean
       responses:
         '200':
           description: successful operation
@@ -46,6 +25,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vdp'
+    post:
+      summary: Post new VDP to server
+      description: Post new VDP to server
+      operationId: pushVdp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vdp'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '443':
+          description: Error in VDP
 
   /api/connect:
     post:
@@ -339,7 +337,7 @@ components:
         providers:
           type: array
           items:
-            $ref: '#/components/schemas/Providers'
+            $ref: '#/components/schemas/Provider'
       required:
         - filetype
         - version

@@ -13,7 +13,7 @@ from lib.vdpobject import VDPException
 
 class VDP:
 
-    def __init__(self, cfg, vdpfile=None):
+    def __init__(self, cfg, vdpfile=None, vdpdata=None):
         self._gates = {}
         self._spaces = {}
         self._providers = {}
@@ -22,17 +22,18 @@ class VDP:
             data = urllib3.util.parse_url(vdpfile)
             if data.scheme:
                 r = requests.Request(vdpfile)
-                jsn = r.data
+                vdpdata = r.data
             else:
                 with open(vdpfile, "r") as f:
-                    jsn = f.read(1000000000)
+                    vdpdata = f.read(1000000000)
+        if vdpdata or vdpfile:
             try:
-                self._data = json.loads(jsn)
+                self._data = json.loads(vdpdata)
                 if "filetype" in self._data and self._data["filetype"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:
                             prov = Provider(self.cfg, p)
-                            self._providers[p.get_id()] = prov
+                            self._providers[prov.get_id()] = prov
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
                             spc = Space(self.cfg, s)
@@ -42,10 +43,10 @@ class VDP:
                     if "gates" in self._data:
                         for g in self._data["gates"]:
                             gt = Gateway(self.cfg, g)
-                            if not g.get_provider_id() in self.provider_ids():
+                            if not gt.get_provider_id() in self.provider_ids():
                                 raise VDPException("Providerid %s for gate %s does not exists!" % (g.get_provider_id(), gt))
-                            for s in g.space_ids():
-                                if s not in self._data["spaces"]:
+                            for s in gt.space_ids():
+                                if s not in self.space_ids():
                                     raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gt))
                             self._gates[gt.get_id()] = gt
                 else:
@@ -59,7 +60,7 @@ class VDP:
             for providerf in glob.glob(self.cfg.providers_dir + "/*lprovider"):
                 logging.getLogger().info("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
-                    jsn = f.read(1000000000)
+                    jsn = f.read(-1)
                     try:
                         prov = Provider(self.cfg, json.loads(jsn))
                         self._providers[prov.get_id()] = prov
@@ -69,7 +70,7 @@ class VDP:
             for spacef in glob.glob(self.cfg.spaces_dir + "/*lspace"):
                 logging.getLogger().info("Loading space %s" % spacef)
                 with open(spacef, "r") as f:
-                    jsn = f.read(1000000000)
+                    jsn = f.read(-1)
                     try:
                         spc = Space(self.cfg, json.loads(jsn))
                         if not spc.get_provider_id() in self.provider_ids():
@@ -83,7 +84,7 @@ class VDP:
             for gwf in glob.glob(self.cfg.gates_dir + "/*lgate"):
                 logging.getLogger().info("Loading gate %s" % gwf)
                 with open(gwf, "r") as f:
-                    jsn = f.read(1000000000)
+                    jsn = f.read(-1)
                     try:
                         gw = Gateway(self.cfg, json.loads(jsn))
                         if not gw.get_provider_id() in self.provider_ids():
@@ -99,12 +100,14 @@ class VDP:
         else:
             logging.error("Need spaces directory and gates directory")
             sys.exit(1)
-        self._json = json.dumps({
+        self._dict = {
             "filetype": "VPNDescriptionProtocol",
             "version": "1.0",
             "spaces": json.loads(self.spaces(as_json=True)),
-            "gates": json.loads(self.gates(as_json=True))
-        })
+            "gates": json.loads(self.gates(as_json=True)),
+            "providers": json.loads(self.providers(as_json=True))
+        }
+        self._json = json.dumps(self._dict)
         logging.getLogger("vdp").warning("%s gates and %s spaces available" % (len(self._gates), len(self._spaces)))
 
     def gates(self, filter="", spaceid=None, as_json=False, internal=True):
@@ -159,6 +162,9 @@ class VDP:
     def get_json(self):
         return self._json
 
+    def get_dict(self):
+        return self._dict
+
     def gate_ids(self):
         return self._gates.keys()
 
@@ -185,9 +191,6 @@ class VDP:
             return self._providers[providerid]
         else:
             return None
-
-    def toJson(self):
-        return self.get_json()
 
     def save(self, cfg=None):
         if cfg:

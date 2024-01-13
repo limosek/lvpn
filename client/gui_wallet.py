@@ -1,7 +1,6 @@
 import codecs
 import logging
 import time
-
 from kivy.clock import Clock
 from kivy.uix.gridlayout import GridLayout
 

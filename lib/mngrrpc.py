@@ -19,18 +19,6 @@ class ManagerRpcCall:
         return self.parse_response(r.text)
 
     def wait_for_connection(self, parameters):
-        stripped = {
-            "spaceid": parameters["spaceid"],
-            "gateid": parameters["gateid"],
-            "time": parameters["time"],
-            "sessionid": parameters["sessionid"],
-            "paymentid": parameters["paymentid"],
-            "days": parameters["days"],
-            "price": parameters["price"],
-            "expires": parameters["expires"],
-            "bearer": parameters["bearer"],
-            "expires": parameters["expires"],
-        }
         r = requests.post(
             self._baseurl + "/api/connect",
             headers={"Content-Type": "application/json"},

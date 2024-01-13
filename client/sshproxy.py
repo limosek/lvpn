@@ -19,7 +19,6 @@ class SSHProxy(Service):
     @classmethod
     def postinit(cls):
         cls.exit = False
-        local_ports = []
         local_addresses = []
         remote_addresses = []
         messages = []
@@ -95,3 +94,6 @@ class SSHProxy(Service):
         while tunnel.is_alive and not cls.exit:
             cls.log_debug("%s loop" % cls.myname)
             time.sleep(1)
+        messages.append(
+            Messages.disconnect(space.get_id(), gate.get_id())
+        )

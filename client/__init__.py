@@ -2,10 +2,11 @@ import os
 import sys
 import platform
 
-try:
-    import kivy
-except ModuleNotFoundError:
-    os.environ["NO_KIVY"] = "1"
+if "NO_KIVY" not in os.environ:
+    try:
+        import kivy
+    except ModuleNotFoundError:
+        os.environ["NO_KIVY"] = "1"
 
 if "NO_KIVY" not in os.environ:
     if platform.system() == "Windows":
@@ -15,3 +16,5 @@ if "NO_KIVY" not in os.environ:
     from client.gui_status import Status
     from client.gui_wizard import Wizard
     from client.gui import GUI
+    from kivy_garden.qrcode import QRCodeWidget
+

@@ -2,6 +2,7 @@
 
 import os
 import time
+
 os.environ["NO_KIVY"] = "1"
 
 from lib.authids import AuthIDs
@@ -14,7 +15,26 @@ import logging
 import configargparse
 import multiprocessing
 
-from server.wallet import ServerWallet
+
+def loop(queue, mngr_queue, proxy_queue):
+    should_exit = False
+    while not should_exit:
+        if not queue.empty():
+            msg = queue.get()
+            if Messages.is_for_main(msg):
+                if msg == Messages.EXIT:
+                    should_exit = True
+                    logging.getLogger("client").warning("Exit requested, exiting")
+                    break
+            elif Messages.is_for_all(msg):
+                proxy_queue.put(msg)
+                mngr_queue.put(msg)
+            elif Messages.is_for_proxy(msg):
+                proxy_queue.put(msg)
+            else:
+                logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
+                should_exit = True
+                break
 
 
 def main():
@@ -56,9 +76,6 @@ def main():
     proxy_queue = Queue(multiprocessing.get_context(), "proxy")
     mngr_queue = Queue(multiprocessing.get_context(), "mngr")
 
-    mngr = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, mngr_queue], name="HTTPManager")
-    mngr.start()
-    processes["mngr"] = mngr
     proxy = multiprocessing.Process(target=Proxy.run, args=[ctrl, queue, proxy_queue], name="ProxyManager")
     proxy.start()
     processes["proxy"] = proxy
@@ -66,34 +83,10 @@ def main():
     #wallet.start()
     #processes["wallet"] = proxy
 
-    should_exit = False
-    while not should_exit:
-        for p in processes.keys():
-            if not processes[p].is_alive():
-                should_exit = True
-                logging.getLogger("client").error(
-                    "One of child process (%s,pid=%s) exited. Exiting too" % (p, processes[p].pid))
-                mngr_queue.put(Messages.EXIT)
-                proxy_queue.put(Messages.EXIT)
-                break
-            time.sleep(0.1)
-            if not queue.empty():
-                msg = queue.get()
-                print(msg)
-                if Messages.is_for_main(msg):
-                    if msg == Messages.EXIT:
-                        should_exit = True
-                        logging.getLogger("client").warning("Exit requested, exiting")
-                        break
-                elif Messages.is_for_all(msg):
-                    proxy_queue.put(msg)
-                    mngr_queue.put(msg)
-                elif Messages.is_for_proxy(msg):
-                    proxy_queue.put(msg)
-                else:
-                    logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
-                    should_exit = True
-                    break
+    pl = multiprocessing.Process(target=loop, args=[queue, mngr_queue, proxy_queue])
+    pl.start()
+
+    Manager.run(ctrl, queue, mngr_queue)
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():
