@@ -1,10 +1,15 @@
+import json
 import logging
 import os
 import secrets
-import shutil
-import glob
+
+import nacl
+import nacl.signing
+import nacl.encoding
+from ownca import CertificateAuthority
 from copy import copy
 
+from lib.signverify import Sign, Verify
 from lib.vdp import VDP
 
 
@@ -60,3 +65,87 @@ wallet-password = %s
 wallet-rpc-password = %s
             """ % (cfg.wallet_password, cfg.wallet_rpc_password))
             pass
+
+    @staticmethod
+    def ca(cfg):
+        logging.getLogger("Wizard: Creating CA")
+        ca = CertificateAuthority(ca_storage=cfg.ca_dir, common_name=cfg.ca_name)
+
+    @staticmethod
+    def provider(cfg):
+        logging.getLogger("Wizard: Creating Provider IDs")
+        ca = CertificateAuthority(ca_storage=cfg.ca_dir, common_name=cfg.ca_name)
+        signing_key = nacl.signing.SigningKey.generate()
+        verification_key = signing_key.verify_key
+
+        # Step 2: Convert keys to bytes for storage
+        signing_key_bytes = signing_key.encode(encoder=nacl.encoding.HexEncoder)
+        verification_key_bytes = verification_key.encode(encoder=nacl.encoding.HexEncoder)
+
+        with open(cfg.provider_private_key, 'wb') as private_key_file:
+            private_key_file.write(signing_key_bytes)
+
+        with open(cfg.provider_public_key, 'wb') as public_key_file:
+            public_key_file.write(verification_key_bytes)
+
+    @staticmethod
+    def provider_vdp(cfg, providername="Easy LVPN provider", spacename="Free", wallet="[fill-in]", host="[fill-in]"):
+        logging.getLogger("Wizard: Creating Provider VDP")
+        with open(cfg.ca_dir + "/ca.crt", "r") as cf:
+            cert = cf.read(-1)
+        verification_key = Verify(cfg.provider_public_key).key()
+        provider = {
+            "filetype": "LetheanProvider",
+            "version": "1.0",
+            "providerid": verification_key,
+            "name": providername,
+            "description": providername,
+            "ca": [cert],
+            "wallet": "[example-wallet-address]",
+            "manager-url": "https://[some-fqdn]:8790/",
+            "spaces": [
+                "free"
+            ]
+        }
+        space = {
+          "filetype": "LetheanSpace",
+          "version": "1.0",
+          "spaceid": "free",
+          "providerid": verification_key,
+          "name": spacename,
+          "description": spacename,
+          "manager": {
+            "host": host,
+            "port": 8780
+          },
+          "price": {
+            "per-day": 0
+          }
+        }
+        httpgate = {
+          "filetype": "LetheanGateway",
+          "type": "http-proxy",
+          "version": "1.0",
+          "gateid": "free-http-proxy",
+          "providerid": verification_key,
+          "name": "HTTP proxy to access other Lethean instances",
+          "description": "Used to access internal Lethean infrastructure",
+          "price": {
+            "per-day": 0
+          },
+          "http-proxy": {
+            "host":host,
+            "port": 8888
+          },
+          "spaces": [
+            "%s.free" % verification_key
+          ]
+        }
+        vdp = VDP(cfg, vdpdata=json.dumps({
+            "filetype": "VPNDescriptionProtocol",
+            "providers": [provider],
+            "gates": [httpgate],
+            "spaces": [space]
+        }))
+        vdp.save(cfg)
+

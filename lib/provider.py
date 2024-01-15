@@ -23,6 +23,9 @@ class Provider(VDPObject):
     def get_id(self):
         return self._data["providerid"]
 
+    def get_wallet(self):
+        return self._data["wallet"]
+
     def get_ca(self):
         return self._data["ca"]
 

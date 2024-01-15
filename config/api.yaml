@@ -98,6 +98,8 @@ components:
           type: string
         description:
           type: string
+        wallet:
+          type: string
         ca:
           type: array
           items:

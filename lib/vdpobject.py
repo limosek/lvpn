@@ -38,9 +38,6 @@ class VDPObject:
         else:
             return 0
 
-    def get_wallet(self):
-        return self._data["wallet"]
-
     def get_json(self):
         return json.dumps(self._data, indent=2)
 

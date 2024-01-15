@@ -1,13 +1,10 @@
 import logging
 import os.path
-import sys
 import threading
-
 import jsonschema
 from flask import Flask, request, Response
 import time
 import json
-
 from jsonschema.exceptions import ValidationError
 from openapi_core import OpenAPI
 from openapi_core.contrib.flask.decorators import FlaskOpenAPIViewDecorator
@@ -102,7 +99,6 @@ def connect():
             sessionid = data["sessionid"]
             signedmsg = "%s:%s:%s:%s:%s:%s:%s" % (data["time"], data["paymentid"], data["price"], data["expires"], data["bearer"], data["username"], data["password"])
             if Verify(Manager.ctrl["cfg"].provider_public_key).verify(signedmsg, sessionid):
-                print("ok")
                 return make_response(402, "Waiting for payment", data)
             else:
                 return make_response(422, "Bad session data")

@@ -1,7 +1,11 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import time
+
+from lib.signverify import Sign, Verify
+from lib.wizard import Wizard
 
 os.environ["NO_KIVY"] = "1"
 
@@ -39,7 +43,7 @@ def loop(queue, mngr_queue, proxy_queue):
 
 def main():
     if not os.getenv("WLS_CFG_DIR"):
-        os.environ["WLS_CFG_DIR"] = "/etc/lthn"
+        os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
     p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/server.conf'])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
@@ -63,12 +67,40 @@ def main():
                    default=os.getenv("WLS_CFG_DIR") + "/authids")
     p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
                    default=os.getenv("WLS_CFG_DIR") + "/providers")
+    p.add_argument("--ca-dir", help="Directory for Certificate authority",
+                   default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ca"))
+    p.add_argument("--ca-name", help="Common name for CA creation",
+                   default="LVPN-easy-provider")
+
 
     cfg = p.parse_args()
     logging.basicConfig(level=cfg.l)
     cfg.vdp = VDP(cfg)
     cfg.authids = AuthIDs(cfg.authids_dir)
     processes = {}
+
+    Wizard().files(cfg, os.environ["WLS_CFG_DIR"])
+
+    if not os.path.exists(cfg.ca_dir):
+        Wizard().ca(cfg)
+
+    if not os.path.exists(cfg.provider_public_key):
+        Wizard().provider(cfg)
+
+    if not cfg.provider_public_key or not cfg.provider_private_key:
+        logging.error("You need to set provider public and private key")
+        sys.exit(1)
+    if not os.path.exists(cfg.provider_public_key) or not os.path.exists(cfg.provider_private_key):
+        logging.error("You need to set provider public and private key")
+        sys.exit(1)
+    try:
+        Sign(cfg.provider_private_key).sign("test")
+    except Exception as e:
+        logging.error(e)
+        sys.exit(1)
+    public = Verify(cfg.provider_public_key).key()
+    if not public in cfg.vdp.provider_ids():
+        Wizard().provider_vdp(cfg)
 
     ctrl = multiprocessing.Manager().dict()
     ctrl["cfg"] = cfg

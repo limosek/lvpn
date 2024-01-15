@@ -6,7 +6,7 @@
       "filetype": "LetheanGateway",
       "type": "http-proxy",
       "version": "1.0",
-      "gateid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-http",
+      "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091-http",
       "name": "1st Lethean Gateway HTTP proxy endpoint",
       "description": "First Lethean Gateway used for testing and Proof of concept",
       "ca": "MIIDSzCCAjOgAwIBAgIUDSVR9e8L1+qfoQ4yJGc4cu0DCzgwDQYJKoZIhvcNAQEL\nBQAwFjEUMBIGA1UEAwwLRWFzeS1SU0EgQ0EwHhcNMjMxMjA0MTMyNDQ4WhcNMzMx\nMjAxMTMyNDQ4WjAWMRQwEgYDVQQDDAtFYXN5LVJTQSBDQTCCASIwDQYJKoZIhvcN\nAQEBBQADggEPADCCAQoCggEBALqSNoy5hxWrBebIjRs6aMPpvhr4+oVwOu22bfa1\nkzU2hKy3aCF/JmTGaWZUWE4AprbjhHu+n0okp174d83Vlg4SaxVXCPDiM3n2EnWO\n7460x5/7a4aty5nXASxuTSPW2BltnnUAcFbPJnMAKd02soGW7fwND805ScFMZPeQ\n52+KKUJyHxTEVTbFCqM9J9IXuH2AIwB++pHUU2uV+b1beyZTvwsKjpv3jPUz7OPx\n/U/3AgoombSNv+DEvZsEIMwGrcMCNsmzVJRvI6rqzGXzAutQxc+qEopqmHGGJ9x3\neo1Md/HyvR6WGNo6Fg4+PBew2WsIath086RDQeVOifDzSjMCAwEAAaOBkDCBjTAM\nBgNVHRMEBTADAQH/MB0GA1UdDgQWBBQNQDvieqmFtP6IbCqPrv6V+fXT+DBRBgNV\nHSMESjBIgBQNQDvieqmFtP6IbCqPrv6V+fXT+KEapBgwFjEUMBIGA1UEAwwLRWFz\neS1SU0EgQ0GCFA0lUfXvC9fqn6EOMiRnOHLtAws4MAsGA1UdDwQEAwIBBjANBgkq\nhkiG9w0BAQsFAAOCAQEAPHx9sZIhd7cVyCrBqJ7mHHhRbWcT4Oc4nQfL022NbdjN\nIy7O+MrkYGWH7wyOSanbVAY2wsB7jbMT5wP7719jImZ0kjN2oWoFmV7XsphYBza1\n3wqVd5RfoET8bbx3XctsIZN0KqBd+2LmcUyYkqcBwUy7lEF1GSsOv5ZXfPeR8mZG\nnf24bTl0DDjJFEc07XEcqYNqF+SgyL8kzlWBekVYjM5tcg5n7V5jTjuLIlU4s8PC\n4QFosRDMqAaKNZq/Yjf4pzJh4BgXltp5eFeJj5BsgMzXugL985Z1F1C/Yk01t3T1\nekb8bwykHl0a7dvbjQ9cktRMGJ530kA/mw1TD0UsSg==",
@@ -18,14 +18,14 @@
         "port": 8123
       },
       "spaces": [
-        "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671"
+        "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"
       ]
     },
     {
       "filetype": "LetheanGateway",
       "type": "socks-proxy",
       "version": "1.0",
-      "gateid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-socks",
+      "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091-socks",
       "name": "1st Lethean Gateway HTTP proxy endpoint",
       "description": "First Lethean Gateway used for testing and Proof of concept",
       "ca": "MIIDSzCCAjOgAwIBAgIUDSVR9e8L1+qfoQ4yJGc4cu0DCzgwDQYJKoZIhvcNAQEL\nBQAwFjEUMBIGA1UEAwwLRWFzeS1SU0EgQ0EwHhcNMjMxMjA0MTMyNDQ4WhcNMzMx\nMjAxMTMyNDQ4WjAWMRQwEgYDVQQDDAtFYXN5LVJTQSBDQTCCASIwDQYJKoZIhvcN\nAQEBBQADggEPADCCAQoCggEBALqSNoy5hxWrBebIjRs6aMPpvhr4+oVwOu22bfa1\nkzU2hKy3aCF/JmTGaWZUWE4AprbjhHu+n0okp174d83Vlg4SaxVXCPDiM3n2EnWO\n7460x5/7a4aty5nXASxuTSPW2BltnnUAcFbPJnMAKd02soGW7fwND805ScFMZPeQ\n52+KKUJyHxTEVTbFCqM9J9IXuH2AIwB++pHUU2uV+b1beyZTvwsKjpv3jPUz7OPx\n/U/3AgoombSNv+DEvZsEIMwGrcMCNsmzVJRvI6rqzGXzAutQxc+qEopqmHGGJ9x3\neo1Md/HyvR6WGNo6Fg4+PBew2WsIath086RDQeVOifDzSjMCAwEAAaOBkDCBjTAM\nBgNVHRMEBTADAQH/MB0GA1UdDgQWBBQNQDvieqmFtP6IbCqPrv6V+fXT+DBRBgNV\nHSMESjBIgBQNQDvieqmFtP6IbCqPrv6V+fXT+KEapBgwFjEUMBIGA1UEAwwLRWFz\neS1SU0EgQ0GCFA0lUfXvC9fqn6EOMiRnOHLtAws4MAsGA1UdDwQEAwIBBjANBgkq\nhkiG9w0BAQsFAAOCAQEAPHx9sZIhd7cVyCrBqJ7mHHhRbWcT4Oc4nQfL022NbdjN\nIy7O+MrkYGWH7wyOSanbVAY2wsB7jbMT5wP7719jImZ0kjN2oWoFmV7XsphYBza1\n3wqVd5RfoET8bbx3XctsIZN0KqBd+2LmcUyYkqcBwUy7lEF1GSsOv5ZXfPeR8mZG\nnf24bTl0DDjJFEc07XEcqYNqF+SgyL8kzlWBekVYjM5tcg5n7V5jTjuLIlU4s8PC\n4QFosRDMqAaKNZq/Yjf4pzJh4BgXltp5eFeJj5BsgMzXugL985Z1F1C/Yk01t3T1\nekb8bwykHl0a7dvbjQ9cktRMGJ530kA/mw1TD0UsSg==",
@@ -37,14 +37,14 @@
         "port": 8124
       },
       "spaces": [
-        "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671"
+        "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"
       ]
     },
     {
       "filetype": "LetheanGateway",
       "type": "wg",
       "version": "1.0",
-      "gateid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671-wg",
+      "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091-wg",
       "name": "1st Lethean Gateway Wireguard endpoint",
       "description": "First Lethean Gateway used for testing and Proof of concept",
       "price": {
@@ -56,7 +56,7 @@
         "public": "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM="
       },
       "spaces": [
-        "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671"
+        "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"
       ]
     }
   ],
@@ -64,7 +64,7 @@
     {
       "filetype": "LetheanSpace",
       "version": "1.0",
-      "spaceid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+      "spaceid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
       "name": "1st Lethean Space",
       "description": "First Lethean Space used for testing and Proof of concept",
       "ips": [

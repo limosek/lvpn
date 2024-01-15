@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from lib.signverify import Sign, Verify
+from lib.vdp import VDP
 
 
 def main():
@@ -31,20 +32,8 @@ def main():
     logging.basicConfig(level=cfg.l)
 
     if cfg.cmd == "generate-vdp":
-        vdp = {
-            "filetype": "VPNDescriptionProtocol",
-            "version": "1.0",
-            "gates": [],
-            "spaces": []
-        }
-        for sf in glob.glob(cfg.spaces_dir + "/*.json"):
-            with open(sf, "r") as f:
-                vdp["spaces"].append(json.load(f))
-        for gf in glob.glob(cfg.gates_dir + "/*.json"):
-            with open(gf, "r") as f:
-                vdp["gates"].append(json.load(f))
-
-        print(json.dumps(vdp, indent=2))
+        vdp = VDP(cfg)
+        print(vdp.get_json())
 
     elif cfg.cmd == "generate-provider":
 
@@ -59,12 +48,15 @@ def main():
         if os.path.exists(cfg.provider_private_key):
             logging.error("Private key %s already exists! Just generating IDs!" % cfg.provider_private_key)
         else:
-            # Step 3: Save keys to files
-            with open(cfg.provider_private_key, 'wb') as private_key_file:
-                private_key_file.write(signing_key_bytes)
+            try:
+                # Step 3: Save keys to files
+                with open(cfg.provider_private_key, 'wb') as private_key_file:
+                    private_key_file.write(signing_key_bytes)
 
-            with open(cfg.provider_public_key, 'wb') as public_key_file:
-                public_key_file.write(verification_key_bytes)
+                with open(cfg.provider_public_key, 'wb') as public_key_file:
+                    public_key_file.write(verification_key_bytes)
+            except Exception as e:
+                logging.error("Cannot save provider files.")
 
         # Display the keys (optional)
         print(f"Private Key (NEVER SHARE THIS!): {signing_key_bytes.decode()}")

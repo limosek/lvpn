@@ -55,6 +55,9 @@ class Gateway(VDPObject):
         else:
             return True
 
+    def get_wallet(self):
+        return self.get_provider().get_wallet()
+
     def get_local_port(self):
         if self.get_type() == "http-proxy":
             return 8080

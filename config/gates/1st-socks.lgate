@@ -2,8 +2,8 @@
   "filetype": "LetheanGateway",
   "type": "socks-proxy",
   "version": "1.0",
-  "gateid": "socks",
-  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "gateid": "socks-proxy",
+  "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "1st Lethean Gateway SOCKS5 proxy endpoint",
   "description": "First Lethean Gateway used for testing and Proof of concept. Use this gate as Socks5 proxy.",
   "price": {
@@ -14,6 +14,6 @@
     "port": 8775
   },
   "spaces": [
-    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.1st"
+    "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"
   ]
 }

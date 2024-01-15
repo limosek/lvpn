@@ -23,6 +23,9 @@ class Space(VDPObject):
     def get_id(self):
         return self.get_provider_id() + "." + self._data["spaceid"]
 
+    def get_wallet(self):
+        return self.get_provider().get_wallet()
+
     def save(self, cfg=None):
         if cfg:
             self.cfg = cfg

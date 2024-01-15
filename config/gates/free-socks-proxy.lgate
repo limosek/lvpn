@@ -3,7 +3,7 @@
   "type": "socks-proxy",
   "version": "1.0",
   "gateid": "free-socks-proxy",
-  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "SOCKS5 proxy to access other Lethean instances",
   "description": "SOCKS5 proxy to access other Lethean instances",
   "internal": true,
@@ -16,6 +16,6 @@
     "tls": false
   },
   "spaces": [
-    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+    "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
   ]
 }

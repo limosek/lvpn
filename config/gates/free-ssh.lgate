@@ -3,7 +3,7 @@
   "type": "ssh",
   "version": "1.0",
   "gateid": "free-ssh",
-  "providerid": "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671",
+  "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "Lethean SSH gateway",
   "description": "Free Lethean Gateway to multiplex more streams using SSH",
   "manager": {
@@ -21,12 +21,12 @@
     "client-private-key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PAAAAJBDRLv7Q0S7\n+wAAAAtzc2gtZWQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PA\nAAAEAcGtT9/Q/nu/Wpzi82UN3ZuQxuTpTbRiNFdNygagf4AwaSY+UZAtVUhtZr0bhpnwm/\nx1HGlDKbRayzU5N/gb88AAAADGxtLWFAbnRiMS1sbQE=\n-----END OPENSSH PRIVATE KEY-----"
   },
   "spaces": [
-    "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+    "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
   ],
   "gates": [
-     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-socks-proxy",
-     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-http-proxy",
-     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-daemon-p2p",
-     "fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-daemon-rpc"
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-daemon-p2p",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-daemon-rpc"
   ]
 }

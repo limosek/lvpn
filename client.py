@@ -16,6 +16,7 @@ os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
 
+from client.preconnect import PreConnect
 from lib.authids import AuthIDs
 from lib.queue import Queue
 from lib.runcmd import RunCmd
@@ -84,6 +85,10 @@ def main():
     p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
                    default=os.path.abspath(vardir + "/providers"))
     p.add_argument("--authids-dir", help="Directory containing all authids", default=os.path.abspath(vardir + "/authids"))
+    p.add_argument("--ca-dir", help="Directory for Certificate authority",
+                   default=os.path.abspath(vardir + "/ca"))
+    p.add_argument("--ca-name", help="Common name for CA creation",
+                   default="LVPN-easy-provider")
     p.add_argument("--coin-type", help="Coin type to sue", default="lethean", type=str, choices=["lethean", "monero"],
                    env_var="WLC_COINTYPE")
     p.add_argument("--coin-unit", help="Coin minimal unit", type=float)
@@ -103,9 +108,10 @@ def main():
     p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random')
     p.add_argument('--wallet-name', help='Wallet name')
     p.add_argument('--wallet-password', help='Wallet password')
+    p.add_argument('--wallet-address', help='Wallet public address')
     p.add_argument('--use-http-proxy', type=str, help='Use HTTP proxy (CONNECT) to services', env_var="HTTP_PROXY")
     p.add_argument('--auto-connect', type=str, help='Auto connect uris',
-                       default="fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free-ssh/fbf893c4317c6938750fc0532becd25316cd77406cd52cb81768164608515671.free"
+                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
                    )
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
@@ -269,11 +275,29 @@ def main():
 
         elif cfg.cmd[0] == "test-gui":
             cfg.authids = AuthIDs(cfg.authids_dir)
-            cfg.vdp = VDP(gates_dir=cfg.gates_dir, spaces_dir=cfg.spaces_dir)
+            cfg.vdp = VDP(cfg)
             ctrl["cfg"] = cfg
             ctrl["tmpdir"] = tmpdir
             GUI.run(ctrl=ctrl, queue=queue, myqueue=gui_queue)
             sys.exit()
+
+        elif cfg.cmd[0] == "pay":
+            if len(cfg.cmd) != 4:
+                logging.error("Use pay gateid spaceid days")
+                sys.exit(1)
+            else:
+                cfg.authids = AuthIDs(cfg.authids_dir)
+                cfg.vdp = VDP(cfg)
+                ctrl["cfg"] = cfg
+                ctrl["tmpdir"] = tmpdir
+                gate = cfg.vdp.get_gate(cfg.cmd[1])
+                space = cfg.vdp.get_space(cfg.cmd[2])
+                if not space or not gate or not gate.is_for_space(space.get_id()):
+                    logging.error("Bad gate/space")
+                    sys.exit(1)
+                PreConnect.run(ctrl, queue, None, gateid=gate.get_id(), spaceid=space.get_id(), days=cfg.cmd[3])
+                pass
+                sys.exit()
 
         elif cfg.cmd[0] == "run":
             print("run")
