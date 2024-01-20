@@ -17,4 +17,19 @@ if "NO_KIVY" not in os.environ:
     from client.gui_wizard import Wizard
     from client.gui import GUI
     from kivy_garden.qrcode import QRCodeWidget
+    from kivy.app import App
+    from kivy.uix.image import Image
+    from kivy.animation import Animation
 
+
+    class SplashScreen(App):
+
+        def build(self):
+            my_splash_screen = Image(source=os.path.dirname(__file__) + '/../jukebox.png', pos=(800, 800))
+            animation = Animation(x=0, y=0, d=2, t='out_bounce')
+            animation.start(my_splash_screen)
+
+            return my_splash_screen
+
+    def splash_screen():
+        SplashScreen().run()

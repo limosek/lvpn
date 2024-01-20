@@ -5,9 +5,8 @@ $python_version = "3.12.1"
 $lethean_version = "v5.0.1"
 
 # Cleanup
-Remove-Item zip -Recurse -Force
-Remove-Item msi -Recurse -Force
-Remove-Item lvpn -Recurse -Force
+Remove-Item dist\msi -Recurse -Force
+Remove-Item dist\lvpn -Recurse -Force
 
 # Basic creation of dirs
 mkdir dist
@@ -33,23 +32,17 @@ Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
 import site
 "@ | Out-File -Encoding utf8 -FilePath python312._pth -Append
 .\python -m pip install virtualenv
-.\python -m virtualenv ../virtualenv
-. ..\virtualenv\Scripts\activate.ps1
 
 Set-Location ..
 mkdir bin
 
 $Env:PATH += ";" + (Resolve-Path .\python)
-$Env:PATH += ";" + (Resolve-Path .\virtualenv\scripts)
 $Env:PATH += ";" + (Resolve-Path .\bin)
-
-python -m pip install kivy --pre --no-deps --index-url  https://kivy.org/downloads/simple/
-python -m pip install "kivy[base]" --pre --extra-index-url https://kivy.org/downloads/simple/
-python -m pip install -r ..\..\requirements.txt
 
 Copy-Item ../../*py ./
 Copy-Item ../../*cmd ./
 Copy-Item ../../*ps1 ./
+Copy-Item ../../requirements* ./
 Copy-Item -Recurse ../../lib ./
 Copy-Item -Recurse ../../server ./
 Copy-Item -Recurse ../../client ./
@@ -67,11 +60,6 @@ Copy-Item lethean-cli-windows\lethean-cli-windows\lethean-wallet-cli.exe lvpn/bi
 Copy-Item lethean-cli-windows\lethean-cli-windows\lib* lvpn/bin/
 Remove-Item lethean-cli-windows -Recurse
 
-# Tests
-.\lvpn\virtualenv\scripts\python lvpn/client.py -h
-.\lvpn\virtualenv\scripts\python lvpn/server.py -h
-.\lvpn\virtualenv\scripts\python lvpn/ptwbin.py -h
-
 function addDir {
   param (
         [string]$dir,
@@ -88,15 +76,16 @@ function addDir {
            New-InstallerFile $dir\client.py -Id "clientPy"
            New-InstallerFile $dir\server.py -Id "serverPy"
            New-InstallerFile $dir\mgmt.py -Id "mgmtPy"
-           New-InstallerFile $dir\ptwbin.py -Id "ptwPy"
            New-InstallerFile $dir\setup.ps1 -Id "setupscript"
+           New-InstallerFile $dir\requirements.txt -Id "reqs"
       } else {
           Get-ChildItem $dir -file -Recurse -Depth 0 | ForEach-Object { write-host "addFile: $dir/$_"; New-InstallerFile $dir/$_ }
       }
-    Get-ChildItem $dir -directory -Recurse -Depth 0 | split-path -Leaf | ForEach-Object { addDir $dir/$_ }
+      Get-ChildItem $dir -directory -Recurse -Depth 0 | split-path -Leaf | ForEach-Object { addDir $dir/$_ }
   }
 }
 
+$setup = New-InstallerCustomAction -FileId 'setupscript' -RunOnInstall -CheckReturnValue
 New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672fe9ec-7d23-4d80-a194-fabe5dcc4dc6" -UpgradeCode '111a932a-b7dc-4276-a42c-241250f33483' -Version ${version} -Content {
     New-InstallerDirectory -PredefinedDirectory "LocalAppDataFolder"  -Content {
         addDir lvpn 1
@@ -105,11 +94,6 @@ New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672f
             New-InstallerShortcut -Name "LVPN-Debug" -FileId "mainFileDbg" -IconPath "$pwd\..\config\icon.ico"
         }
     }
-    New-InstallerCustomAction -FileId 'setupscript' -RunOnInstall
- } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\icon.ico"
+ } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\icon.ico" -CustomAction $setup
 
-mkdir zip
-Compress-Archive -Path .\lvpn -DestinationPath zip\lvpn-${version}.zip
-
-Get-FileHash zip\lvpn-${version}.zip
 Get-FileHash msi\lvpn.${version}.x86.msi

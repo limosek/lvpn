@@ -23,6 +23,7 @@ from lib.runcmd import RunCmd
 from lib.shared import Messages
 if "NO_KIVY" not in os.environ:
     from client.gui import GUI
+    from client import SplashScreen, splash_screen
 from client.proxy import Proxy
 from client.wallet import ClientWallet
 from client.daemon import ClientDaemon
@@ -48,6 +49,12 @@ def test_binary(args):
 
 
 def main():
+    if "NO_KIVY" not in os.environ:
+        #splash = multiprocessing.Process(target=splash_screen)
+        #splash.start()
+        splash = False
+    else:
+        splash = False
     if getattr(sys, 'frozen', False):
         # If the application is run as a bundle, the PyInstaller bootloader
         # extends the sys module by a flag frozen=True and sets the app
@@ -191,7 +198,6 @@ def main():
 
     processes = {}
     # Hack for multiprocessing to work
-    sys._base_executable = sys.executable
     ctrl = multiprocessing.Manager().dict()
     queue = Queue(multiprocessing.get_context(), "general")
     gui_queue = Queue(multiprocessing.get_context(), "gui")
@@ -362,6 +368,8 @@ def main():
         pids[p.name] = p.pid
     ctrl.pids = pids
 
+    if splash:
+        splash.kill()
     should_exit = False
     while not should_exit:
         logging.getLogger("client").debug("Main loop")

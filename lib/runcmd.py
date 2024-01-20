@@ -13,7 +13,7 @@ class RunCmd:
 
     @classmethod
     def popen(cls, args, **kwargs):
-        if platform.platform() == "Windows":
+        if platform.platform().lower().startswith("windows"):
             if cls.cfg.l == "DEBUG":
                 info = subprocess.STARTUPINFO()
             elif cls.cfg.l == "INFO":
