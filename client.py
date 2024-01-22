@@ -149,10 +149,10 @@ def main():
     cfg.bin_dir = bindir
     cfg.app_dir = appdir
     wizard = False
-    Wizard().files(cfg, vardir)
+    Wizard.files(cfg, vardir)
 
     if not os.path.exists(vardir + "/client.ini"):
-        Wizard().cfg(cfg, p, vardir)
+        Wizard.cfg(cfg, p, vardir)
 
     os.environ['PATH'] += os.path.pathsep + appdir + "/bin"
     os.environ['PATH'] += os.path.pathsep + os.path.dirname(sys.executable)
@@ -187,9 +187,6 @@ def main():
         if not cfg.coin_unit:
             cfg.coin_unit = 1e-12
 
-    if not os.path.exists(cfg.var_dir + "/" + cfg.wallet_name):
-        wizard = True
-
     try:
         cfg.vdp = VDP(cfg)
     except VDPException as e:
@@ -219,6 +216,9 @@ def main():
     ctrl["wallet_height"] = -1
     ctrl["wallet_address"] = ""
     ctrl["wizard"] = wizard
+
+    if not os.path.exists(cfg.var_dir + "/" + cfg.wallet_name):
+        Wizard.wallet(wallet_queue)
 
     if cfg.cmd:
 

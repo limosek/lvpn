@@ -66,5 +66,3 @@ class Switcher(GridLayout):
                                   title_align='center', content=box)
                     btn1.bind(on_press=popup.dismiss)
                     popup.open()
-        if client.gui.GUI.ctrl["wizard"]:
-            self.show_wizard()

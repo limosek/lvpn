@@ -9,6 +9,7 @@ import nacl.encoding
 from ownca import CertificateAuthority
 from copy import copy
 
+from lib.shared import Messages
 from lib.signverify import Sign, Verify
 from lib.vdp import VDP
 
@@ -65,6 +66,10 @@ wallet-password = %s
 wallet-rpc-password = %s
             """ % (cfg.wallet_password, cfg.wallet_rpc_password))
             pass
+
+    @staticmethod
+    def wallet(queue):
+        queue.put(Messages.CREATE_WALLET)
 
     @staticmethod
     def ca(cfg):
