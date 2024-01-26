@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import secrets
 import socket
 import time
 from io import StringIO
@@ -60,7 +61,8 @@ class SSHProxy(Service):
                             "msg": "Connected",
                             "ports": [lport],
                             "port": lport,
-                            "pid": multiprocessing.current_process().pid
+                            "pid": multiprocessing.current_process().pid,
+                            "connectionid": secrets.token_urlsafe(6)
                         }
                         messages.append(
                             Messages.connect_info(space, gobj, authid, data)

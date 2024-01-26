@@ -1,0 +1,46 @@
+# Openapi providers definition
+###################################
+
+    Provider:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanProvider
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        ca:
+          type: array
+          items:
+            type: string
+        manager-url:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+        wallet:
+          type: string
+      required:
+        - filetype
+        - version
+        - providerid
+        - name
+        - manager-url
+        - spaces
+        - ca
+
+    Providers:
+      type: array
+      items:
+        $ref: '#/components/schemas/Provider'

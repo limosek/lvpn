@@ -8,7 +8,7 @@ import urllib3
 from lib.gate import Gateway
 from lib.space import Space
 from lib.provider import Provider
-from lib.vdpobject import VDPException
+from lib.vdpobject import VDPException, VDPObject
 
 
 class VDP:
@@ -28,6 +28,7 @@ class VDP:
                     vdpdata = f.read(1000000000)
         if vdpdata or vdpfile:
             try:
+                VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = json.loads(vdpdata)
                 if "filetype" in self._data and self._data["filetype"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
@@ -62,7 +63,7 @@ class VDP:
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        prov = Provider(self.cfg, json.loads(jsn))
+                        prov = Provider(self.cfg, json.loads(jsn), providerf)
                         self._providers[prov.get_id()] = prov
                     except Exception as e:
                         print("Error loading %s: %s" % (providerf, e))
@@ -72,7 +73,7 @@ class VDP:
                 with open(spacef, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        spc = Space(self.cfg, json.loads(jsn))
+                        spc = Space(self.cfg, json.loads(jsn), spacef)
                         if not spc.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
@@ -86,7 +87,7 @@ class VDP:
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        gw = Gateway(self.cfg, json.loads(jsn))
+                        gw = Gateway(self.cfg, json.loads(jsn), gwf)
                         if not gw.get_provider_id() in self.provider_ids():
                             raise VDPException("Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
                         for s in gw.space_ids():
@@ -107,7 +108,8 @@ class VDP:
             "gates": json.loads(self.gates(as_json=True)),
             "providers": json.loads(self.providers(as_json=True))
         }
-        self._json = json.dumps(self._dict)
+        self._json = json.dumps(self._dict, indent=2)
+        #VDPObject.validate(self._json, "Vdp", vdpfile)
         logging.getLogger("vdp").warning("%s gates and %s spaces available" % (len(self._gates), len(self._spaces)))
 
     def gates(self, filter="", spaceid=None, as_json=False, internal=True):

@@ -11,13 +11,15 @@ import logging.handlers
 import secrets
 import subprocess
 
+from client.http import Manager
+
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
 
 from client.preconnect import PreConnect
-from lib.authids import AuthIDs
+from lib.sessions import Sessions
 from lib.queue import Queue
 from lib.runcmd import RunCmd
 from lib.shared import Messages
@@ -85,13 +87,14 @@ def main():
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
     p.add_argument('--daemon-rpc-bin', help='Daemon-RPC binary file')
     p.add_argument('--daemon-bin', help='Daemon binary file')
+    p.add_argument("--http-port", help="HTTP port to use for manager", default=8124)
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
     p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs", default=os.path.abspath(vardir + "/spaces"))
     p.add_argument("--gates-dir", help="Directory containing all gateway VDPs", default=os.path.abspath(vardir + "/gates"))
     p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
                    default=os.path.abspath(vardir + "/providers"))
-    p.add_argument("--authids-dir", help="Directory containing all authids", default=os.path.abspath(vardir + "/authids"))
+    p.add_argument("--sessions-dir", help="Directory containing all sessions", default=os.path.abspath(vardir + "/sessions"))
     p.add_argument("--ca-dir", help="Directory for Certificate authority",
                    default=os.path.abspath(vardir + "/ca"))
     p.add_argument("--ca-name", help="Common name for CA creation",
@@ -156,6 +159,7 @@ def main():
 
     os.environ['PATH'] += os.path.pathsep + appdir + "/bin"
     os.environ['PATH'] += os.path.pathsep + os.path.dirname(sys.executable)
+    os.environ["NO_KIVY"] = "1"  # Set to not load KIVY for subprocesses
     print("PATH: %s" % os.environ['PATH'], file=sys.stderr)
     # Initialize RunCmd
     RunCmd.init(cfg)
@@ -201,8 +205,9 @@ def main():
     proxy_queue = Queue(multiprocessing.get_context(), "proxy")
     wallet_queue = Queue(multiprocessing.get_context(), "wallet")
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
+    http_queue = Queue(multiprocessing.get_context(), "http")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
-    cfg.authids = AuthIDs(cfg.authids_dir)
+    cfg.sessions = Sessions(cfg)
     tmpdir = cfg.tmp_dir
     ctrl["log"] = ""
     ctrl["daemon_height"] = -1
@@ -280,7 +285,7 @@ def main():
                     "Use import-vdp file-or-url")
 
         elif cfg.cmd[0] == "test-gui":
-            cfg.authids = AuthIDs(cfg.authids_dir)
+            cfg.sessions = Sessions(cfg.sessions_dir)
             cfg.vdp = VDP(cfg)
             ctrl["cfg"] = cfg
             ctrl["tmpdir"] = tmpdir
@@ -292,7 +297,7 @@ def main():
                 logging.error("Use pay gateid spaceid days")
                 sys.exit(1)
             else:
-                cfg.authids = AuthIDs(cfg.authids_dir)
+                cfg.sessions = Sessions(cfg.sessions_dir)
                 cfg.vdp = VDP(cfg)
                 ctrl["cfg"] = cfg
                 ctrl["tmpdir"] = tmpdir
@@ -341,9 +346,11 @@ def main():
     logging.getLogger().debug("Using TEMP dir %s" % tmpdir)
 
     if cfg.run_gui:
+        os.environ["NO_KIVY"] = ""  # Set to load KIVY for gui
         gui = multiprocessing.Process(target=GUI.run, args=[ctrl, queue, gui_queue], name="GUI")
         gui.start()
         processes["gui"] = gui
+        os.environ["NO_KIVY"] = "1"  # Set to not load KIVY for subprocesses
 
     if cfg.run_proxy:
         proxy = multiprocessing.Process(target=Proxy.run, args=[ctrl, queue, proxy_queue], name="Proxy")
@@ -362,6 +369,10 @@ def main():
         }, name="Daemon")
         cd.start()
         processes["daemon"] = cd
+
+    http = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, http_queue], kwargs={}, name="Manager")
+    http.start()
+    processes["http"] = http
 
     pids = {}
     for p in processes.values():

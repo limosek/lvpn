@@ -1,6 +1,7 @@
 import copy
 import multiprocessing
 import os
+import secrets
 import signal
 import logging
 import sys
@@ -115,7 +116,8 @@ class Proxy(Service):
             kwargs = {
                 "gate": gate,
                 "space": space,
-                "authid": authid
+                "authid": authid,
+                "connectionid": secrets.token_urlsafe(6)
             }
             mp = multiprocessing.Process(target=SSHProxy.run, args=args, kwargs=kwargs)
             mp.start()
@@ -125,7 +127,8 @@ class Proxy(Service):
                     "gate": gate,
                     "endpoint": gate.get_endpoint(),
                     "authid": authid,
-                    "port": "NA"
+                    "port": "NA",
+                    "connectionid": secrets.token_urlsafe(6)
                 }
             cls.processes.append(p)
             cls.log_gui("proxy", "Connecting to gate %s and space %s" % (gate, space))
@@ -206,7 +209,7 @@ class Proxy(Service):
                     elif msg.startswith(Messages.CONNECT):
                         cdata = Messages.get_msg_data(msg)
                         if "authid" in cdata:
-                            authid = cls.ctrl["cfg"].authids.find(cdata["gate"].get_id())
+                            authid = cls.ctrl["cfg"].sessions.find_for_gate(cdata["gate"].get_id())
                         else:
                             authid = None
                         cls.connect(cdata["space"], cdata["gate"], authid)
@@ -222,7 +225,8 @@ class Proxy(Service):
                             "endpoint": data["gate"].get_endpoint(),
                             "authid": data["authid"],
                             "ports": data["data"]["ports"],
-                            "port": data["data"]["port"]
+                            "port": data["data"]["port"],
+                            "connectionid": data["data"]["connectionid"]
                         }
                         cls.processes.append(p)
                 except _queue.Empty:

@@ -7,18 +7,10 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Space(VDPObject):
 
-    def __init__(self, cfg, spaceinfo):
+    def __init__(self, cfg, spaceinfo, file=None):
         self.cfg = cfg
-        try:
-            self._data = spaceinfo
-            if "filetype" in self._data and self._data["filetype"] == 'LetheanSpace' and "providerid" in self._data:
-                pass
-            else:
-                logging.error("Bad Space definition: %s" % spaceinfo)
-                sys.exit(1)
-        except Exception as e:
-            logging.error("Bad Space definition: %s(%s)" % (spaceinfo, e))
-            raise VDPException("Bad Space definition: %s(%s)" % (spaceinfo, e))
+        self.validate(spaceinfo, "Space", file)
+        self._data = spaceinfo
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["spaceid"]

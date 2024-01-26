@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: Lethean VPN server OpenAPI
+  description: |-
+    This is Lethean VPN API definition
+  license:
+      name: GPLv3
+  version: "1.0"
+
+paths:
+  /api/vdp:
+    get:
+      summary: Get VDP
+      description: Get VPN Description Protocol containing all Spaces and Gateways
+      operationId: getVdp
+      parameters:
+        - in: query
+          name: checkOnly
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+    post:
+      summary: Post new VDP to server
+      description: Post new VDP to server
+      operationId: pushVdp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vdp'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '443':
+          description: Error in VDP
+
+  /api/session:
+    post:
+      summary: Prepare session to connect to Space using Gate
+      description: Prepare session to connect to Space using Gate
+      operationId: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '200':
+          description: Connected
+        '400':
+          description: Bad request
+        '402':
+          description: Waiting for payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '460':
+          description: Unknown/bad space
+        '461':
+          description: Unknown/bad gate
+        '462':
+          description: Cannot use this space/gate combination
+        '500':
+          description: Server error
+    get:
+      summary: Get session info
+      description: Get info about session
+      operationId: getSession
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+        '500':
+          description: Server error
+
+components:
+  schemas:
+

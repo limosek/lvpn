@@ -1,0 +1,164 @@
+# Gate openapi specifications
+###################################
+
+    Gate:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanGateway
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        gateid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: object
+          additionalProperties: false
+          properties:
+            per-day:
+              type: number
+        internal:
+          type: boolean
+          default: false
+        type:
+          type: string
+          enum:
+            - wg
+            - http-proxy
+            - socks-proxy
+            - daemon-rpc-proxy
+            - daemon-p2p-proxy
+            - wg-tcp
+            - ssh
+            - tls-ssh
+        wg:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tcp_port:
+              type: integer
+            public_key:
+              type: string
+        http-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+        socks-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+        daemon-p2p-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        daemon-rpc-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        ssh:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            rsa-server-public-key:
+              type: string
+            ecdsa-server-public-key:
+              type: string
+            username:
+              type: string
+            client-private-key:
+              type: string
+            tls:
+              type: boolean
+          required:
+            - host
+            - port
+            - username
+            - client-private-key
+        spaces:
+          type: array
+          items:
+            type: string
+        gates:
+          type: array
+          items:
+            type: string
+        gate-types:
+          type: array
+          items:
+            type: string
+            enum:
+              - wg
+              - http-proxy
+              - socks-proxy
+              - daemon-rpc
+              - daemon-p2p
+              - wg-tcp
+              - ssh
+              - ssh-tls
+      required:
+        - gateid
+        - name
+        - providerid
+        - version
+        - filetype
+        - type
+        - spaces
+
+    Gates:
+      type: array
+      items:
+        $ref: '#/components/schemas/Gate'

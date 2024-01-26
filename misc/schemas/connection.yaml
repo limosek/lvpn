@@ -1,0 +1,43 @@
+# Session definition
+###################################
+
+    ConnectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        time:
+          type: integer
+        gateid:
+          type: string
+        spaceid:
+          type: string
+        wg_public:
+          type: string
+        days:
+          type: integer
+        sessionid:
+          type: string
+      required:
+        - gateid
+        - spaceid
+        - days
+
+    Connection:
+      type: object
+      additionalProperties: false
+      properties:
+        connectionid:
+          type: string
+        local_port:
+          type: integer
+        gate:
+          $ref: '#/components/schemas/Gate'
+        space:
+          $ref: '#/components/schemas/Space'
+        session:
+          $ref: '#/components/schemas/Session'
+
+    Connections:
+      type: array
+      items:
+        $ref: '#/components/schemas/Connection'

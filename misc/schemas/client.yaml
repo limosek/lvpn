@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: Lethean VPN client OpenAPI
+  description: |-
+    This is Lethean VPN API definition
+  license:
+      name: GPLv3
+  version: "1.0"
+
+paths:
+  /api/vdp:
+    get:
+      summary: Get VDP
+      description: Get VPN Description Protocol containing all known Spaces and Gateways
+      operationId: getVdp
+      parameters:
+        - in: query
+          name: checkOnly
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '500':
+          description: server error
+    post:
+      summary: Post new VDP to client
+      description: Post new VDP to client
+      operationId: pushVdp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vdp'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '443':
+          description: Error in VDP
+
+  /api/connect:
+    post:
+      summary: Connect existing prepaid session
+      description: Connect existing prepaid session
+      operationId: Connect
+      parameters:
+        - in: query
+          name: sessionid
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '400':
+          description: Bad request
+        '402':
+          description: Awaiting payment
+        '460':
+          description: Unknown/bad space
+        '461':
+          description: Unknown/bad gate
+        '462':
+          description: Cannot use this space/gate combination
+        '500':
+          description: Server error
+
+  /api/disconnect:
+    get:
+      parameters:
+      - in: query
+        name: connectionid
+        schema:
+          type: string
+      summary: Disconnect connection
+      description: Disconnect connection
+      operationId: Disconnect
+      responses:
+        '200':
+          description: Disconnected
+        '404':
+          description: Bad connection ID
+
+  /api/connections:
+    get:
+      summary: Get Active connections
+      description: Get active connections
+      operationId: getConnections
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connections'
+
+  /api/sessions:
+    get:
+      summary: Get Active sessions
+      description: Get active sessions. This means all prepaid sessions, some of them can be connected, some disconnected
+      operationId: getSessions
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessions'
+
+  /api/session/prepare:
+    post:
+      summary: Prepare session
+      description: Prepare new session based on gate and space. This means to fetch all info and return information how to pay
+      operationId: prepareSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrepareSession'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /api/session/pay:
+    get:
+      summary: Pay session
+      description: Pay prepared session based on session data from prepare
+      operationId: paySession
+      parameters:
+        - in: query
+          name: sessionid
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Not enough credit
+        '500':
+          description: Server error
+
+components:
+  schemas:
+
+# Openapi providers definition
+###################################
+
+    Provider:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanProvider
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        ca:
+          type: array
+          items:
+            type: string
+        manager-url:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+        wallet:
+          type: string
+      required:
+        - filetype
+        - version
+        - providerid
+        - name
+        - manager-url
+        - spaces
+        - ca
+
+    Providers:
+      type: array
+      items:
+        $ref: '#/components/schemas/Provider'
+# Gate openapi specifications
+###################################
+
+    Gate:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanGateway
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        gateid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: object
+          additionalProperties: false
+          properties:
+            per-day:
+              type: number
+        internal:
+          type: boolean
+          default: false
+        type:
+          type: string
+          enum:
+            - wg
+            - http-proxy
+            - socks-proxy
+            - daemon-rpc-proxy
+            - daemon-p2p-proxy
+            - wg-tcp
+            - ssh
+            - tls-ssh
+        wg:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tcp_port:
+              type: integer
+            public_key:
+              type: string
+        http-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+        socks-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+        daemon-p2p-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        daemon-rpc-proxy:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            tls:
+              type: boolean
+            coin:
+              type: string
+              default: lethean
+              enum:
+                - lethean
+                - monero
+        ssh:
+          type: object
+          additionalProperties: false
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            rsa-server-public-key:
+              type: string
+            ecdsa-server-public-key:
+              type: string
+            username:
+              type: string
+            client-private-key:
+              type: string
+            tls:
+              type: boolean
+          required:
+            - host
+            - port
+            - username
+            - client-private-key
+        spaces:
+          type: array
+          items:
+            type: string
+        gates:
+          type: array
+          items:
+            type: string
+        gate-types:
+          type: array
+          items:
+            type: string
+            enum:
+              - wg
+              - http-proxy
+              - socks-proxy
+              - daemon-rpc
+              - daemon-p2p
+              - wg-tcp
+              - ssh
+              - ssh-tls
+      required:
+        - gateid
+        - name
+        - providerid
+        - version
+        - filetype
+        - type
+        - spaces
+
+    Gates:
+      type: array
+      items:
+        $ref: '#/components/schemas/Gate'
+# Openapi space definition
+###################################
+
+    Space:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanSpace
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        spaceid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: object
+          additionalProperties: false
+          properties:
+            per-day:
+              type: number
+        ips:
+          type: array
+          items:
+            type: string
+        dns_servers:
+          type: array
+          items:
+            type: string
+      required:
+        - spaceid
+        - providerid
+        - filetype
+        - version
+# Session definition
+###################################
+
+    Session:
+      type: object
+      additionalProperties: false
+      properties:
+        space:
+          $ref: '#/components/schemas/Space'
+        gate:
+          $ref: '#/components/schemas/Gate'
+        time:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        bearer:
+          type: string
+        wallet:
+          type: string
+        price:
+          type: number
+        paid:
+          type: boolean
+        paymentid:
+          type: string
+        wg:
+          $ref: '#/components/schemas/WgSessionData'
+        proxy:
+          $ref: '#/components/schemas/ProxySessionData'
+        sessionid:
+          type: string
+        expires:
+          type: integer
+      required:
+        - time
+        - sessionid
+        - paymentid
+        - wallet
+        - price
+        - expires
+
+    Sessions:
+      type: array
+      items:
+        $ref: '#/components/schemas/Session'
+
+    SessionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        space:
+          $ref: '#/components/schemas/Space'
+        gate:
+          $ref: '#/components/schemas/Gate'
+        days:
+          type: integer
+      required:
+        - space
+        - gate
+        - days
+
+    WgSessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        ip:
+          type: string
+        network_bits:
+          type: integer
+        gw:
+          type: string
+        dns:
+          type: string
+
+    ProxySessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        crt:
+          type: string
+# Openapi VDP definition
+###################################
+
+    Vdp:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - VPNDescriptionProtocol
+        version:
+          type: string
+          enum:
+            - "1.0"
+        spaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Space'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Gate'
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+      required:
+        - filetype
+        - version
+# Session definition
+###################################
+
+    ConnectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        time:
+          type: integer
+        gateid:
+          type: string
+        spaceid:
+          type: string
+        wg_public:
+          type: string
+        days:
+          type: integer
+        sessionid:
+          type: string
+      required:
+        - gateid
+        - spaceid
+        - days
+
+    Connection:
+      type: object
+      additionalProperties: false
+      properties:
+        connectionid:
+          type: string
+        local_port:
+          type: integer
+        gate:
+          $ref: '#/components/schemas/Gate'
+        space:
+          $ref: '#/components/schemas/Space'
+        session:
+          $ref: '#/components/schemas/Session'
+
+    Connections:
+      type: array
+      items:
+        $ref: '#/components/schemas/Connection'

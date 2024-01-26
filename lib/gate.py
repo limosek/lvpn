@@ -1,4 +1,3 @@
-import logging
 import socket
 
 from lib.vdpobject import VDPObject, VDPException
@@ -6,22 +5,10 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Gateway(VDPObject):
 
-    def __init__(self, cfg, gwinfo):
+    def __init__(self, cfg, gwinfo, file=None):
         self.cfg = cfg
-        try:
-            self._data = gwinfo
-            if "filetype" in self._data and self._data["filetype"] == 'LetheanGateway' and "type" in self._data and "providerid" in self._data and "spaces" in self._data:
-                if self._data["type"] in self._data:
-                    pass
-                else:
-                    logging.error("Bad Gateway definition: %s" % gwinfo)
-                    raise VDPException("Bad Gateway definition: %s" % gwinfo)
-            else:
-                logging.error("Bad Gateway definition: %s" % gwinfo)
-                raise VDPException("Bad Gateway definition: %s" % gwinfo)
-        except Exception as e:
-            logging.error("Bad Gateway definition: %s(%s)" % (gwinfo, e))
-            raise VDPException("Bad Gateway definition: %s(%s)" % (gwinfo, e))
+        self.validate(gwinfo, "Gate", file)
+        self._data = gwinfo
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["gateid"]
@@ -61,9 +48,9 @@ class Gateway(VDPObject):
     def get_local_port(self):
         if self.get_type() == "http-proxy":
             return 8080
-        elif self.get_type() == "daemon-rpc":
+        elif self.get_type() == "daemon-rpc-proxy":
             return 48782
-        elif self.get_type() == "daemon-p2p":
+        elif self.get_type() == "daemon-p2p-proxy":
             return 48772
         elif self.get_type() == "socks-proxy":
             return 8081

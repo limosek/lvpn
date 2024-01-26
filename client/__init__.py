@@ -25,7 +25,7 @@ if "NO_KIVY" not in os.environ:
     class SplashScreen(App):
 
         def build(self):
-            my_splash_screen = Image(source=os.path.dirname(__file__) + '/../jukebox.png', pos=(800, 800))
+            my_splash_screen = Image(source=os.path.dirname(__file__) + '/../config/lvpn.gif', pos=(800, 800))
             animation = Animation(x=0, y=0, d=2, t='out_bounce')
             animation.start(my_splash_screen)
 

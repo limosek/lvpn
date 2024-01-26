@@ -1,6 +1,6 @@
 {
   "filetype": "LetheanGateway",
-  "type": "daemon-rpc",
+  "type": "daemon-rpc-proxy",
   "version": "1.0",
   "gateid": "free-daemon-rpc-tls",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
@@ -9,7 +9,7 @@
   "price": {
     "per-day": 0
   },
-  "daemon-rpc": {
+  "daemon-rpc-proxy": {
     "host": "vpn.lethean.space",
     "port": 8777
   },

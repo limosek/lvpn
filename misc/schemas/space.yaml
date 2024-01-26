@@ -1,0 +1,42 @@
+# Openapi space definition
+###################################
+
+    Space:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - LetheanSpace
+        version:
+          type: string
+          enum:
+            - "1.0"
+        providerid:
+          type: string
+        spaceid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: object
+          additionalProperties: false
+          properties:
+            per-day:
+              type: number
+        ips:
+          type: array
+          items:
+            type: string
+        dns_servers:
+          type: array
+          items:
+            type: string
+      required:
+        - spaceid
+        - providerid
+        - filetype
+        - version

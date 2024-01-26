@@ -7,18 +7,10 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Provider(VDPObject):
 
-    def __init__(self, cfg, providerinfo):
+    def __init__(self, cfg, providerinfo, file=None):
         self.cfg = cfg
-        try:
-            self._data = providerinfo
-            if "filetype" in self._data and self._data["filetype"] == 'LetheanProvider' and "ca" in self._data and "wallet" in self._data and "manager-url" in self._data:
-                pass
-            else:
-                logging.error("Bad Provider definition: %s" % providerinfo)
-                sys.exit(1)
-        except Exception as e:
-            logging.error("Bad Provider definition: %s(%s)" % (providerinfo, e))
-            raise VDPException("Bad Provider definition: %s(%s)" % (providerinfo, e))
+        self.validate(providerinfo, "Provider", file)
+        self._data = providerinfo
 
     def get_id(self):
         return self._data["providerid"]

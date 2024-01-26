@@ -93,4 +93,4 @@ usage: client.py [-h] [-c CONFIG] [--ptw-bin PTW_BIN] [--wallet-rpc-bin WALLET_R
 
 ## Server
 Server is based on multiple docker images. We will put more info later.
-You can see [openapi schema](config/api.yaml)
+You can see [openapi schema](misc/schemas/server-api.yaml)

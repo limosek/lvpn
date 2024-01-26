@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Lethean VPN client OpenAPI
+  description: |-
+    This is Lethean VPN API definition
+  license:
+      name: GPLv3
+  version: "1.0"
+
+paths:
+  /api/vdp:
+    get:
+      summary: Get VDP
+      description: Get VPN Description Protocol containing all known Spaces and Gateways
+      operationId: getVdp
+      parameters:
+        - in: query
+          name: checkOnly
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '500':
+          description: server error
+    post:
+      summary: Post new VDP to client
+      description: Post new VDP to client
+      operationId: pushVdp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vdp'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vdp'
+        '443':
+          description: Error in VDP
+
+  /api/connect:
+    post:
+      summary: Connect existing prepaid session
+      description: Connect existing prepaid session
+      operationId: Connect
+      parameters:
+        - in: query
+          name: sessionid
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '400':
+          description: Bad request
+        '402':
+          description: Awaiting payment
+        '460':
+          description: Unknown/bad space
+        '461':
+          description: Unknown/bad gate
+        '462':
+          description: Cannot use this space/gate combination
+        '500':
+          description: Server error
+
+  /api/disconnect:
+    get:
+      parameters:
+      - in: query
+        name: connectionid
+        schema:
+          type: string
+      summary: Disconnect connection
+      description: Disconnect connection
+      operationId: Disconnect
+      responses:
+        '200':
+          description: Disconnected
+        '404':
+          description: Bad connection ID
+
+  /api/connections:
+    get:
+      summary: Get Active connections
+      description: Get active connections
+      operationId: getConnections
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connections'
+
+  /api/sessions:
+    get:
+      summary: Get Active sessions
+      description: Get active sessions. This means all prepaid sessions, some of them can be connected, some disconnected
+      operationId: getSessions
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessions'
+
+  /api/session/prepare:
+    post:
+      summary: Prepare session
+      description: Prepare new session based on gate and space. This means to fetch all info and return information how to pay
+      operationId: prepareSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrepareSession'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /api/session/pay:
+    get:
+      summary: Pay session
+      description: Pay prepared session based on session data from prepare
+      operationId: paySession
+      parameters:
+        - in: query
+          name: sessionid
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Not enough credit
+        '500':
+          description: Server error
+
+components:
+  schemas:
+

@@ -2,6 +2,11 @@ import json
 import tempfile
 import os
 
+import jsonschema
+import openapi_schema_validator
+from jsonschema.exceptions import ValidationError
+from openapi_core import OpenAPI
+
 
 class VDPException(Exception):
     def __init__(self, message, *args):
@@ -13,6 +18,18 @@ class VDPException(Exception):
 
 
 class VDPObject:
+
+    @classmethod
+    def validate(cls, data, schema, file=None):
+        openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/server.yaml")
+        spc = openapi.spec.contents()
+        resolver = jsonschema.validators.RefResolver.from_schema(spc)
+        validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"][schema],
+                                                            resolver=resolver)
+        try:
+            validator.validate(data)
+        except ValidationError as e:
+            raise VDPException("Bad schema: %s/%s/%s" % (file, schema, e.message))
 
     def get_name(self):
         return self._data["name"]

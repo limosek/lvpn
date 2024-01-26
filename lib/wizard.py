@@ -46,7 +46,7 @@ class Wizard:
             pass
 
         try:
-            os.mkdir(cfg.authids_dir)
+            os.mkdir(cfg.sessions_dir)
         except FileExistsError as e:
             pass
 

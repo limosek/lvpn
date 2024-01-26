@@ -1,0 +1,85 @@
+# Session definition
+###################################
+
+    Session:
+      type: object
+      additionalProperties: false
+      properties:
+        space:
+          $ref: '#/components/schemas/Space'
+        gate:
+          $ref: '#/components/schemas/Gate'
+        created:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        bearer:
+          type: string
+        wallet:
+          type: string
+        price:
+          type: number
+        days:
+          type: number
+        paid:
+          type: boolean
+        paymentid:
+          type: string
+        wg:
+          $ref: '#/components/schemas/WgSessionData'
+        proxy:
+          $ref: '#/components/schemas/ProxySessionData'
+        sessionid:
+          type: string
+        expires:
+          type: integer
+      required:
+        - time
+        - sessionid
+        - paymentid
+        - wallet
+        - price
+        - days
+        - expires
+
+    Sessions:
+      type: array
+      items:
+        $ref: '#/components/schemas/Session'
+
+    SessionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        space:
+          $ref: '#/components/schemas/Space'
+        gate:
+          $ref: '#/components/schemas/Gate'
+        days:
+          type: integer
+      required:
+        - space
+        - gate
+        - days
+
+    WgSessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        ip:
+          type: string
+        network_bits:
+          type: integer
+        gw:
+          type: string
+        dns:
+          type: string
+
+    ProxySessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        crt:
+          type: string

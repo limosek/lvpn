@@ -90,10 +90,10 @@ New-Installer -ProductName "LVPN" -Manufacturer "Lethean.Space" -ProductId "672f
     New-InstallerDirectory -PredefinedDirectory "LocalAppDataFolder"  -Content {
         addDir lvpn 1
         New-InstallerDirectory -PredefinedDirectory "DesktopFolder" -Content {
-            New-InstallerShortcut -Name "LVPN" -FileId "mainFile" -IconPath "$pwd\..\config\icon.ico"
-            New-InstallerShortcut -Name "LVPN-Debug" -FileId "mainFileDbg" -IconPath "$pwd\..\config\icon.ico"
+            New-InstallerShortcut -Name "LVPN" -FileId "mainFile" -IconPath "$pwd\..\config\lvpn.ico"
+            New-InstallerShortcut -Name "LVPN-Debug" -FileId "mainFileDbg" -IconPath "$pwd\..\config\lvpn.ico"
         }
     }
- } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\icon.ico" -CustomAction $setup
+ } -OutputDirectory (Join-Path $pwd "msi") -AddRemoveProgramsIcon "$pwd\..\config\lvpn.ico" -CustomAction $setup
 
 Get-FileHash msi\lvpn.${version}.x86.msi

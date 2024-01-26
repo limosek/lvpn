@@ -1,6 +1,5 @@
 {
   "filetype": "LetheanProvider",
-  "type": "http-proxy",
   "version": "1.0",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "1st Lethean Provider",
@@ -13,8 +12,5 @@
   "spaces": [
     "1st",
     "free"
-  ],
-  "gates": [
-    "1st"
   ]
 }

@@ -1,6 +1,6 @@
 {
   "filetype": "LetheanGateway",
-  "type": "daemon-p2p",
+  "type": "daemon-p2p-proxy",
   "version": "1.0",
   "gateid": "free-daemon-p2p-tls",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
@@ -9,7 +9,7 @@
   "price": {
     "per-day": 0
   },
-  "daemon-p2p": {
+  "daemon-p2p-proxy": {
     "host": "vpn.lethean.space",
     "port": 8776
   },

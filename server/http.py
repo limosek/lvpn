@@ -11,13 +11,13 @@ from openapi_core.contrib.flask.decorators import FlaskOpenAPIViewDecorator
 import openapi_schema_validator
 import secrets
 
-from lib.authid import AuthID
+from lib.session import AuthID
 from lib.service import Service
 from lib.signverify import Sign, Verify
 from lib.vdp import VDP
 
 app = Flask(__name__)
-openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../config/api.yaml")
+openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../config/server-api.yaml")
 openapi_validated = FlaskOpenAPIViewDecorator(openapi)
 
 
@@ -25,19 +25,6 @@ def make_response(code, reason, data=None):
     if data is None:
         data = {}
     return Response(json.dumps(data, indent=2), "%s %s" % (code, reason), {'content-type': 'application/json'})
-
-
-# Define your API endpoints based on the OpenAPI JSON
-@app.route('/api/gates', methods=['GET'])
-@openapi_validated
-def get_gates():
-    return json.loads(Manager.ctrl["cfg"].vdp.gates(as_json=True))
-
-
-@app.route('/api/spaces', methods=['GET'])
-@openapi_validated
-def get_spaces():
-    return json.loads(Manager.ctrl["cfg"].vdp.spaces(as_json=True))
 
 
 @app.route('/api/vdp', methods=['GET'])
@@ -134,13 +121,13 @@ def connect():
 class Manager(Service):
 
     p = None
-    myname = "manager"
+    myname = "server-manager"
 
     @classmethod
     def postinit(cls):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
-        app.run(port=cls.ctrl["cfg"].http_port, host="0.0.0.0", debug=(cls.ctrl["cfg"].l == "DEBUGa"))
+        app.run(port=cls.ctrl["cfg"].http_port, host="0.0.0.0")
         cls.exit = True
 
     @classmethod

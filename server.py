@@ -9,7 +9,7 @@ from lib.wizard import Wizard
 
 os.environ["NO_KIVY"] = "1"
 
-from lib.authids import AuthIDs
+from lib.sessions import AuthIDs
 from lib.queue import Queue
 from lib.shared import Messages
 from lib.vdp import VDP
@@ -54,7 +54,7 @@ def main():
     p.add_argument("--cfg-dir", help="Cfg directory", default=os.getenv("WLS_CFG_DIR"), env_var="WLS_CONF_DIR")
     p.add_argument("--app-dir", help="App directory", default=os.path.basename(__file__))
     p.add_argument("--haproxy-mgmt", help="HAProxy mgmt sock to use", default="/var/run/haproxy/mgmt")
-    p.add_argument("--http-port", help="HTTP port to use", default=8123)
+    p.add_argument("--http-port", help="HTTP port to use for manager", default=8123)
     p.add_argument("--provider-private-key", help="Private provider key",
                    default=os.getenv("WLS_CFG_DIR") + "/provider.private")
     p.add_argument("--provider-public-key", help="Public provider key",

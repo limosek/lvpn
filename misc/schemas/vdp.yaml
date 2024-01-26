@@ -1,0 +1,30 @@
+# Openapi VDP definition
+###################################
+
+    Vdp:
+      type: object
+      additionalProperties: false
+      properties:
+        filetype:
+          type: string
+          enum:
+            - VPNDescriptionProtocol
+        version:
+          type: string
+          enum:
+            - "1.0"
+        spaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Space'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Gate'
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+      required:
+        - filetype
+        - version

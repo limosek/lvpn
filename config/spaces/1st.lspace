@@ -9,8 +9,5 @@
   "dns_servers": ["172.31.129.16"],
   "price": {
     "per-day": 0.1
-  },
-  "signed_by": [
-    {"id": "abcd", "time": 1701879034, "hash": "somehash"}
-  ]
+  }
 }

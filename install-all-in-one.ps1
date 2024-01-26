@@ -85,7 +85,7 @@ Set-Location ..
 $WshShell = New-Object -comObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath("Desktop") + "\lvpn.lnk")
 $Shortcut.TargetPath = "${appdir}/lvpnc.cmd"
-$Shortcut.IconLocation = "${appdir}/config/icon.ico"
+$Shortcut.IconLocation = "${appdir}/config/lvpn.ico"
 $Shortcut.WorkingDirectory = "${appdir}"
 $Shortcut.Save()
 

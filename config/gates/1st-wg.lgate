@@ -12,7 +12,7 @@
   "wg": {
     "host": "vpn.lethean.space",
     "port": 8127,
-    "public": "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM="
+    "public_key": "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM="
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"
