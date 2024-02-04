@@ -422,11 +422,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        space:
-          $ref: '#/components/schemas/Space'
-        gate:
-          $ref: '#/components/schemas/Gate'
-        time:
+        spaceid:
+          type: string
+        gateid:
+          type: string
+        created:
           type: integer
         username:
           type: string
@@ -437,6 +437,8 @@ components:
         wallet:
           type: string
         price:
+          type: number
+        days:
           type: number
         paid:
           type: boolean
@@ -451,11 +453,12 @@ components:
         expires:
           type: integer
       required:
-        - time
+        - created
         - sessionid
         - paymentid
         - wallet
         - price
+        - days
         - expires
 
     Sessions:
@@ -467,15 +470,17 @@ components:
       type: object
       additionalProperties: false
       properties:
-        space:
-          $ref: '#/components/schemas/Space'
-        gate:
-          $ref: '#/components/schemas/Gate'
+        spaceid:
+          type: string
+        gateid:
+          type: string
+        sessionid:
+          type: string
         days:
           type: integer
       required:
-        - space
-        - gate
+        - spaceid
+        - gateid
         - days
 
     WgSessionData:

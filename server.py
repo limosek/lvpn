@@ -4,12 +4,12 @@ import os
 import sys
 import time
 
+os.environ["NO_KIVY"] = "1"
+os.environ["KIVY_NO_ARGS"] = "1"
+
 from lib.signverify import Sign, Verify
 from lib.wizard import Wizard
-
-os.environ["NO_KIVY"] = "1"
-
-from lib.sessions import AuthIDs
+from lib.sessions import Sessions
 from lib.queue import Queue
 from lib.shared import Messages
 from lib.vdp import VDP
@@ -44,7 +44,7 @@ def loop(queue, mngr_queue, proxy_queue):
 def main():
     if not os.getenv("WLS_CFG_DIR"):
         os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
-    p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/server.conf'])
+    p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/server.ini'])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
                    env_var='WLS_LOGLEVEL')
@@ -52,8 +52,13 @@ def main():
                    default=os.getenv("WLS_CFG_DIR") + "/haproxy/haproxy.cfg")
     p.add_argument("--var-dir", help="Var directory", default=os.path.expanduser("~") + "/lvpn", env_var="WLS_VAR_DIR")
     p.add_argument("--cfg-dir", help="Cfg directory", default=os.getenv("WLS_CFG_DIR"), env_var="WLS_CONF_DIR")
-    p.add_argument("--app-dir", help="App directory", default=os.path.basename(__file__))
+    p.add_argument("--app-dir", help="App directory", default=os.path.dirname(__file__))
     p.add_argument("--haproxy-mgmt", help="HAProxy mgmt sock to use", default="/var/run/haproxy/mgmt")
+    p.add_argument("--stripe-api-key", help="Stripe private key for payments")
+    p.add_argument("--stripe-payment-id", help="Stripe priceID for payment")
+    p.add_argument("--lthn-price", help="Price for 1 LTHN. Use fixed number for fixed price or use *factor to factor actual price by number")
+    p.add_argument("--tradeogre-api-key", help="TradeOgre API key for conversions")
+    p.add_argument("--tradeogre-api-secret", help="TradeOgre API secret key for conversions")
     p.add_argument("--http-port", help="HTTP port to use for manager", default=8123)
     p.add_argument("--provider-private-key", help="Private provider key",
                    default=os.getenv("WLS_CFG_DIR") + "/provider.private")
@@ -63,8 +68,8 @@ def main():
                    default=os.getenv("WLS_CFG_DIR") + "/spaces")
     p.add_argument("--gates-dir", help="Directory containing all gateway SDPs",
                    default=os.getenv("WLS_CFG_DIR") + "/gates")
-    p.add_argument("--authids-dir", help="Directory containing all authids",
-                   default=os.getenv("WLS_CFG_DIR") + "/authids")
+    p.add_argument("--sessions-dir", help="Directory containing all sessions",
+                   default=os.getenv("WLS_CFG_DIR") + "/sessions")
     p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
                    default=os.getenv("WLS_CFG_DIR") + "/providers")
     p.add_argument("--ca-dir", help="Directory for Certificate authority",
@@ -72,14 +77,13 @@ def main():
     p.add_argument("--ca-name", help="Common name for CA creation",
                    default="LVPN-easy-provider")
 
-
     cfg = p.parse_args()
     logging.basicConfig(level=cfg.l)
     cfg.vdp = VDP(cfg)
-    cfg.authids = AuthIDs(cfg.authids_dir)
+    cfg.sessions = Sessions(cfg)
     processes = {}
 
-    Wizard().files(cfg, os.environ["WLS_CFG_DIR"])
+    Wizard().files(cfg)
 
     if not os.path.exists(cfg.ca_dir):
         Wizard().ca(cfg)

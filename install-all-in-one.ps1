@@ -68,6 +68,7 @@ Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile get-pip.py
 import site
 "@ | Out-File -Encoding utf8 -FilePath python312._pth -Append
 
+Set-Location ..
 $Env:PATH += ";" + (Resolve-Path .\python)
 $Env:PATH += ";" + (Resolve-Path .\python\scripts)
 $Env:PATH += ";" + (Resolve-Path .\bin)
@@ -76,7 +77,6 @@ $Env:PATH += ";" + (Resolve-Path .\lethean-cli-windows)
 #############################################################################
 # Install dependencies
 #############################################################################
-Set-Location ..
 .\python\python -m pip install -r requirements.txt
 
 #############################################################################

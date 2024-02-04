@@ -16,7 +16,11 @@ class Provider(VDPObject):
         return self._data["providerid"]
 
     def get_wallet(self):
-        return self._data["wallet"]
+        if self.cfg.force_manager_wallet:
+            logging.getLogger("vdp").warning("Using forced provider wallet %s" % self.cfg.force_manager_wallet)
+            return self.cfg.force_manager_wallet
+        else:
+            return self._data["wallet"]
 
     def get_ca(self):
         return self._data["ca"]

@@ -16,3 +16,4 @@ pyinstaller
 setproctitle
 sshtunnel
 ownca
+stripe

@@ -22,6 +22,7 @@ COPY client/* /home/lvpn/src/client/
 COPY server/* /home/lvpn/src/server/
 COPY lib/* /home/lvpn/src/lib/
 COPY config/ /home/lvpn/src/config/
+COPY misc/ /home/lvpn/src/misc/
 COPY server.py client.py setup.cfg setup.py /home/lvpn/src/
 COPY requirements.txt /home/lvpn/src/
 COPY requirements-lite.txt /home/lvpn/src/
@@ -40,6 +41,8 @@ USER lvpn
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
     pip3 install -r requirements-lite.txt
+
+RUN ./misc/combine-openapi-files.sh
 
 RUN . venv/bin/activate && python client.py -h
 RUN . venv/bin/activate && python server.py -h

@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 import os
 
@@ -18,6 +19,8 @@ class VDPException(Exception):
 
 
 class VDPObject:
+
+    cfg = False
 
     @classmethod
     def validate(cls, data, schema, file=None):
@@ -47,7 +50,10 @@ class VDPObject:
         return self._provider
 
     def get_manager_url(self):
-        return "https://%s:%s" % (self._data["manager"]["host"], self._data["manager"]["port"])
+        if self.cfg and self.cfg.force_manager_url:
+            logging.getLogger("vdp").warning("Using forced manager URL %s" % self.cfg.force_manager_url)
+            return self.cfg.force_manager_url
+        return self._data["manager-url"]
 
     def get_price(self):
         if "price" in self._data and "per-day" in self._data["price"]:

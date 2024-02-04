@@ -11,3 +11,5 @@ requests
 paramiko
 setproctitle
 sshtunnel
+ownca
+stripe

@@ -94,6 +94,22 @@
       Label:
         id: balance
         text: ""
+      BoxLayout:
+        size_hint_y: 1
+        id: buy_buttons
+        canvas.before:
+          Color:
+            rgba: .9, .9, .9, 1
+          Line:
+            width: 2
+            rectangle: self.x, self.y, self.width, self.height
+        orientation: "vertical"
+        Button:
+          id: buy_credit
+          text: "Buy coins"
+          on_press: root.buy_credit()
+          disabled: True
+
     BoxLayout:
       Label:
         text: "Unlocked balance"

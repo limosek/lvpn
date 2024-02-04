@@ -81,7 +81,7 @@ paths:
       operationId: getSession
       parameters:
         - in: query
-          name: id
+          name: sessionid
           schema:
             type: string
       responses:
@@ -93,6 +93,28 @@ paths:
                 $ref: '#/components/schemas/Session'
         '404':
           description: Session not found
+        '500':
+          description: Server error
+
+  /api/pay/stripe:
+    get:
+      summary: Get Link for the Stripe payment
+      description: Get Link for the Stripe payment
+      operationId: stripePayment
+      parameters:
+        - in: query
+          name: paymentid
+          schema:
+            type: string
+        - in: query
+          name: wallet
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Bad parameters
         '500':
           description: Server error
 
@@ -358,11 +380,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        space:
-          $ref: '#/components/schemas/Space'
-        gate:
-          $ref: '#/components/schemas/Gate'
-        time:
+        spaceid:
+          type: string
+        gateid:
+          type: string
+        created:
           type: integer
         username:
           type: string
@@ -373,6 +395,8 @@ components:
         wallet:
           type: string
         price:
+          type: number
+        days:
           type: number
         paid:
           type: boolean
@@ -387,11 +411,12 @@ components:
         expires:
           type: integer
       required:
-        - time
+        - created
         - sessionid
         - paymentid
         - wallet
         - price
+        - days
         - expires
 
     Sessions:
@@ -403,15 +428,17 @@ components:
       type: object
       additionalProperties: false
       properties:
-        space:
-          $ref: '#/components/schemas/Space'
-        gate:
-          $ref: '#/components/schemas/Gate'
+        spaceid:
+          type: string
+        gateid:
+          type: string
+        sessionid:
+          type: string
         days:
           type: integer
       required:
-        - space
-        - gate
+        - spaceid
+        - gateid
         - days
 
     WgSessionData:

@@ -119,9 +119,11 @@ def main():
     p.add_argument('--wallet-name', help='Wallet name')
     p.add_argument('--wallet-password', help='Wallet password')
     p.add_argument('--wallet-address', help='Wallet public address')
+    p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
+    p.add_argument('--force-manager-wallet', help='Manually override wallet address url for all spaces. Used just for tests')
     p.add_argument('--use-http-proxy', type=str, help='Use HTTP proxy (CONNECT) to services', env_var="HTTP_PROXY")
     p.add_argument('--auto-connect', type=str, help='Auto connect uris',
-                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
+                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,active"
                    )
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
@@ -326,8 +328,15 @@ def main():
     if cfg.run_daemon:
         test_binary([cfg.daemon_bin, "--version"])
 
-    for url in cfg.auto_connect.split(","):
+    connects = cfg.auto_connect.split(",")
+    if "active" in connects:
+        for s in cfg.sessions.find_active():
+            connects.append("%s/%s" % (s.get_gateid(), s.get_spaceid()))
+    for url in connects:
         print("Trying to connect to %s" % url)
+        if url == "active":
+            # We have injected active sessions already
+            continue
         try:
             (gateid, spaceid) = url.split("/")
             if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():

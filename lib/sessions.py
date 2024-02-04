@@ -15,13 +15,15 @@ class Sessions:
 
     def load(self, cleanup=False):
         for f in glob.glob(self._cfg.sessions_dir + "/*.lsession"):
-            s = Session(self._cfg).load(f)
+            s = Session(self._cfg)
+            s.load(f)
             if s.is_fresh():
                 self._sessions[s.get_id()] = s
             else:
                 if cleanup:
                     logging.getLogger("wallet").error("Cleaned session %s" % s.get_id())
                     os.unlink(f)
+                    self.remove(s)
 
     def cleanup(self):
         for s in self.find_active():
@@ -46,14 +48,27 @@ class Sessions:
             else:
                 logging.getLogger("wallet").error("Stale session %s" % a.get_id())
 
+    def find_by_id(self, sessionid):
+        if sessionid in self._sessions.keys():
+            return self._sessions[sessionid]
+        else:
+            return False
+
     def find_active(self):
         res = []
-        for a in self._sessions.keys():
+        for a in self._sessions.values():
             if a.is_fresh():
                 res.append(a)
             else:
                 logging.getLogger("wallet").error("Stale session %s" % a.get_id())
         return sorted(res, key=lambda d: d.days_left())
 
+    def add(self, session):
+        self._sessions[session.get_id()] = session
+
+    def remove(self, session):
+        if session.get_id() in self._sessions:
+            del(self._sessions[session.get_id()])
+
     def __repr__(self):
-        return "Sessions[all=%s,stale=%s]" % (len(self._sessions), len(self.find_active()))
+        return "Sessions[all=%s,active=%s]" % (len(self._sessions), len(self.find_active()))

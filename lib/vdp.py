@@ -27,9 +27,11 @@ class VDP:
                 with open(vdpfile, "r") as f:
                     vdpdata = f.read(1000000000)
         if vdpdata or vdpfile:
+            if type(vdpdata) is str:
+                vdpdata = json.loads(vdpdata)
             try:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
-                self._data = json.loads(vdpdata)
+                self._data = vdpdata
                 if "filetype" in self._data and self._data["filetype"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:

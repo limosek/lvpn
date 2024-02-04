@@ -81,7 +81,7 @@ paths:
       operationId: getSession
       parameters:
         - in: query
-          name: id
+          name: sessionid
           schema:
             type: string
       responses:
@@ -93,6 +93,28 @@ paths:
                 $ref: '#/components/schemas/Session'
         '404':
           description: Session not found
+        '500':
+          description: Server error
+
+  /api/pay/stripe:
+    get:
+      summary: Get Link for the Stripe payment
+      description: Get Link for the Stripe payment
+      operationId: stripePayment
+      parameters:
+        - in: query
+          name: paymentid
+          schema:
+            type: string
+        - in: query
+          name: wallet
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Bad parameters
         '500':
           description: Server error
 

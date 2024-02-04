@@ -67,7 +67,8 @@ class Connect(GridLayout):
         logging.getLogger("gui").warning("Disconnect %s/%s" % (instance.gateid, instance.spaceid))
         client.gui.GUI.queue.put(Messages.disconnect(gateid=instance.gateid, spaceid=instance.spaceid))
 
-    def run_edge(self, instance):
+    @classmethod
+    def run_edge(cls, instance):
         args = [
             client.gui.GUI.ctrl["cfg"].edge_bin,
             "--inprivate",
@@ -77,11 +78,12 @@ class Connect(GridLayout):
         ]
         logging.getLogger().debug("Running %s" % " ".join(args))
         try:
-            RunCmd.popen(args, shell=False)
+            RunCmd.run(args, shell=False)
         except Exception as e:
             logging.getLogger("gui").error(e)
 
-    def run_chromium(self, instance):
+    @classmethod
+    def run_chromium(cls, instance):
         args = [
             client.gui.GUI.ctrl["cfg"].chromium_bin,
             "--incognito",
@@ -90,17 +92,17 @@ class Connect(GridLayout):
             instance.url
         ]
         logging.getLogger().debug("Running %s" % " ".join(args))
-        print(args)
         try:
-            RunCmd.popen(args, shell=False)
+            RunCmd.run(args, shell=False)
         except Exception as e:
             logging.getLogger("gui").error(e)
 
-    def run_browser(self, instance):
+    @classmethod
+    def run_browser(cls, instance):
         if shutil.which(client.gui.GUI.ctrl["cfg"].chromium_bin):
-            self.run_chromium(instance)
+            cls.run_chromium(instance)
         elif shutil.which(client.gui.GUI.ctrl["cfg"].edge_bin):
-            self.run_edge(instance)
+            cls.run_edge(instance)
         else:
             pass
 

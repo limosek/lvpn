@@ -8,12 +8,18 @@ class Session:
     def __init__(self, cfg, data=None):
         self._cfg = cfg
         self._data = data
+        if data:
+            if "gateid" in data:
+                self._gate = self._cfg.vdp.get_gate(data["gateid"])
+            if "spaceid" in data:
+                self._space = self._cfg.vdp.get_gate(data["spaceid"])
 
     def generate(self, gateid, spaceid, days):
+        price = (self._cfg.vdp.get_space(spaceid).get_price() + self._cfg.vdp.get_gate(gateid).get_price()) * days
         self._data = {
             "sessionid": secrets.token_hex(8),
-            "space": self._cfg.vdp.get_space(spaceid),
-            "gate": self._cfg.vdp.get_gate(gateid),
+            "spaceid": spaceid,
+            "gateid": gateid,
             "created": int(time.time()),
             "paymentid": secrets.token_hex(8),
             "username": "user_" + secrets.token_hex(5),
@@ -21,14 +27,30 @@ class Session:
             "bearer": secrets.token_hex(12),
             "wallet": self._cfg.vdp.get_space(spaceid).get_wallet(),
             "days": int(days),
-            "price":  (self._cfg.vdp.get_space(spaceid) + self._cfg.vdp.get_gate(gateid)) * days
+            "expires": int(time.time()) + int(days)*3600*24,
+            "paid": price == 0,
+            "price": price
         }
+        self._gate = self._cfg.vdp.get_gate(gateid)
+        self._space = self._cfg.vdp.get_space(spaceid)
+
+    def get_spaceid(self):
+        return self._space.get_id()
+
+    def get_gateid(self):
+        return self._gate.get_id()
 
     def get_id(self):
-        return self.data["sessionid"]
+        return self._data["sessionid"]
+
+    def get_price(self):
+        return self._data["price"]
+
+    def is_paid(self):
+        return self._data["paid"]
 
     def get_paymentid(self):
-        return self.data["paymentid"]
+        return self._data["paymentid"]
 
     def save(self, file=None):
         if not file:
@@ -40,19 +62,24 @@ class Session:
         with open(file, "r") as f:
             buf = f.read(10000)
             self._data = json.loads(buf)
+        self._gate = self._cfg.vdp.get_gate(self._data["gateid"])
+        self._space = self._cfg.vdp.get_gate(self._data["spaceid"])
 
     def is_for_gate(self, gateid):
-        return self._data["gate"].get_id() == gateid
+        return self._gate.get_id() == gateid
 
     def is_for_space(self, spaceid):
-        return self._data["space"].get_id() == spaceid
+        return self._space.get_id() == spaceid
 
     def days_left(self):
         seconds = (self._data["created"] + (self._data["days"] * 3600 * 24)) - time.time()
         return int(seconds/3600/24)
 
     def is_fresh(self):
-        return self.days_left() < 0
+        return self.days_left() > 0
+
+    def get_dict(self):
+        return self._data
 
     def __str__(self):
         return json.dumps(self._data)

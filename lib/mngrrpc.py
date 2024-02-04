@@ -10,6 +10,12 @@ class ManagerRpcCall:
     def parse_response(self, response):
         return json.loads(response)
 
+    def get_payment_url(self, wallet, paymentid):
+        r = requests.get(
+            self._baseurl + "/api/pay/stripe?wallet=%s&paymentid=%s" % (wallet, paymentid)
+        )
+        return r.text
+
     def preconnect(self, parameters):
         r = requests.post(
             self._baseurl + "/api/connect",

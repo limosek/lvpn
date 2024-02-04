@@ -29,3 +29,7 @@ class RunCmd:
         else:
             info = None
         return subprocess.Popen(args, startupinfo=info, **kwargs)
+
+    @classmethod
+    def run(cls, args, **kwargs):
+        return subprocess.Popen(args, **kwargs)

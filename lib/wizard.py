@@ -17,8 +17,10 @@ from lib.vdp import VDP
 class Wizard:
 
     @staticmethod
-    def files(cfg, vardir):
+    def files(cfg, vardir=None):
         cfgc = copy(cfg)
+        if not vardir:
+            vardir = cfg.var_dir
         logging.getLogger().warning("Initializing default files")
         try:
             os.mkdir(vardir)
@@ -119,10 +121,6 @@ wallet-rpc-password = %s
           "providerid": verification_key,
           "name": spacename,
           "description": spacename,
-          "manager": {
-            "host": host,
-            "port": 8780
-          },
           "price": {
             "per-day": 0
           }
@@ -139,18 +137,19 @@ wallet-rpc-password = %s
             "per-day": 0
           },
           "http-proxy": {
-            "host":host,
+            "host": host,
             "port": 8888
           },
           "spaces": [
             "%s.free" % verification_key
           ]
         }
-        vdp = VDP(cfg, vdpdata=json.dumps({
+        vdp = VDP(cfg, vdpdata={
             "filetype": "VPNDescriptionProtocol",
+            "version": "1.0",
             "providers": [provider],
             "gates": [httpgate],
             "spaces": [space]
-        }))
+        })
         vdp.save(cfg)
 
