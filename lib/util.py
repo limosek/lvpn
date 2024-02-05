@@ -1,4 +1,5 @@
 import codecs
+import time
 
 
 class Util:
@@ -26,3 +27,10 @@ class Util:
     @classmethod
     def shorten_wallet_address(cls, wallet):
         return wallet[:5] + "..." + wallet[-10:]
+
+    @classmethod
+    def every_x_seconds(cls, x):
+        if int(time.time()) % x == 0:
+            return True
+        else:
+            return False

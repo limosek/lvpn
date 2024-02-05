@@ -17,7 +17,6 @@ class Status(GridLayout):
         self.add_widget(client.gui_switcher.Switcher())
 
     def refresh_values(self, dt):
-        logging.getLogger("gui").debug("Refreshing Status info")
         try:
             self.ids.balance.text = str(client.gui.GUI.ctrl["balance"])
             self.ids.unlocked_balance.text = str(client.gui.GUI.ctrl["unlocked_balance"])
@@ -34,8 +33,9 @@ class Status(GridLayout):
                         self.ids.buy_credit.disabled = False
                     self.ids.sync_progress_info.text = "Synced (%s)" % client.gui.GUI.ctrl["wallet_height"]
                     self.ids.sync_progress_info.color = (0, 0.7, 0)
-        except Exception as e:
-            logging.getLogger("gui").error(e)
+            logging.getLogger("gui").debug("Refreshed Status info")
+        except ReferenceError:
+            pass
 
     def buy_credit(self):
         provider = client.gui.GUI.ctrl["cfg"].vdp.get_provider(

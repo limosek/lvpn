@@ -61,7 +61,7 @@ class Service:
         cls.kwargs = kwargs
         for handler in logging.getLogger(cls.myname).handlers[:]:
             logging.getLogger(cls.myname).removeHandler(handler)
-        fh = logging.FileHandler(cls.ctrl["cfg"].var_dir + "/lvpn-client.log")
+        fh = logging.FileHandler(cls.ctrl["cfg"].log_file)
         fh.setLevel(cls.ctrl["cfg"].l)
         sh = logging.StreamHandler()
         sh.setLevel(cls.ctrl["cfg"].l)

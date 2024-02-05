@@ -11,6 +11,7 @@ from kivy.uix.togglebutton import ToggleButton
 import client
 from lib.mngrrpc import ManagerRpcCall
 from lib.runcmd import RunCmd
+from lib.session import Session
 from lib.shared import Messages
 
 
@@ -114,17 +115,12 @@ class Connect(GridLayout):
         space = client.gui.GUI.ctrl["cfg"].vdp.get_space(instance._spaceid)
         gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(instance._gateid)
         try:
-            mngr = ManagerRpcCall("http://localhost:8123")
-            data = mngr.preconnect(
-                {
-                    "spaceid": space.get_id(),
-                    "gateid": gate.get_id(),
-                    "days": instance._days
-                })
-            print(data)
-            paymentid = data["paymentid"]
-            client.gui.GUI.ctrl["payments"][paymentid] = data
-            self.parent.prepare_pay(data["wallet"], str(data["price"]), data["paymentid"])
+            mngr = ManagerRpcCall(space.get_manager_url())
+            data = mngr.create_session(gate.get_id(), space.get_id(), instance._days)
+            session = Session(client.gui.GUI.ctrl["cfg"], data=data)
+            session.save()
+            if not session.is_paid():
+                client.gui.GUI.queue.put(session.get_pay_msg())
         except Exception as e:
             logging.getLogger("gui").error("Cannot prepare payment: %s" % e)
 
@@ -143,17 +139,24 @@ class Connect(GridLayout):
         if instance.state == "down":
             client.gui.GUI.ctrl["selected_gate"] = instance.gateid
             self.ids.connect_button.disabled = False
-            authids = client.gui.GUI.ctrl["cfg"].authids.find_for_gate(instance.gateid)
+            sessions = client.gui.GUI.ctrl["cfg"].sessions.find(gateid=instance.gateid, fresh=True)
             space = client.gui.GUI.ctrl["cfg"].vdp.get_space(client.gui.GUI.ctrl["selected_space"])
             gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
-            if (space.get_price() + gate.get_price()) == 0 or len(authids) > 0:
+            if (space.get_price() + gate.get_price()) == 0 or len(sessions) > 0:
+                session = sessions[0]
                 self.ids.pay_1.disabled = True
                 self.ids.pay_30.disabled = True
+                if session.is_active():
+                    self.ids.payment_state.text = "Active (%s days left)" % session.days_left()
+                elif session.is_paid():
+                    self.ids.payment_state.text = "Paid (%s days left)" % session.days_left()
+                else:
+                    self.ids.payment_state.text = "Paying (%s seconds left)" % session.seconds_left()
                 self.ids.connect_button.disabled = False
                 if (space.get_price() + gate.get_price()) == 0:
                     self.ids.payment_state.text = "Free"
                 else:
-                    self.ids.payment_state.text = "%s days left" % authids[0].days_left()
+                    self.ids.payment_state.text = "%s days left" % sessions[0].days_left()
             else:
                 self.ids.pay_buttons.clear_widgets()
                 pay_1 = PayButton(text="Pay 1 day", gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], days=1, on_press=self.pay_service)

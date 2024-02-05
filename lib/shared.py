@@ -14,6 +14,8 @@ class Messages:
     DISCONNECT = "Proxy/Disconnect"
     CONNECT_INFO = "Proxy/InfoConnect"
     PAY = "Wallet/Pay"
+    PAID = "All/Paid"
+    UNPAID = "All/UnPaid"
     RESTORE_WALLET = "Wallet/RestoreFromSeed"
     CREATE_WALLET = "Wallet/Create"
     WALLET_ERROR = "All/WalletError"
@@ -41,10 +43,24 @@ class Messages:
         return msg.strip()
 
     @classmethod
-    def pay(cls, wallet, amount, authid):
-        data = pickle.dumps({"wallet": wallet, "amount": amount, "authid": authid})
+    def pay(cls, payments, paymentid):
+        data = pickle.dumps([payments, paymentid])
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.PAY, tdata)
+        return msg.strip()
+
+    @classmethod
+    def paid(cls, msg):
+        data = pickle.dumps(msg)
+        tdata = codecs.encode(data, "base64").decode("utf-8")
+        msg = "%s:%s" % (cls.PAID, tdata)
+        return msg.strip()
+
+    @classmethod
+    def unpaid(cls, msg):
+        data = pickle.dumps(msg)
+        tdata = codecs.encode(data, "base64").decode("utf-8")
+        msg = "%s:%s" % (cls.UNPAID, tdata)
         return msg.strip()
 
     @classmethod

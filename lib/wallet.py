@@ -13,6 +13,7 @@ from requests.auth import HTTPDigestAuth
 from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
 from lib.shared import Messages
+from lib.util import Util
 
 
 class WalletException(ServiceException):
@@ -92,7 +93,7 @@ class Wallet(Service):
             "rescan_bc"
         ]
         logging.getLogger("wallet").warning("Running wallet-cli process: %s" % " ".join(args))
-        cls.pc = RunCmd.popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
+        cls.pc = RunCmd.popen(args, cwd=cls.ctrl["cfg"].tmpdir, shell=False)
 
     @classmethod
     def get_balance(cls, walletid=0):
@@ -124,15 +125,34 @@ class Wallet(Service):
             return False
 
     @classmethod
+    def refresh(cls):
+        data = cls.rpc("refresh")
+        return data
+
+    @classmethod
+    def get_in_transfers(cls, min_height):
+        data = cls.rpc("get_transfers", {
+            "in": True,
+            "min_height": min_height
+        })
+        return data
+
+    @classmethod
     def loop(cls):
-        logging.getLogger("wallet").debug("Wallet loop")
-        while not cls.p.poll():
+        logging.getLogger(cls.myname).debug("Wallet loop")
+        while "norun" in cls.kwargs or not cls.p.poll():
             if cls.pc:
                 try:
-                    logging.getLogger("wallet").error(cls.pc.communicate(input=b"\n\r\n\r", timeout=1))
+                    logging.getLogger(cls.myname).error(cls.pc.communicate(input=b"\n\r\n\r", timeout=1))
                 except Exception as e:
-                    logging.getLogger("wallet").error(e)
+                    logging.getLogger(cls.myname).error(e)
             time.sleep(1)
+            if Util.every_x_seconds(60):
+                #cls.refresh()
+                height = cls.get_height()
+                transfers = cls.get_in_transfers(height["height"] - 5000)
+                for transfer in transfers["in"]:
+                    cls.ctrl["cfg"].sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
             if not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get(block=False, timeout=0.01)
@@ -140,7 +160,11 @@ class Wallet(Service):
                         continue
                     if msg.startswith("Wallet/Pay"):
                         data = Messages.get_msg_data(msg)
-                        cls.transfer(data["wallet"], data["amount"], data["authid"])
+                        if cls.transfer(data[0], data[1]):
+                            cls.queue.put(Messages.paid(msg))
+                        else:
+                            cls.queue.put(Messages.unpaid(msg))
+
                     elif msg.startswith("Wallet/RestoreFromSeed"):
                         data = Messages.get_msg_data(msg)
                         try:
@@ -165,27 +189,55 @@ class Wallet(Service):
 
     @classmethod
     def postinit(cls):
-        args = [
-            cls.ctrl["cfg"].wallet_rpc_bin,
-            "--wallet-dir=%s" % cls.ctrl["cfg"].var_dir,
-            "--rpc-login=%s:%s" % (cls.ctrl["cfg"].wallet_rpc_user, cls.ctrl["cfg"].wallet_rpc_password),
-            "--rpc-bind-port=%s" % (cls.ctrl["cfg"].wallet_rpc_port),
-            "--daemon-address=%s:48782" % (cls.ctrl["cfg"].daemon_host),
-            "--log-level=1", "--log-file=%s/wallet.log" % cls.ctrl["cfg"].var_dir,
-            "--trusted-daemon"
-        ]
-        logging.getLogger("wallet").warning("Running wallet subprocess: %s" % " ".join(args))
-        RunCmd.init(cls.ctrl["cfg"])
-        cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
-        cls.pc = None
+        if "norun" in cls.kwargs:
+            return
+        else:
+            args = [
+                cls.ctrl["cfg"].wallet_rpc_bin,
+                "--wallet-dir=%s" % cls.ctrl["cfg"].var_dir,
+                "--rpc-login=%s:%s" % (cls.ctrl["cfg"].wallet_rpc_user, cls.ctrl["cfg"].wallet_rpc_password),
+                "--rpc-bind-port=%s" % (cls.ctrl["cfg"].wallet_rpc_port),
+                "--daemon-address=%s:48782" % (cls.ctrl["cfg"].daemon_host),
+                "--log-level=1", "--log-file=%s/wallet.log" % cls.ctrl["cfg"].var_dir,
+                "--trusted-daemon"
+            ]
+            logging.getLogger("wallet").warning("Running wallet subprocess: %s" % " ".join(args))
+            RunCmd.init(cls.ctrl["cfg"])
+            cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["cfg"].tmp_dir, shell=False)
+            cls.pc = None
 
     @classmethod
-    def transfer(cls, wallet, price, authid):
-        data = cls.rpc("transfer_split",
-                {
-                    "destinations": [ {"amount": int(float(price) / cls.ctrl["cfg"].coin_unit), "address": wallet} ],
-                    "payment_id": authid
-                }, "POST")
+    def transfer(cls, payments, paymentid):
+        destinations = []
+        msg = "["
+        amount = 0
+        for p in payments:
+            destinations.append(
+                {"amount": int(p["amount"] / cls.ctrl["cfg"].coin_unit), "address": p["wallet"]}
+            )
+            msg += "amount=%s,address=%s " % (p["amount"], p["wallet"])
+            amount += p["amount"]
+        msg += " paymentid=%s]" % paymentid
+        cls.log_warning("Transferring coins start: %s" % msg)
+        balance = cls.get_unlocked_balance()
+        if balance is False or balance is None:
+            cls.log_error("Cannot get balance from wallet")
+            return False
+        else:
+            if balance < amount:
+                cls.log_error("Not enough balance (%s, needs %s)" % (balance, amount))
+                return False
+        try:
+            cls.rpc("transfer_split",
+                    {
+                        "destinations": destinations,
+                        "payment_id": paymentid
+                    }, "POST", exc=True)
+            cls.log_warning("Transferring coins finished OK: %s" % msg)
+            return True
+        except WalletException as e:
+            cls.log_warning("Transferring coins error: %s" % e.message)
+            return False
 
     @classmethod
     def stop(cls):

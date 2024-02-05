@@ -22,11 +22,17 @@
         price:
           type: number
         days:
-          type: number
+          type: integer
         paid:
           type: boolean
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
         paymentid:
           type: string
+        activated:
+          type: integer
         wg:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
@@ -48,6 +54,17 @@
       type: array
       items:
         $ref: '#/components/schemas/Session'
+
+    Payment:
+      type: object
+      additionalProperties: false
+      properties:
+        height:
+          type: string
+        txid:
+          type: string
+        amount:
+          type: number
 
     SessionRequest:
       type: object

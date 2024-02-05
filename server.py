@@ -3,6 +3,12 @@
 import os
 import sys
 import time
+import logging
+
+import _queue
+import configargparse
+import multiprocessing
+import stripe
 
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
@@ -13,11 +19,9 @@ from lib.sessions import Sessions
 from lib.queue import Queue
 from lib.shared import Messages
 from lib.vdp import VDP
-from server.proxy import Proxy
 from server.http import Manager
-import logging
-import configargparse
-import multiprocessing
+from server.stripe import StripeManager
+from server.wallet import ServerWallet
 
 
 def loop(queue, mngr_queue, proxy_queue):
@@ -48,18 +52,29 @@ def main():
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
                    env_var='WLS_LOGLEVEL')
+    p.add_argument("--log-file", help="Log file")
     p.add_argument("--haproxy-cfg", help="HAProxy config file to generate",
                    default=os.getenv("WLS_CFG_DIR") + "/haproxy/haproxy.cfg")
     p.add_argument("--var-dir", help="Var directory", default=os.path.expanduser("~") + "/lvpn", env_var="WLS_VAR_DIR")
     p.add_argument("--cfg-dir", help="Cfg directory", default=os.getenv("WLS_CFG_DIR"), env_var="WLS_CONF_DIR")
     p.add_argument("--app-dir", help="App directory", default=os.path.dirname(__file__))
+    p.add_argument("--tmp-dir", help="Temp directory", default=os.path.expanduser("~") + "/lvpn/tmp", env_var="WLS_TMP_DIR")
     p.add_argument("--haproxy-mgmt", help="HAProxy mgmt sock to use", default="/var/run/haproxy/mgmt")
     p.add_argument("--stripe-api-key", help="Stripe private key for payments")
-    p.add_argument("--stripe-payment-id", help="Stripe priceID for payment")
+    p.add_argument("--stripe-plink-id", help="Stripe payment link id for payment")
     p.add_argument("--lthn-price", help="Price for 1 LTHN. Use fixed number for fixed price or use *factor to factor actual price by number")
     p.add_argument("--tradeogre-api-key", help="TradeOgre API key for conversions")
     p.add_argument("--tradeogre-api-secret", help="TradeOgre API secret key for conversions")
     p.add_argument("--http-port", help="HTTP port to use for manager", default=8123)
+    p.add_argument('--daemon-host', help='Daemon host', default='localhost')
+    p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file', default="lethean-wallet-rpc")
+    p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file', default="lethean-wallet-cli")
+    p.add_argument('--wallet-rpc-url', help='Wallet RPC URL', default='http://localhost:1444/json_rpc')
+    p.add_argument('--wallet-rpc-port', help='Wallet RPC port', type=int, default=1444)
+    p.add_argument('--wallet-rpc-user', help='Wallet RPC user', default='vpn')
+    p.add_argument('--wallet-rpc-password', help='Wallet RPC password.', required=True)
+    p.add_argument('--wallet-address', help='Wallet public address')
+    p.add_argument("--coin-unit", help="Coin minimal unit", type=float, default=1e-8)
     p.add_argument("--provider-private-key", help="Private provider key",
                    default=os.getenv("WLS_CFG_DIR") + "/provider.private")
     p.add_argument("--provider-public-key", help="Public provider key",
@@ -76,9 +91,24 @@ def main():
                    default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ca"))
     p.add_argument("--ca-name", help="Common name for CA creation",
                    default="LVPN-easy-provider")
+    p.add_argument("--unpaid-expiry", help="Unpaid sessions will expire after this seconds",
+                   default=3600, type=int)
+    p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
+    p.add_argument('--force-manager-wallet',
+                   help='Manually override wallet address url for all spaces. Used just for tests')
 
     cfg = p.parse_args()
-    logging.basicConfig(level=cfg.l)
+    if not cfg.log_file:
+        cfg.log_file = cfg.var_dir + "/lvpn-server.log"
+    fh = logging.FileHandler(cfg.log_file)
+    fh.setLevel(cfg.l)
+    sh = logging.StreamHandler()
+    sh.setLevel(cfg.l)
+    formatter = logging.Formatter('%(name)s[%(process)d]:%(levelname)s:%(message)s')
+    fh.setFormatter(formatter)
+    sh.setFormatter(formatter)
+    logging.root.setLevel(logging.NOTSET)
+    logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
     cfg.vdp = VDP(cfg)
     cfg.sessions = Sessions(cfg)
     processes = {}
@@ -109,22 +139,54 @@ def main():
     ctrl = multiprocessing.Manager().dict()
     ctrl["cfg"] = cfg
     queue = Queue(multiprocessing.get_context(), "general")
-    proxy_queue = Queue(multiprocessing.get_context(), "proxy")
+    stripe_queue = Queue(multiprocessing.get_context(), "stripe")
+    wallet_queue = Queue(multiprocessing.get_context(), "wallet")
     mngr_queue = Queue(multiprocessing.get_context(), "mngr")
 
-    proxy = multiprocessing.Process(target=Proxy.run, args=[ctrl, queue, proxy_queue], name="ProxyManager")
-    proxy.start()
-    processes["proxy"] = proxy
-    #wallet = multiprocessing.Process(target=ServerWallet.run, args=[ctrl, queue, proxy_queue], name="Wallet")
-    #wallet.start()
-    #processes["wallet"] = proxy
+    stripemngr = multiprocessing.Process(target=StripeManager.run, args=[ctrl, queue, stripe_queue], name="StripeManager")
+    stripemngr.start()
+    processes["stripemngr"] = stripemngr
+    wallet = multiprocessing.Process(target=ServerWallet.run, args=[ctrl, queue, wallet_queue], kwargs={"norun": True}, name="ServerWallet")
+    wallet.start()
+    processes["wallet"] = wallet
+    manager = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, mngr_queue], name="Manager")
+    manager.start()
+    processes["manager"] = manager
 
-    pl = multiprocessing.Process(target=loop, args=[queue, mngr_queue, proxy_queue])
-    pl.start()
+    should_exit = False
+    while not should_exit:
+        logging.getLogger("server").debug("Main loop")
+        for p in processes.keys():
+            if not processes[p].is_alive():
+                should_exit = True
+                logging.getLogger("server").error(
+                    "One of child process (%s,pid=%s) exited. Exiting too" % (p, processes[p].pid))
+                break
+            time.sleep(1)
+        if not queue.empty():
+            try:
+                msg = queue.get()
+            except _queue.Empty:
+                continue
+            if not msg:
+                continue
+            if Messages.is_for_main(msg):
+                if msg == Messages.EXIT:
+                    should_exit = True
+                    logging.getLogger("server").warning("Exit requested, exiting")
+                    break
+            elif Messages.is_for_all(msg):
+                wallet_queue.put(msg)
+                mngr_queue.put(msg)
+                stripe_queue.put(msg)
+            elif Messages.is_for_wallet(msg):
+                wallet_queue.put(msg)
+            else:
+                logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
+                should_exit = True
+                break
 
-    Manager.run(ctrl, queue, mngr_queue)
-
-    logging.getLogger().warning("Waiting for subprocesses to exit")
+    logging.getLogger("server").warning("Waiting for subprocesses to exit")
     for p in processes.values():
         p.join(timeout=1)
     for p in processes.values():
@@ -136,4 +198,5 @@ def main():
 
 # Run the Flask application
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()

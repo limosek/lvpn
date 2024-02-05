@@ -68,6 +68,8 @@ paths:
           description: Bad request
         '402':
           description: Awaiting payment
+        '404':
+          description: Session not found
         '460':
           description: Unknown/bad space
         '461':
@@ -106,46 +108,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/Connections'
 
-  /api/sessions:
-    get:
-      summary: Get Active sessions
-      description: Get active sessions. This means all prepaid sessions, some of them can be connected, some disconnected
-      operationId: getSessions
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Sessions'
-
-  /api/session/prepare:
+  /api/session:
     post:
-      summary: Prepare session
-      description: Prepare new session based on gate and space. This means to fetch all info and return information how to pay
-      operationId: prepareSession
+      summary: Prepare session to connect to Space using Gate
+      description: Prepare session to connect to Space using Gate
+      operationId: Session
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PrepareSession'
+              $ref: '#/components/schemas/SessionRequest'
       responses:
         '200':
-          description: successful operation
+          description: Connected
+        '400':
+          description: Bad request
+        '402':
+          description: Waiting for payment
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
-
-  /api/session/pay:
+        '460':
+          description: Unknown/bad space
+        '461':
+          description: Unknown/bad gate
+        '462':
+          description: Cannot use this space/gate combination
+        '500':
+          description: Server error
     get:
-      summary: Pay session
-      description: Pay prepared session based on session data from prepare
-      operationId: paySession
+      summary: Get session info
+      description: Get session info
+      operationId: getSession
       parameters:
         - in: query
           name: sessionid
+          required: true
           schema:
             type: string
       responses:
@@ -155,8 +155,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
-        '401':
-          description: Not enough credit
+        '402':
+          description: Waiting for payment
+        '404':
+          description: Session not found
+        '500':
+          description: Server error
+
+  /api/sessions:
+    get:
+      summary: Get client sessions
+      description: Get sessions. This means all prepaid sessions, some of them can be connected, some disconnected
+      operationId: getSessions
+      parameters:
+        - in: query
+          name: active
+          schema:
+            type: boolean
+            default: False
+        - in: query
+          name: notpaid
+          schema:
+            type: boolean
+            default: False
+        - in: query
+          name: expired
+          schema:
+            type: boolean
+            default: False
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessions'
         '500':
           description: Server error
 

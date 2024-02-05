@@ -91,6 +91,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '402':
+          description: Waiting for payment
         '404':
           description: Session not found
         '500':
@@ -117,6 +119,10 @@ paths:
           description: Bad parameters
         '500':
           description: Server error
+        '501':
+          description: Cannot contact market API
+        '502':
+          description: Cannot use Stripe now. Please try again later
 
 components:
   schemas:
@@ -397,11 +403,17 @@ components:
         price:
           type: number
         days:
-          type: number
+          type: integer
         paid:
           type: boolean
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
         paymentid:
           type: string
+        activated:
+          type: integer
         wg:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
@@ -423,6 +435,17 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Session'
+
+    Payment:
+      type: object
+      additionalProperties: false
+      properties:
+        height:
+          type: string
+        txid:
+          type: string
+        amount:
+          type: number
 
     SessionRequest:
       type: object

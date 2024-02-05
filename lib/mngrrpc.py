@@ -1,3 +1,5 @@
+import logging
+
 import requests
 import json
 
@@ -16,23 +18,28 @@ class ManagerRpcCall:
         )
         return r.text
 
-    def preconnect(self, parameters):
+    def create_session(self, gateid, spaceid, days):
         r = requests.post(
-            self._baseurl + "/api/connect",
+            self._baseurl + "/api/session",
             headers={"Content-Type": "application/json"},
-            json=parameters
+            json={
+                "gateid": gateid,
+                "spaceid": spaceid,
+                "days": days
+            }
         )
-        return self.parse_response(r.text)
-
-    def wait_for_connection(self, parameters):
-        r = requests.post(
-            self._baseurl + "/api/connect",
-            headers={"Content-Type": "application/json"},
-            json=parameters
-        )
-        if r.status_code == 200:
+        if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
-        elif r.status_code != 402:
-            raise Exception("Bad response from manager: %s" % r.text)
+        else:
+            return False
+
+    def get_session_info(self, session):
+        r = requests.get(
+            self._baseurl + "/api/session?sessionid=%s" % session.get_id(),
+        )
+        if r.status_code == 200 or r.status_code == 402:
+            return self.parse_response(r.text)
+        elif r.status_code == 404:
+            return None
         else:
             return False

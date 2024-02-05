@@ -14,7 +14,6 @@ import secrets
 from lib.session import Session
 from lib.mngrrpc import ManagerRpcCall
 from lib.service import Service
-from lib.signverify import Sign, Verify
 from lib.vdp import VDP
 
 app = Flask(__name__)
@@ -69,26 +68,6 @@ def post_vdp():
         return make_response(444, "Bad Request data", {"error": str(e)})
 
 
-@app.route('/api/connect', methods=['GET'])
-@openapi_validated
-def connect():
-    pass
-
-
-@app.route('/api/session/prepare', methods=['POST'])
-@openapi_validated
-def prepare_session():
-    space = request.openapi.body["space"]
-    gate = request.openapi.body["gate"]
-    mngr = ManagerRpcCall("http://localhost:8123")
-    data = mngr.preconnect(
-        {
-            "spaceid": space.get_id(),
-            "gateid": gate.get_id(),
-            "days": instance._days
-        })
-
-
 @app.route('/api/connections', methods=['GET'])
 @openapi_validated
 def connections():
@@ -106,6 +85,15 @@ def connections():
         }
         conns.append(ci)
     return conns
+
+
+@app.route('/api/sessions', methods=['GET'])
+@openapi_validated
+def sessions():
+    sessiona = []
+    for c in Manager.ctrl["cfg"].sessions.find():
+        sessiona.append(c.get_dict())
+    return sessiona
 
 
 class Manager(Service):

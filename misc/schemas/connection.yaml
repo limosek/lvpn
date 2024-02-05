@@ -28,14 +28,10 @@
       properties:
         connectionid:
           type: string
-        local_port:
-          type: integer
-        gate:
-          $ref: '#/components/schemas/Gate'
-        space:
-          $ref: '#/components/schemas/Space'
-        session:
-          $ref: '#/components/schemas/Session'
+        sessionid:
+          type: string
+        data:
+          type: object
 
     Connections:
       type: array

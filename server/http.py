@@ -1,5 +1,8 @@
+import logging
 import os.path
 import threading
+import time
+
 import jsonschema
 from flask import Flask, request, Response
 import json
@@ -47,44 +50,74 @@ def get_vdp():
 @app.route('/api/pay/stripe', methods=['GET'])
 @openapi_validated
 def stripe_payment():
-    if not Manager.ctrl["cfg"].stripe_api_key or not Manager.ctrl["cfg"].stripe_price_id or not Manager.ctrl["cfg"].stripe_price_eur:
+    if not Manager.ctrl["cfg"].stripe_api_key or not Manager.ctrl["cfg"].stripe_plink_id:
         return make_response(500, "Server not configured.", {})
-    try:
-        paymentid = request.args["paymentid"]
-        wallet = request.args["wallet"]
-        if not Util.check_paymentid(paymentid):
-            return make_response(400, "Bad paymentid", {})
-        if not Util.check_wallet_address(wallet):
-            return make_response(400, "Bad wallet", {})
-        stripe.api_key = Manager.ctrl["cfg"].stripe_api_key
-        if Manager.ctrl["cfg"].lthn_price[0] == "*":
-            price1 = Market.get_price_coingecko() * float(Manager.ctrl["cfg"].lthn_price[1:])
-        else:
-            price1 = float(Manager.ctrl["cfg"].lthn_price)
-        if price1:
-            amount = Manager.ctrl["cfg"].stripe_price_eur / price1
-            p = stripe.PaymentLink.create(
-                line_items=[{'price': Manager.ctrl["cfg"].stripe_price_id, 'quantity': 1}],
-                payment_intent_data={
-                    'metadata':
-                    {
-                        'wallet': wallet,
-                        'paymentid': paymentid,
-                        'amount': int(amount)
+    paymentid = request.args["paymentid"]
+    wallet = request.args["wallet"]
+    if not Util.check_paymentid(paymentid):
+        return make_response(400, "Bad paymentid", {})
+    if not Util.check_wallet_address(wallet):
+        return make_response(400, "Bad wallet", {})
+    stripe.api_key = Manager.ctrl["cfg"].stripe_api_key
+    if Manager.ctrl["cfg"].lthn_price[0] == "*":
+        price1 = Market.get_price_coingecko() * float(Manager.ctrl["cfg"].lthn_price[1:])
+    else:
+        price1 = float(Manager.ctrl["cfg"].lthn_price)
+    if price1:
+        amount1 = 1 / price1
+        found = None
+        for p in Manager.ctrl["cfg"].stripe_plink_id.split(","):
+            try:
+                pl = stripe.PaymentLink.retrieve(p)
+            except Exception as e:
+                logging.getLogger("http").error("Cannot retrieve payment link %s:%s" % (p, e))
+                break
+            try:
+                updated = float(pl.to_dict()["payment_intent_data"]["metadata"]["updated"])
+            except Exception as e:
+                found = p
+                foundpl = pl
+                logging.getLogger("http").warning("Payment link without metadata:%s - will update" % p)
+                break
+            if not bool(pl["active"]):
+                found = p
+                foundpl = pl
+                logging.getLogger("http").warning("Using free paymentlink:%s" % p)
+                break
+            elif int(updated) + 600 < time.time():
+                try:
+                    stripe.PaymentLink.modify(p, active=False)
+                except Exception as e:
+                    logging.getLogger("http").error("Cannot disable payment link %s:%s" % (p, e))
+                    break
+        if found and foundpl:
+            try:
+                stripe.PaymentLink.modify(
+                    found,
+                    active=True,
+                    custom_text={
+                        "submit": {
+                            "message": "Receive %s VPN credits per 1EUR to wallet %s" % (int(amount1), Util.shorten_wallet_address(wallet))
+                        }
                     },
-                    'description': "Receive %s VPN credits for %sEUR to wallet %s" % (int(amount), Manager.ctrl["cfg"].stripe_price_eur, Util.shorten_wallet_address(wallet))
-                },
-                custom_text={
-                    "submit": {
-                        "message": "Receive %s VPN credits for %sEUR to wallet %s" % (int(amount), Manager.ctrl["cfg"].stripe_price_eur, Util.shorten_wallet_address(wallet))
+                    payment_intent_data={
+                        'metadata': {
+                            'updated': time.time(),
+                            'wallet': wallet,
+                            'paymentid': paymentid,
+                            'amount1': int(amount1)
+                        }
                     }
-                }
-            )
-            return make_response(200, "OK", p.url)
+                )
+                return make_response(200, "OK", foundpl.url)
+            except Exception as e:
+                logging.getLogger("http").error("Cannot modify payment link %s:%s" % (found, e))
+                return make_response(502, "Cannot use Stripe now. Please try again later.", {})
         else:
-            return make_response(500, "Cannot contact market API", {})
-    except Exception as e:
-        return make_response(400, "Bad request", {"error": str(e)})
+            logging.getLogger("http").error("No Stripe payment link available")
+            return make_response(502, "Cannot use Stripe now. Please try again later.", {})
+    else:
+        return make_response(501, "Cannot contact market API", {})
 
 
 @app.route('/api/vdp', methods=['POST'])
@@ -143,7 +176,7 @@ def post_session():
 @openapi_validated
 def get_session():
     if "sessionid" in request.args:
-        session = Manager.ctrl["cfg"].sessions.find_by_id(request.args["sessionid"])
+        session = Manager.ctrl["cfg"].sessions.get(request.args["sessionid"])
         if session:
             if not session.is_paid():
                 return make_response(402, "Waiting for payment", session.get_dict())
@@ -161,7 +194,8 @@ class Manager(Service):
     def postinit(cls):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
-        app.run(port=cls.ctrl["cfg"].http_port, host="0.0.0.0")
+        cls.app = app
+        cls.app.run(port=cls.ctrl["cfg"].http_port, host="0.0.0.0")
         cls.exit = True
 
     @classmethod

@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 
+from lib.mngrrpc import ManagerRpcCall
 from lib.session import Session
 
 
@@ -25,50 +26,82 @@ class Sessions:
                     os.unlink(f)
                     self.remove(s)
 
+    def save(self):
+        for s in self.find():
+            s.save()
+
     def cleanup(self):
-        for s in self.find_active():
+        for s in self.find(active=True):
             self._sessions[s.get_id()] = s
         self.load(cleanup=True)
 
-    def find_for_gate(self, gateid):
-        res = []
-        for a in self._sessions.keys():
-            if a.is_fresh():
-                if a.is_for_gate(gateid):
-                    res.append(a)
-            else:
-                logging.getLogger("wallet").error("Stale session %s" % a.get_id())
-        return sorted(res, key=lambda d: d.days_left())
+    def refresh_status(self):
+        toremove = []
+        for s in self.find(notpaid=True):
+            mrpc = ManagerRpcCall(s.get_manager_url())
+            try:
+                data = mrpc.get_session_info(s)
+                if data is None:
+                    # Session not found on server - remove it
+                    toremove.append(s)
+                elif data:
+                    self.update(data)
+            except Exception as e:
+                pass
+        for s in toremove:
+            self.remove(s)
 
-    def find_by_paymentid(self, paymentid):
-        for a in self._sessions.keys():
-            if a.is_fresh():
-                if a.get_paymentid() == paymentid:
-                    return a
-            else:
-                logging.getLogger("wallet").error("Stale session %s" % a.get_id())
-
-    def find_by_id(self, sessionid):
+    def get(self, sessionid):
         if sessionid in self._sessions.keys():
             return self._sessions[sessionid]
         else:
-            return False
+            f = self._cfg.sessions_dir + "/%s.lsession" % sessionid
+            if os.path.exists(f):
+                s = Session(self._cfg)
+                s.load(f)
+                self.update(s)
+                return s
+            else:
+                return False
 
-    def find_active(self):
+    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None):
         res = []
         for a in self._sessions.values():
-            if a.is_fresh():
-                res.append(a)
-            else:
-                logging.getLogger("wallet").error("Stale session %s" % a.get_id())
+            if notpaid and a.is_paid():
+                continue
+            if fresh and not a.is_fresh():
+                continue
+            if active and not a.is_active():
+                continue
+            if spaceid and not a.get_spaceid() != spaceid:
+                continue
+            if gateid and not a.get_gateid() != gateid:
+                continue
+            if paymentid and not a.get_paymentid() == paymentid:
+                continue
+            res.append(a)
+
         return sorted(res, key=lambda d: d.days_left())
 
     def add(self, session):
         self._sessions[session.get_id()] = session
+        session.save()
 
     def remove(self, session):
         if session.get_id() in self._sessions:
-            del(self._sessions[session.get_id()])
+            del self._sessions[session.get_id()]
+        if os.path.exists(session.get_filename()):
+            os.unlink(session.get_filename())
+
+    def update(self, session):
+        self._sessions[session.get_id()] = session
+        session.save()
+
+    def process_payment(self, paymentid, amount, height, txid):
+        for s in self.find(paymentid=paymentid):
+            s.add_payment(amount, height, txid)
+            s.save()
+            self.update(s)
 
     def __repr__(self):
-        return "Sessions[all=%s,active=%s]" % (len(self._sessions), len(self.find_active()))
+        return "Sessions[all=%s,active=%s,notpaid=%s]" % (len(self.find()), len(self.find(active=True)), len(self.find(notpaid=True)))

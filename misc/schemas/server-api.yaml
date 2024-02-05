@@ -91,6 +91,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '402':
+          description: Waiting for payment
         '404':
           description: Session not found
         '500':
@@ -117,6 +119,10 @@ paths:
           description: Bad parameters
         '500':
           description: Server error
+        '501':
+          description: Cannot contact market API
+        '502':
+          description: Cannot use Stripe now. Please try again later
 
 components:
   schemas:

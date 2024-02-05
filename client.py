@@ -12,6 +12,7 @@ import secrets
 import subprocess
 
 from client.http import Manager
+from lib.util import Util
 
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
@@ -85,11 +86,12 @@ def main():
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path')
     p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file')
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
-    p.add_argument('--daemon-rpc-bin', help='Daemon-RPC binary file')
     p.add_argument('--daemon-bin', help='Daemon binary file')
     p.add_argument("--http-port", help="HTTP port to use for manager", default=8124)
     p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
+    p.add_argument("--log-file", help="Log file")
+    p.add_argument("--tmp-dir", help="Temp directory")
     p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs", default=os.path.abspath(vardir + "/spaces"))
     p.add_argument("--gates-dir", help="Directory containing all gateway VDPs", default=os.path.abspath(vardir + "/gates"))
     p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
@@ -134,7 +136,9 @@ def main():
         pass
     if "NO_KIVY" in os.environ:
         cfg.run_gui = 0
-    fh = logging.FileHandler(vardir + "/lvpn-client.log")
+    if not cfg.log_file:
+        cfg.log_file = vardir + "/lvpn-client.log"
+    fh = logging.FileHandler(cfg.log_file)
     fh.setLevel(cfg.l)
     sh = logging.StreamHandler()
     sh.setLevel(cfg.l)
@@ -290,7 +294,6 @@ def main():
             cfg.sessions = Sessions(cfg.sessions_dir)
             cfg.vdp = VDP(cfg)
             ctrl["cfg"] = cfg
-            ctrl["tmpdir"] = tmpdir
             GUI.run(ctrl=ctrl, queue=queue, myqueue=gui_queue)
             sys.exit()
 
@@ -302,7 +305,6 @@ def main():
                 cfg.sessions = Sessions(cfg.sessions_dir)
                 cfg.vdp = VDP(cfg)
                 ctrl["cfg"] = cfg
-                ctrl["tmpdir"] = tmpdir
                 gate = cfg.vdp.get_gate(cfg.cmd[1])
                 space = cfg.vdp.get_space(cfg.cmd[2])
                 if not space or not gate or not gate.is_for_space(space.get_id()):
@@ -330,7 +332,7 @@ def main():
 
     connects = cfg.auto_connect.split(",")
     if "active" in connects:
-        for s in cfg.sessions.find_active():
+        for s in cfg.sessions.find(active=True):
             connects.append("%s/%s" % (s.get_gateid(), s.get_spaceid()))
     for url in connects:
         print("Trying to connect to %s" % url)
@@ -350,7 +352,6 @@ def main():
     os.chdir(tmpdir)
     cfg.env = os.environ.copy()
     ctrl["cfg"] = cfg
-    ctrl["tmpdir"] = tmpdir
     os.environ["TEMP"] = tmpdir
     logging.getLogger().debug("Using TEMP dir %s" % tmpdir)
 
@@ -403,38 +404,45 @@ def main():
                 wallet_queue.put(Messages.EXIT)
                 cd_queue.put(Messages.EXIT)
                 break
-            time.sleep(1)
-            if not queue.empty():
-                try:
-                    msg = queue.get()
-                except _queue.Empty:
-                    continue
-                if not msg:
-                    continue
-                if Messages.is_for_main(msg):
-                    if msg == Messages.EXIT:
-                        should_exit = True
-                        logging.getLogger("client").warning("Exit requested, exiting")
-                        break
-                elif Messages.is_for_all(msg):
-                    if cfg.run_gui:
-                        gui_queue.put(msg)
-                    if cfg.run_proxy:
-                        proxy_queue.put(msg)
-                    if cfg.run_wallet:
-                        wallet_queue.put(msg)
-                        cd_queue.put(msg)
-                elif Messages.is_for_gui(msg) and cfg.run_gui:
-                    gui_queue.put(msg)
-                elif Messages.is_for_proxy(msg) and cfg.run_proxy:
-                    proxy_queue.put(msg)
-                elif Messages.is_for_wallet(msg) and cfg.run_wallet:
-                    wallet_queue.put(msg)
-                else:
-                    logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
+        time.sleep(1)
+        if not queue.empty():
+            try:
+                msg = queue.get()
+            except _queue.Empty:
+                continue
+            if not msg:
+                continue
+            if Messages.is_for_main(msg):
+                if msg == Messages.EXIT:
                     should_exit = True
+                    logging.getLogger("client").warning("Exit requested, exiting")
                     break
+            elif Messages.is_for_all(msg):
+                if cfg.run_gui:
+                    gui_queue.put(msg)
+                if cfg.run_proxy:
+                    proxy_queue.put(msg)
+                if cfg.run_wallet:
+                    wallet_queue.put(msg)
+                    cd_queue.put(msg)
+            elif Messages.is_for_gui(msg) and cfg.run_gui:
+                gui_queue.put(msg)
+            elif Messages.is_for_proxy(msg) and cfg.run_proxy:
+                proxy_queue.put(msg)
+            elif Messages.is_for_wallet(msg) and cfg.run_wallet:
+                wallet_queue.put(msg)
+            else:
+                logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
+                should_exit = True
+                break
+        if Util.every_x_seconds(10):
+            ctrl["cfg"].sessions.load(cleanup=True)
+            ctrl["cfg"].sessions.refresh_status()
+            logging.getLogger("wallet").warning(repr(ctrl["cfg"].sessions))
+        if Util.every_x_seconds(60):
+            ctrl["cfg"].sessions.save()
 
+    ctrl["cfg"].sessions.save()
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():
         p.join(timeout=1)

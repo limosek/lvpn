@@ -209,7 +209,7 @@ class Proxy(Service):
                     elif msg.startswith(Messages.CONNECT):
                         cdata = Messages.get_msg_data(msg)
                         if "authid" in cdata:
-                            authid = cls.ctrl["cfg"].sessions.find_for_gate(cdata["gate"].get_id())
+                            authid = cls.ctrl["cfg"].sessions.find(gateid=cdata["gate"].get_id())
                         else:
                             authid = None
                         cls.connect(cdata["space"], cdata["gate"], authid)
