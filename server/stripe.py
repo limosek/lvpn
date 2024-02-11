@@ -8,6 +8,7 @@ from lib.shared import Messages
 
 
 class StripeManager(Service):
+    _messages = None
     myname = "stripemanager"
 
     @classmethod
@@ -34,10 +35,9 @@ class StripeManager(Service):
                         amount1 = float(p["metadata"]["amount1"])
                         paymentid = p["metadata"]["paymentid"]
                         paid_amount = p["amount"] / 100
-                        # amount = paid_amount * amount1
-                        amount = 10
+                        amount = paid_amount * amount1
                         metadata = copy(p["metadata"])
-                        m = Messages.pay([{"wallet": wallet, "amount": amount, "paymentid": paymentid}])
+                        m = Messages.pay([{"wallet": wallet, "amount": amount}], paymentid=paymentid)
                         if m in cls._messages.keys():
                             cls.log_warning(
                                 "Skipping payment waiting for confirmation: id=%s, wallet=%s,amount=%s,paymentid=%s" % (

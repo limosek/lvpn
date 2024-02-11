@@ -45,7 +45,8 @@ class Sessions:
                     # Session not found on server - remove it
                     toremove.append(s)
                 elif data:
-                    self.update(data)
+                    s = Session(self._cfg, data)
+                    self.update(s)
             except Exception as e:
                 pass
         for s in toremove:
@@ -64,7 +65,7 @@ class Sessions:
             else:
                 return False
 
-    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None):
+    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None, noparent=None):
         res = []
         for a in self._sessions.values():
             if notpaid and a.is_paid():
@@ -73,11 +74,13 @@ class Sessions:
                 continue
             if active and not a.is_active():
                 continue
-            if spaceid and not a.get_spaceid() != spaceid:
+            if spaceid and a.get_spaceid() != spaceid:
                 continue
-            if gateid and not a.get_gateid() != gateid:
+            if gateid and a.get_gateid() != gateid:
                 continue
             if paymentid and not a.get_paymentid() == paymentid:
+                continue
+            if noparent and a.get_parent():
                 continue
             res.append(a)
 
@@ -99,9 +102,13 @@ class Sessions:
 
     def process_payment(self, paymentid, amount, height, txid):
         for s in self.find(paymentid=paymentid):
-            s.add_payment(amount, height, txid)
-            s.save()
-            self.update(s)
+            if s.add_payment(amount, height, txid):
+                s.save()
+                self.update(s)
+                return s
+            else:
+                return False
+        return False
 
     def __repr__(self):
         return "Sessions[all=%s,active=%s,notpaid=%s]" % (len(self.find()), len(self.find(active=True)), len(self.find(notpaid=True)))

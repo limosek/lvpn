@@ -82,6 +82,7 @@ paths:
       parameters:
         - in: query
           name: sessionid
+          required: true
           schema:
             type: string
       responses:
@@ -91,6 +92,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '400':
+          description: Missing sessionid
         '402':
           description: Waiting for payment
         '404':
@@ -406,6 +409,8 @@ components:
           type: integer
         paid:
           type: boolean
+        parent:
+          type: string
         payments:
           type: array
           items:
@@ -414,6 +419,8 @@ components:
           type: string
         activated:
           type: integer
+        payment_sent:
+          type: string
         wg:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
@@ -441,7 +448,7 @@ components:
       additionalProperties: false
       properties:
         height:
-          type: string
+          type: number
         txid:
           type: string
         amount:
@@ -454,8 +461,6 @@ components:
         spaceid:
           type: string
         gateid:
-          type: string
-        sessionid:
           type: string
         days:
           type: integer

@@ -2,7 +2,6 @@ import logging
 import os.path
 import threading
 import time
-
 import jsonschema
 from flask import Flask, request, Response
 import json
@@ -184,6 +183,8 @@ def get_session():
                 return make_response(200, "OK", session.get_dict())
         else:
             return make_response(404, "Session not found", {})
+    else:
+        return make_response(400, "Missing sessionid", {})
 
 
 class Manager(Service):

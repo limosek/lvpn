@@ -147,12 +147,17 @@ class Wallet(Service):
                 except Exception as e:
                     logging.getLogger(cls.myname).error(e)
             time.sleep(1)
-            if Util.every_x_seconds(60):
+            if Util.every_x_seconds(10):
                 #cls.refresh()
                 height = cls.get_height()
-                transfers = cls.get_in_transfers(height["height"] - 5000)
-                for transfer in transfers["in"]:
-                    cls.ctrl["cfg"].sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
+                if bool(height):
+                    transfers = cls.get_in_transfers(height["height"] - 5000)
+                    for transfer in transfers["in"]:
+                        processed = cls.ctrl["cfg"].sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
+                        if processed:
+                            cls.log_warning("Processed payment %s(%s) to session %s" % (transfer["txid"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, processed.get_id()))
+                else:
+                    logging.getLogger("wallet").error("Cannot get height. Continuing")
             if not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get(block=False, timeout=0.01)
@@ -233,6 +238,10 @@ class Wallet(Service):
                         "destinations": destinations,
                         "payment_id": paymentid
                     }, "POST", exc=True)
+            print({
+                        "destinations": destinations,
+                        "payment_id": paymentid
+                    })
             cls.log_warning("Transferring coins finished OK: %s" % msg)
             return True
         except WalletException as e:

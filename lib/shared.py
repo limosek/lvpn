@@ -22,22 +22,22 @@ class Messages:
     GUI_POPUP = "GUI/Popup"
 
     @classmethod
-    def connect(cls, space, gate, authid):
-        data = pickle.dumps({"space": space, "gate": gate, "authid": authid})
+    def connect(cls, sessionid):
+        data = pickle.dumps(sessionid)
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.CONNECT, tdata)
         return msg.strip()
 
     @classmethod
-    def disconnect(cls, spaceid, gateid):
-        data = pickle.dumps({"spaceid": spaceid, "gateid": gateid})
+    def disconnect(cls, connectionid):
+        data = pickle.dumps(connectionid)
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.DISCONNECT, tdata)
         return msg.strip()
 
     @classmethod
-    def connect_info(cls, space, gate, authid, data):
-        data = pickle.dumps({"space": space, "gate": gate, "authid": authid, "data": data})
+    def connected_info(cls, connection):
+        data = pickle.dumps(connection.get_dict())
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.CONNECT_INFO, tdata)
         return msg.strip()

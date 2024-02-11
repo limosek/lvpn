@@ -4,7 +4,6 @@ import ssl
 import threading
 import time
 from copy import copy
-
 import setproctitle
 import urllib3
 
@@ -76,7 +75,7 @@ class TLSProxy(Service):
     @classmethod
     def accept_client(cls, conn, address):
         cls.log_debug("Connection from %s:%s to %s" % (address[0], address[1], cls.kwargs["port"]))
-        s = cls.connect(cls.kwargs["gate"], cls.kwargs["gate"].get_ca())
+        s = cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
         s.settimeout(0.01)
         conn.settimeout(0.01)
         cls.eof = False
@@ -106,7 +105,7 @@ class TLSProxy(Service):
         server_socket.bind((host, port))
         server_socket.listen(10)
         server_socket.settimeout(1)
-        cls.log_info("Running TLS proxy 127.0.0.1:%s -> %s" % (port, cls.kwargs["gate"].get_endpoint()))
+        cls.log_info("Running TLS proxy 127.0.0.1:%s -> %s" % (port, cls.kwargs["endpoint"]))
         threads = []
         while not cls.exit:
             cls.log_debug("tlsserver 127.0.0.1:%s loop (%s connections)" % (port, len(threads)))
@@ -133,15 +132,15 @@ class TLSProxy(Service):
         cls.log_warning("End of tlsproxy")
 
     @classmethod
-    def connect(cls, gate, ca):
+    def connect(cls, endpoint, ca):
         try:
             if cls.ctrl["cfg"].use_http_proxy:
                 proxydata = urllib3.util.parse_url(cls.ctrl["cfg"].use_http_proxy)
-                s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, gate.get_endpoint(resolve=True))
+                s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
             else:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(5)
-                s.connect(gate.get_endpoint(resolve=True))
+                s.connect(endpoint)
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ctx.load_verify_locations(cadata=ca)
             ctx.set_ciphers("HIGH")
@@ -150,13 +149,13 @@ class TLSProxy(Service):
             client = ctx.wrap_socket(s)
             return client
         except Exception as e:
-            cls.log_error("Cannot connect to %s: %s" % (gate.get_endpoint(), e))
+            cls.log_error("Cannot connect to %s: %s" % (endpoint, e))
             raise
 
     @classmethod
     def postinit(cls):
         cls.exit = False
-        setproctitle.setproctitle("lvpn-tlsproxy 127.0.0.1:%s -> %s" % (cls.kwargs["port"], cls.kwargs["gate"].get_endpoint()))
+        setproctitle.setproctitle("lvpn-tlsproxy 127.0.0.1:%s -> %s" % (cls.kwargs["port"], cls.kwargs["endpoint"]))
 
     @classmethod
     def stop(cls):

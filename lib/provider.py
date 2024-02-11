@@ -23,7 +23,7 @@ class Provider(VDPObject):
             return self._data["wallet"]
 
     def get_ca(self):
-        return self._data["ca"]
+        return "\n".join(self._data["ca"])
 
     def save(self, cfg=None):
         if cfg:

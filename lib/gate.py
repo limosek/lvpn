@@ -1,3 +1,4 @@
+import logging
 import socket
 
 from lib.vdpobject import VDPObject, VDPException
@@ -14,14 +15,18 @@ class Gateway(VDPObject):
         return self.get_provider_id() + "." + self._data["gateid"]
 
     def get_ca(self):
-        return self.get_provider()["ca"]
+        return self.get_provider().get_ca()
 
     def get_endpoint(self, resolve=False):
         if not resolve:
             return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
         else:
-            ip = socket.gethostbyname(self._data[self.get_type()]["host"])
-            return tuple([ip, self._data[self.get_type()]["port"]])
+            try:
+                ip = socket.gethostbyname(self._data[self.get_type()]["host"])
+                return tuple([ip, self._data[self.get_type()]["port"]])
+            except socket.error:
+                logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
+                return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
 
     def set_endpoint(self, host, port):
         self._data[self.get_type()]["host"] = host
@@ -66,6 +71,9 @@ class Gateway(VDPObject):
         fname = "%s/%s.lgate" % (self.cfg.gates_dir, self.get_id())
         with open(fname, "w") as f:
             f.write(self.get_json())
+
+    def get_title(self):
+        return self._data["name"]
 
     def __repr__(self):
         return "Gateway %s/%s" % (self._data["gateid"], self._data["name"])

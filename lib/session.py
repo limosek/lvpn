@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import secrets
 from copy import copy
@@ -25,18 +26,18 @@ class Session:
             raise VDPException("Unknown gate %s" % gateid)
         price = (self._cfg.vdp.get_space(spaceid).get_price() + self._cfg.vdp.get_gate(gateid).get_price()) * days
         self._data = {
-            "sessionid": secrets.token_hex(8),
+            "sessionid": "s-" + secrets.token_hex(8),
             "spaceid": spaceid,
             "gateid": gateid,
             "created": int(time.time()),
             "paymentid": secrets.token_hex(8),
-            "username": "user_" + secrets.token_hex(5),
+            "username": "u-" + secrets.token_hex(5),
             "password": secrets.token_hex(10),
-            "bearer": secrets.token_hex(12),
+            "bearer": "b-" + secrets.token_hex(12),
             "wallet": self._cfg.vdp.get_space(spaceid).get_wallet(),
             "days": int(days),
             "expires": int(time.time()) + self._cfg.unpaid_expiry,
-            "paid": False,
+            "paid": price == 0,
             "payments": [],
             "activated": 0,
             "price": price,
@@ -44,17 +45,26 @@ class Session:
         }
         self._gate = self._cfg.vdp.get_gate(gateid)
         self._space = self._cfg.vdp.get_space(spaceid)
+        if self.get_price() == 0:
+            self.activate()
 
     def activate(self):
         now = int(time.time())
         self._data["expires"] = now + self._data["days"] * 3600 * 24
         self._data["activated"] = now
+        logging.getLogger().warning("Activated session %s" % self.get_id())
 
     def get_spaceid(self):
         return self._space.get_id()
 
     def get_gateid(self):
         return self._gate.get_id()
+
+    def get_space(self):
+        return self._space
+
+    def get_gate(self):
+        return self._gate
 
     def get_manager_url(self):
         return self._space.get_manager_url()
@@ -83,15 +93,33 @@ class Session:
                 self.activate()
             else:
                 self._data["paid"] = False
+            return True
+        else:
+            return False
+
+    def set_parent(self, parentid):
+        self._data["parent"] = parentid
+
+    def get_parent(self):
+        if "parent" in self._data:
+            return self._data["parent"]
+        else:
+            return False
 
     def is_paid(self):
         return self._data["paid"]
+
+    def is_free(self):
+        return self.get_price() == 0
 
     def is_active(self):
         return self._data["activated"] != 0
 
     def is_payment_sent(self):
-        return self._data["payment_sent"]
+        if "payment_sent" in self._data:
+            return self._data["payment_sent"]
+        else:
+            return False
 
     def payment_sent(self, msg):
         self._data["payment_sent"] = msg
@@ -142,15 +170,19 @@ class Session:
         m = Messages.pay([{
             "wallet": self._data["wallet"],
             "amount": self._data["price"]
-        }], self._data["paymentid"])
+        }], self.get_paymentid())
         return m
 
     def __str__(self):
         return json.dumps(self._data)
 
+    def get_title(self):
+        txt = "%s/%s" % (self.get_gate(), self.get_space())
+        return txt
+
     def __repr__(self):
         try:
-            txt = "Session[%s(days=%s,price=%s,payments=%s,paid=%s,fresh=%s)]" % (self._data["days"], self.get_id(), self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
+            txt = "Session-%s[%s/%s,days=%s,price=%s,payments=%s,paid=%s,fresh=%s]" % (self.get_gate(), self.get_space(), self._data["days"], self.get_id(), self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
         except Exception as e:
             txt = "Session[Empty]"
         return txt

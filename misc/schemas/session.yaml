@@ -25,6 +25,8 @@
           type: integer
         paid:
           type: boolean
+        parent:
+          type: string
         payments:
           type: array
           items:
@@ -33,6 +35,8 @@
           type: string
         activated:
           type: integer
+        payment_sent:
+          type: string
         wg:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
@@ -60,7 +64,7 @@
       additionalProperties: false
       properties:
         height:
-          type: string
+          type: number
         txid:
           type: string
         amount:
@@ -73,8 +77,6 @@
         spaceid:
           type: string
         gateid:
-          type: string
-        sessionid:
           type: string
         days:
           type: integer

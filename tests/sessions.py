@@ -1,8 +1,9 @@
 import os
 import shutil
 import unittest
-
 import configargparse
+
+os.environ["NO_KIVY"] = "1"
 
 from lib.session import Session
 from lib.sessions import Sessions
@@ -82,6 +83,7 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 1)
         self.assertEqual(len(sessions.find(notpaid=True)), 0)
+        self.assertEqual(len(sessions.find(active=True, spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")), 1)
         sessions.save()
 
     def testLoadedSessions(self):
@@ -91,4 +93,21 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 1)
         self.assertEqual(len(sessions.find(notpaid=True)), 0)
+
+    def testParent(self):
+        cfg = self.parse_args([])
+        cfg.vdp = VDP(cfg)
+        sessions = Sessions(cfg)
+        parent = Session(cfg)
+        parent.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
+        parent.save()
+        child = Session(cfg)
+        child.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
+        child.set_parent(parent.get_id())
+        child.save()
+        sessions.load()
+        self.assertLess(len(sessions.find(active=True, noparent=True)), len(sessions.find(active=True)))
+        pass
 

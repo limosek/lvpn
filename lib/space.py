@@ -25,5 +25,8 @@ class Space(VDPObject):
         with open(fname, "w") as f:
             f.write(self.get_json())
 
+    def get_title(self):
+        return self._data["name"]
+
     def __repr__(self):
         return "Space %s/%s" % (self._data["spaceid"], self._data["name"])

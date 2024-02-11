@@ -1,6 +1,8 @@
 import logging
 import os.path
 import threading
+
+import _queue
 import jsonschema
 from flask import Flask, request, Response
 import time
@@ -11,9 +13,11 @@ from openapi_core.contrib.flask.decorators import FlaskOpenAPIViewDecorator
 import openapi_schema_validator
 import secrets
 
+from client.connection import Connections
 from lib.session import Session
 from lib.mngrrpc import ManagerRpcCall
 from lib.service import Service
+from lib.shared import Messages
 from lib.vdp import VDP
 
 app = Flask(__name__)
@@ -23,7 +27,7 @@ openapi_validated = FlaskOpenAPIViewDecorator(openapi)
 
 def make_response(code, reason, data=None):
     if data is None:
-        data = {}
+        data = {"code": code, "reason": reason}
     return Response(json.dumps(data, indent=2), "%s %s" % (code, reason), {'content-type': 'application/json'})
 
 
@@ -73,27 +77,148 @@ def post_vdp():
 def connections():
     conns = []
     for c in Manager.get_value("connections"):
-        if c["port"] != "NA":
-            port = c["port"]
-        else:
-            port = 0
-        ci = {
-            "gate": c["gate"].get_dict(),
-            "space": c["space"].get_dict(),
-            "local_port": port,
-            "connectionid": c["connectionid"]
-        }
-        conns.append(ci)
+        conns.append(c.get_dict())
     return conns
 
 
 @app.route('/api/sessions', methods=['GET'])
 @openapi_validated
 def sessions():
-    sessiona = []
+    sessions = []
     for c in Manager.ctrl["cfg"].sessions.find():
-        sessiona.append(c.get_dict())
-    return sessiona
+        sessions.append(c.get_dict())
+    return sessions
+
+
+@app.route('/api/session', methods=['POST'])
+@openapi_validated
+def create_session():
+    days = request.openapi.body["days"]
+    space = Manager.ctrl["cfg"].vdp.get_space(request.openapi.body["spaceid"])
+    if not space:
+        return make_response(460, "Unknown space")
+    gate = Manager.ctrl["cfg"].vdp.get_gate(request.openapi.body["gateid"])
+    if not gate:
+        return make_response(461, "Unknown gate")
+    if not gate.is_for_space(space.get_id()):
+        return make_response(416, "Gate cannot be used with this space")
+    fresh = Manager.ctrl["cfg"].sessions.find(gateid=gate.get_id(), spaceid=space.get_id(), fresh=True)
+    if fresh:
+        fresh = fresh[0]
+        if fresh.is_paid():
+            return make_response(200, "OK", fresh.get_dict())
+        else:
+            return make_response(402, "Awaiting payment", fresh.get_dict())
+    else:
+        mngr = ManagerRpcCall(space.get_manager_url())
+        session = Session(Manager.ctrl["cfg"], mngr.create_session(gate.get_id(), space.get_id(), days))
+        session.save()
+        Manager.ctrl["cfg"].sessions.add(session)
+        if session.is_paid():
+            return make_response(200, "OK", session.get_dict())
+        else:
+            return make_response(402, "Awaiting payment", session.get_dict())
+
+
+@app.route('/api/session', methods=['GET'])
+@openapi_validated
+def get_session():
+    if "sessionid" in request.args:
+        session = Manager.ctrl["cfg"].sessions.get(request.args["sessionid"])
+        if session:
+            if not session.is_paid():
+                return make_response(402, "Waiting for payment", session.get_dict())
+            else:
+                return make_response(200, "OK", session.get_dict())
+        else:
+            return make_response(404, "Session not found", {})
+
+
+@app.route('/api/connect/<sessionid>', methods=['GET'])
+@openapi_validated
+def connect(sessionid):
+    session = Manager.ctrl["cfg"].sessions.get(sessionid)
+    if session:
+        if session.is_active():
+            m = Messages.connect(session)
+            Manager.queue.put(m)
+            waited = 0
+            found = False
+            while waited < 10 and not found:
+                conn = Connections(Manager.ctrl["connections"]).get_by_sessionid(session.get_id())
+                if conn:
+                    return make_response(200, "OK", conn.get_dict())
+                waited += 1
+                time.sleep(1)
+            return make_response(500, "Server error")
+        elif not session.is_paid():
+            return make_response(402, "Waiting for payment")
+        elif not session.is_fresh():
+            return make_response(405, "Session expired")
+        else:
+            return make_response(404, "Session not found")
+    else:
+        return make_response(404, "Session not found")
+
+
+@app.route('/api/disconnect/<connectionid>', methods=['GET'])
+@openapi_validated
+def disconnect(connectionid):
+    connection = Connections(Manager.ctrl["connections"]).get(connectionid)
+    if connection:
+        m = Messages.disconnect(connection.get_id())
+        Manager.queue.put(m)
+        waited = 0
+        found = False
+        while waited < 10 and not found:
+            if not Connections(Manager.ctrl["connections"]).get(connection.get_id()):
+                return make_response(200, "OK")
+            waited += 1
+            time.sleep(1)
+        return make_response(500, "Server error")
+    else:
+        return make_response(404, "Connmection not found")
+
+
+@app.route('/api/pay/session/<sessionid>', methods=['GET'])
+@openapi_validated
+def pay_session(sessionid):
+    session = Manager.ctrl["cfg"].sessions.get(sessionid)
+    if session:
+        if session.is_active():
+            return make_response(201, "Already paid")
+        elif not session.is_paid():
+            Manager.queue.put(session.get_pay_msg())
+            waited = 0
+            paid = False
+            while waited < 30 and not paid:
+                session = Manager.ctrl["cfg"].sessions.get(session.get_id())
+                if session.is_paid():
+                    return make_response(200, "OK", session.get_dict())
+                if Manager.myqueue and not Manager.myqueue.empty():
+                    try:
+                        msg = Manager.myqueue.get(block=False, timeout=0.1)
+                        print(msg)
+                        if msg.startswith(Messages.PAID):
+                            data = Messages.get_msg_data(msg)
+                            if data == session.get_pay_msg():
+                                return make_response(200, "OK", session.get_dict())
+                        elif msg.startswith(Messages.UNPAID):
+                            data = Messages.get_msg_data(msg)
+                            if data == session.get_pay_msg():
+                                return make_response(500, "Payment error", session.get_dict())
+                    except _queue.Empty:
+                        pass
+                time.sleep(1)
+                waited += 1
+            return make_response(500, "Error during payment")
+
+        elif not session.is_fresh():
+            return make_response(405, "Session expired")
+        else:
+            return make_response(404, "Session not found")
+    else:
+        return make_response(404, "Session not found")
 
 
 class Manager(Service):
@@ -111,3 +236,8 @@ class Manager(Service):
     @classmethod
     def stop(cls):
         cls.p.join()
+
+    @classmethod
+    def loop(cls):
+        while True:
+            time.sleep(1)

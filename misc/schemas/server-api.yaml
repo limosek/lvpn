@@ -82,6 +82,7 @@ paths:
       parameters:
         - in: query
           name: sessionid
+          required: true
           schema:
             type: string
       responses:
@@ -91,6 +92,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '400':
+          description: Missing sessionid
         '402':
           description: Waiting for payment
         '404':

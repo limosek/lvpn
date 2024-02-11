@@ -1,27 +1,6 @@
 # Session definition
 ###################################
 
-    ConnectionRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        time:
-          type: integer
-        gateid:
-          type: string
-        spaceid:
-          type: string
-        wg_public:
-          type: string
-        days:
-          type: integer
-        sessionid:
-          type: string
-      required:
-        - gateid
-        - spaceid
-        - days
-
     Connection:
       type: object
       additionalProperties: false
@@ -30,8 +9,19 @@
           type: string
         sessionid:
           type: string
+        parent:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
+        port:
+          type: number
         data:
           type: object
+      required:
+        - connectionid
+        - sessionid
 
     Connections:
       type: array

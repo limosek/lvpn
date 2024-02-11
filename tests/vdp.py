@@ -38,6 +38,13 @@ class TestVDP(unittest.TestCase):
         self.assertEqual(len(vdp.spaces()), 2)
         self.assertEqual(len(vdp.providers()), 1)
 
+    def test_get_ca(self):
+        cfg = self.parse_args([])
+        vdp = VDP(cfg)
+        gate = vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
+        a = gate.get_ca()
+        self.assertEqual(type(a), str)
+
 
 if __name__ == '__main__':
     unittest.main()

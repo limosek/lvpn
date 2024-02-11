@@ -47,16 +47,17 @@ paths:
         '443':
           description: Error in VDP
 
-  /api/connect:
-    post:
+  /api/connect/{sessionid}:
+    get:
       summary: Connect existing prepaid session
       description: Connect existing prepaid session
       operationId: Connect
       parameters:
-        - in: query
+        - in: path
           name: sessionid
           schema:
             type: string
+          required: true
       responses:
         '200':
           description: Connected
@@ -70,6 +71,8 @@ paths:
           description: Awaiting payment
         '404':
           description: Session not found
+        '405':
+          description: Session expired
         '460':
           description: Unknown/bad space
         '461':
@@ -79,13 +82,14 @@ paths:
         '500':
           description: Server error
 
-  /api/disconnect:
+  /api/disconnect/{connectionid}:
     get:
       parameters:
-      - in: query
-        name: connectionid
-        schema:
-          type: string
+        - in: path
+          name: connectionid
+          schema:
+            type: string
+          required: true
       summary: Disconnect connection
       description: Disconnect connection
       operationId: Disconnect
@@ -190,6 +194,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sessions'
+        '500':
+          description: Server error
+
+  /api/pay/session/{sessionid}:
+    get:
+      summary: Pay for session
+      description: Pay for session - send payment from local wallet to provider
+      operationId: paySession
+      parameters:
+        - in: path
+          name: sessionid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '201':
+          description: Already paid
+        '404':
+          description: Session not found
         '500':
           description: Server error
 
@@ -475,6 +504,8 @@ components:
           type: integer
         paid:
           type: boolean
+        parent:
+          type: string
         payments:
           type: array
           items:
@@ -483,6 +514,8 @@ components:
           type: string
         activated:
           type: integer
+        payment_sent:
+          type: string
         wg:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
@@ -510,7 +543,7 @@ components:
       additionalProperties: false
       properties:
         height:
-          type: string
+          type: number
         txid:
           type: string
         amount:
@@ -523,8 +556,6 @@ components:
         spaceid:
           type: string
         gateid:
-          type: string
-        sessionid:
           type: string
         days:
           type: integer
@@ -585,27 +616,6 @@ components:
 # Session definition
 ###################################
 
-    ConnectionRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        time:
-          type: integer
-        gateid:
-          type: string
-        spaceid:
-          type: string
-        wg_public:
-          type: string
-        days:
-          type: integer
-        sessionid:
-          type: string
-      required:
-        - gateid
-        - spaceid
-        - days
-
     Connection:
       type: object
       additionalProperties: false
@@ -614,8 +624,19 @@ components:
           type: string
         sessionid:
           type: string
+        parent:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
+        port:
+          type: number
         data:
           type: object
+      required:
+        - connectionid
+        - sessionid
 
     Connections:
       type: array

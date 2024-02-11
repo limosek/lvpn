@@ -8,8 +8,11 @@ import paramiko
 import sshtunnel
 import urllib3
 
+from client.connection import Connection, Connections
 from client.tlsproxy import TLSProxy
+from lib.mngrrpc import ManagerRpcCall
 from lib.service import Service
+from lib.session import Session
 from lib.shared import Messages
 
 
@@ -25,7 +28,9 @@ class SSHProxy(Service):
         messages = []
         gate = cls.kwargs["gate"]
         space = cls.kwargs["space"]
-        authid = cls.kwargs["authid"]
+        sessionid = cls.kwargs["sessionid"]
+        session = cls.ctrl["cfg"].sessions.get(sessionid)
+        connectionid = cls.kwargs["connectionid"]
         logging.getLogger("paramiko").setLevel(cls.ctrl["cfg"].l)
         for g in gate["gates"]:
             gobj = cls.ctrl["cfg"].vdp.get_gate(g)
@@ -35,37 +40,43 @@ class SSHProxy(Service):
                 except Exception as e:
                     cls.log_error(e)
                     continue
+                sessions = cls.ctrl["cfg"].sessions.find(gateid=gobj.get_id(), spaceid=space.get_id(), active=True)
+                if len(sessions) > 0:
+                    nsession = sessions[0]
+                else:
+                    mr = ManagerRpcCall(space.get_manager_url())
+                    try:
+                        nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
+                        nsession.set_parent(session.get_id())
+                        nsession.save()
+                    except Exception as e:
+                        cls.log_error(e)
                 gobj.set_name(gate.get_name() + "/" + gobj.get_name())
                 if gobj.is_tls():
                     lport = cls.find_free_port()
                     gobj.set_endpoint("localhost", lport)
                     gobj.set_name("%s/%s" % (gate.get_name(), gobj.get_name()))
+                    connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
+                        "endpoint": gobj.get_endpoint()
+                    }, parent=connectionid)
                     messages.append(
-                        Messages.connect(space, gobj, authid)
+                        Messages.connected_info(connection.get_dict())
                     )
                 else:
                     lport = gobj.get_local_port()
                     if not lport:
                         cls.log_error("Bad gate to connect via SSH (no local port): %s" % gobj)
-                        data = {
-                            "status": "error",
-                            "msg": "Bad gate to connect via SSH (no local port): %s" % gobj
-                        }
                         messages.append(
                             Messages.gui_popup("Bad gate to connect via SSH (no local port): %s" % gobj)
                         )
                         continue
                     else:
-                        data = {
-                            "status": "OK",
-                            "msg": "Connected",
-                            "ports": [lport],
-                            "port": lport,
-                            "pid": multiprocessing.current_process().pid,
-                            "connectionid": secrets.token_urlsafe(6)
-                        }
+                        connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
+                            "endpoint": gobj.get_endpoint(),
+                            "pid": multiprocessing.current_process().pid
+                        }, parent=connectionid)
                         messages.append(
-                            Messages.connect_info(space, gobj, authid, data)
+                            Messages.connected_info(connection)
                         )
                 local_addresses.append(("localhost", lport))
                 remote_addresses.append((rhost, int(rport)))
@@ -96,6 +107,3 @@ class SSHProxy(Service):
         while tunnel.is_alive and not cls.exit:
             cls.log_debug("%s loop" % cls.myname)
             time.sleep(1)
-        messages.append(
-            Messages.disconnect(space.get_id(), gate.get_id())
-        )

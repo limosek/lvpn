@@ -11,15 +11,17 @@ import logging.handlers
 import secrets
 import subprocess
 
-from client.http import Manager
-from lib.util import Util
+from client.connection import Connections
 
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
 
-from client.preconnect import PreConnect
+from client.http import Manager
+from lib.mngrrpc import ManagerRpcCall
+from lib.session import Session
+from lib.util import Util
 from lib.sessions import Sessions
 from lib.queue import Queue
 from lib.runcmd import RunCmd
@@ -127,6 +129,8 @@ def main():
     p.add_argument('--auto-connect', type=str, help='Auto connect uris',
                        default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,active"
                    )
+    p.add_argument("--unpaid-expiry", help="Unpaid sessions will expire after this seconds",
+                   default=3600, type=int)
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
     cfg = p.parse_args()
@@ -297,23 +301,6 @@ def main():
             GUI.run(ctrl=ctrl, queue=queue, myqueue=gui_queue)
             sys.exit()
 
-        elif cfg.cmd[0] == "pay":
-            if len(cfg.cmd) != 4:
-                logging.error("Use pay gateid spaceid days")
-                sys.exit(1)
-            else:
-                cfg.sessions = Sessions(cfg.sessions_dir)
-                cfg.vdp = VDP(cfg)
-                ctrl["cfg"] = cfg
-                gate = cfg.vdp.get_gate(cfg.cmd[1])
-                space = cfg.vdp.get_space(cfg.cmd[2])
-                if not space or not gate or not gate.is_for_space(space.get_id()):
-                    logging.error("Bad gate/space")
-                    sys.exit(1)
-                PreConnect.run(ctrl, queue, None, gateid=gate.get_id(), spaceid=space.get_id(), days=cfg.cmd[3])
-                pass
-                sys.exit()
-
         elif cfg.cmd[0] == "run":
             print("run")
 
@@ -331,23 +318,35 @@ def main():
         test_binary([cfg.daemon_bin, "--version"])
 
     connects = cfg.auto_connect.split(",")
-    if "active" in connects:
-        for s in cfg.sessions.find(active=True):
-            connects.append("%s/%s" % (s.get_gateid(), s.get_spaceid()))
     for url in connects:
-        print("Trying to connect to %s" % url)
         if url == "active":
             # We have injected active sessions already
             continue
         try:
+            print("Trying to connect to %s" % url)
             (gateid, spaceid) = url.split("/")
             if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                proxy_queue.put(Messages.connect(cfg.vdp.get_space(spaceid), cfg.vdp.get_gate(gateid), None))
+                sessions = cfg.sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                if len(sessions) > 0:
+                    proxy_queue.put(Messages.connect(sessions[0]))
+                else:
+                    space = cfg.vdp.get_space(spaceid)
+                    mr = ManagerRpcCall(space.get_manager_url())
+                    try:
+                        session = Session(cfg, mr.create_session(gateid, spaceid, 1))
+                        session.save()
+                        cfg.sessions.add(session)
+                    except Exception as e:
+                        logging.getLogger("client").error(e)
             else:
                 logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
                 print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
         except Exception as e:
             logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
+
+    if "active" in connects:
+        for session in cfg.sessions.find(active=True, noparent=True):
+            proxy_queue.put(Messages.connect(session))
 
     os.chdir(tmpdir)
     cfg.env = os.environ.copy()
@@ -425,6 +424,7 @@ def main():
                 if cfg.run_wallet:
                     wallet_queue.put(msg)
                     cd_queue.put(msg)
+                http_queue.put(msg)
             elif Messages.is_for_gui(msg) and cfg.run_gui:
                 gui_queue.put(msg)
             elif Messages.is_for_proxy(msg) and cfg.run_proxy:
@@ -442,7 +442,6 @@ def main():
         if Util.every_x_seconds(60):
             ctrl["cfg"].sessions.save()
 
-    ctrl["cfg"].sessions.save()
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():
         p.join(timeout=1)

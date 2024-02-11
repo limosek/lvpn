@@ -11,7 +11,7 @@
     "per-day": 0
   },
   "daemon-p2p-proxy": {
-    "host": "daemon",
+    "host": "daemon.lthn",
     "port": 48772,
     "tls": false
   },

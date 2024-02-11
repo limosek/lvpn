@@ -4,15 +4,22 @@ import os
 import secrets
 import signal
 import logging
+import socket
 import sys
 import time
 import _queue
 
+from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
 from lib.runcmd import RunCmd
 from lib.service import Service
 from lib.shared import Messages
+from lib.util import Util
+
+
+class ProxyException(Exception):
+    pass
 
 
 class Proxy(Service):
@@ -20,59 +27,7 @@ class Proxy(Service):
     processes = []
 
     @classmethod
-    def run_ptw(cls, pargs):
-        args = [sys.executable, cls.ctrl["cfg"].app_dir + "/ptwbin.py"]
-        if cls.ctrl["cfg"].l == "DEBUG":
-            args.extend(["-v", "debug"])
-        elif cls.ctrl["cfg"].l == "INFO":
-            args.extend(["-v", "info"])
-        else:
-            args.extend(["-v", "warning"])
-        args.extend(list(pargs))
-        args.append("--no-hostname-check")
-        return RunCmd.popen(args, cwd=cls.ctrl["tmpdir"], shell=False)
-
-    @classmethod
-    def run_socks_proxy(cls, cafile, localport, endpoint):
-        (host, port) = endpoint.split(":")
-        args = [
-            "-C", cafile,
-            "-p", str(localport),
-            "-n", "10",
-            "-T", "300",
-            host, port
-        ]
-        cls.log_warning("Running ptw socks-proxy subprocess: %s" % " ".join(args))
-        return cls.run_ptw(args)
-
-    @classmethod
-    def run_daemon_p2p_proxy(cls, cafile, localport, endpoint):
-        (host, port) = endpoint.split(":")
-        args = [
-            "-C", cafile,
-            "-p", str(localport),
-            "-n", "1",
-            "-T", "30",
-            host, port
-        ]
-        cls.log_warning("Running ptw daemon-p2p-proxy subprocess: %s" % " ".join(args))
-        return cls.run_ptw(args)
-
-    @classmethod
-    def run_daemon_rpc_proxy(cls, cafile, localport, endpoint):
-        (host, port) = endpoint.split(":")
-        args = [
-            "-C", cafile,
-            "-p", str(localport),
-            "-n", "5",
-            "-T", "30",
-            host, port
-        ]
-        cls.log_warning("Running ptw daemon-rpc-proxy subprocess: %s" % " ".join(args))
-        return cls.run_ptw(args)
-
-    @classmethod
-    def run(cls, ctrl, queue, myqueue, cafile=None, localhttp=None, localsocks=None, localrpc=None, localp2p=None, httpendpoint=None, socksendpoint=None, rpcendpoint=None, p2pendpoint=None):
+    def run(cls, ctrl, queue, myqueue, **kwargs):
         cls.ctrl = ctrl
         cls.queue = queue
         cls.myqueue = myqueue
@@ -83,121 +38,142 @@ class Proxy(Service):
         super().run(ctrl, queue, myqueue)
 
     @classmethod
-    def run_tls_proxy(cls, port, gate, space, authid):
+    def run_tls_proxy(cls, port, session):
+        connection = Connection(cls.ctrl["cfg"], session, port=port)
         mp = multiprocessing.Process(target=TLSProxy.run, args=[cls.ctrl, cls.queue, None], kwargs={
-            "gate": gate,
-            "space": space,
-            "authid": authid,
-            "port": port
+            "endpoint": session.get_gate().get_endpoint(resolve=True),
+            "ca": session.get_gate().get_ca(),
+            "port": port,
+            "sessionid": session.get_id(),
+            "connectionid": connection.get_id()
         })
         mp.start()
+        connection.set_data({
+                "endpoint": session.get_gate().get_endpoint(),
+                "ca": session.get_gate().get_ca(),
+                "pid": mp.pid
+            }
+        )
+        conns = cls.get_value("connections")
+        conns.append(connection)
+        cls.set_value("connections", conns)
         cls.processes.append(
             {
                 "process": mp,
-                "space": space,
-                "gate": gate,
-                "endpoint": gate.get_endpoint(),
-                "authid": authid,
-                "port": port
+                "session": session,
+                "connection": connection
             }
         )
-        cls.log_gui("proxy", "Connecting to gate %s and space %s" % (gate, space))
 
     @classmethod
-    def connect(cls, space, gate, authid):
+    def connect(cls, sessionid):
+        session = cls.ctrl["cfg"].sessions.get(sessionid)
+        if not session:
+            raise ProxyException("Unknown sessionid")
+        else:
+            gateid = session.get_gateid()
+            spaceid = session.get_spaceid()
+            connections = Connections(cls.ctrl["connections"])
+            if connections.is_connected(gateid, spaceid):
+                cls.log_warning("Connection to %s/%s is already active." % (gateid, spaceid))
+                return True
+            gate = cls.ctrl["cfg"].vdp.get_gate(gateid)
+            space = cls.ctrl["cfg"].vdp.get_space(spaceid)
         if not gate.is_for_space(space.get_id()):
-            cls.log_error("Gate %s is not allowed to connect to space %s" % (gate, space))
-            cls.log_gui("proxy", "Gate %s is not allowed to connect to space %s" % (gate, space))
-            return
-        if gate.get_type() in ["http-proxy", "daemon-rpc", "daemon-p2p", "socks-proxy"]:
-            cls.run_tls_proxy(gate.get_local_port(), gate, space, authid)
+            raise ProxyException("proxy", "Gate %s is not allowed to connect to space %s" % (gate, space))
+        if gate.get_type() in ["http-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy", "socks-proxy"]:
+            cls.run_tls_proxy(gate.get_local_port(), session)
         elif gate.get_type() == "ssh":
+            connection = Connection(cls.ctrl["cfg"], session)
             args = [cls.ctrl, cls.queue, None]
             kwargs = {
                 "gate": gate,
                 "space": space,
-                "authid": authid,
-                "connectionid": secrets.token_urlsafe(6)
+                "sessionid": sessionid,
+                "connectionid": connection.get_id()
             }
             mp = multiprocessing.Process(target=SSHProxy.run, args=args, kwargs=kwargs)
             mp.start()
+            connection.set_data({
+                    "endpoint": session.get_gate().get_endpoint(),
+                    "pid": mp.pid
+                }
+            )
+            conns = cls.get_value("connections")
+            conns.append(connection)
+            cls.set_value("connections", conns)
             p = {
                     "process": mp,
-                    "space": space,
-                    "gate": gate,
-                    "endpoint": gate.get_endpoint(),
-                    "authid": authid,
-                    "port": "NA",
-                    "connectionid": secrets.token_urlsafe(6)
+                    "connection": connection
                 }
             cls.processes.append(p)
-            cls.log_gui("proxy", "Connecting to gate %s and space %s" % (gate, space))
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
             cls.log_gui("proxy", "Unknown gate type %s" % gate.get_type())
 
     @classmethod
     def get_connections(cls):
-        return cls.get_value("connections")
+        return Connections(cls.get_value("connections"))
 
     @classmethod
-    def is_connected(cls, spaceid, gateid):
-        for c in cls.get_value("connections"):
-            if c["space"].get_id() == spaceid:
-                return True
-            if c["gate"].get_id() == gateid:
-                return True
-        return False
+    def update_connections(cls, connections):
+        cls.set_value("connections", connections.get_dict())
 
     @classmethod
-    def disconnect(cls, gateid, spaceid):
-        for c in cls.processes:
-            if c["space"].get_id() == spaceid and c["gate"].get_id() == gateid:
-                cls.log_gui("proxy", "Disconnecting gate %s and space %s" % (gateid, spaceid))
+    def is_connected(cls, connectionid):
+        return cls.get_connections().get(connectionid)
+
+    @classmethod
+    def disconnect(cls, connectionid):
+        conns = cls.get_connections()
+        for p in cls.processes:
+            if p["connection"].get_id() == connectionid:
+                c = conns.get(connectionid)
+                if c:
+                    for sub in c.get_children():
+                        cls.disconnect(sub)
+                cls.log_gui("proxy", "Disconnecting connectionid %s" % connectionid)
                 try:
-                    c["process"].kill()
+                    p["process"].kill()
                 except AttributeError:
                     # We cannot kill thread yet
                     pass
+                conns = cls.get_connections()
+                conns.remove(p["connection"].get_id())
+                cls.update_connections(conns)
         return False
-
-    @classmethod
-    def find_process_by_pid(cls, pid):
-        for p in cls.processes:
-            if p["process"].pid == pid:
-                return p["process"]
-        else:
-            return None
 
     @classmethod
     def loop(cls):
         while not cls.exit:
             cls.log_debug("Proxy loop")
-            connections = []
             for pinfo in cls.processes.copy():
                 if pinfo["process"]:
                     try:
                         if pinfo["process"].poll():
                             cls.log_warning(
-                                "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
+                                "Connection %s died with exit code %s" % (pinfo["connection"],
                                                                              pinfo["process"].returncode))
                             cls.log_gui("proxy",
-                                            "Connection %s/%s died with exit code %s" % (pinfo["gate"], pinfo["space"],
+                                            "Connection %s died with exit code %s" % (pinfo["connection"],
                                                                                          pinfo["process"].returncode))
                             cls.processes.remove(pinfo)
+                            conns = cls.get_connections()
+                            conns.remove(pinfo["connection"].get_id())
+                            cls.update_connections(conns)
                             break
                     except AttributeError:
                         if not pinfo["process"].is_alive():
                             cls.log_warning(
-                                "Connection %s/%s died" % (pinfo["gate"], pinfo["space"]))
+                                "Connection %s died" % (pinfo["connection"]))
                             cls.log_gui("proxy",
-                                            "Connection %s/%s died" % (pinfo["gate"], pinfo["space"]))
+                                            "Connection %s died" % (pinfo["connection"]))
                             cls.processes.remove(pinfo)
+                            conns = cls.get_connections()
+                            conns.remove(pinfo["connection"].get_id())
+                            cls.update_connections(conns)
                             break
-                pinfo2 = copy.copy(pinfo)
-                del(pinfo2["process"])
-                connections.append(pinfo2)
-            cls.set_value("connections", connections)
+
             time.sleep(1)
             if not cls.myqueue.empty():
                 try:
@@ -207,27 +183,24 @@ class Proxy(Service):
                     if msg == Messages.EXIT:
                         break
                     elif msg.startswith(Messages.CONNECT):
-                        cdata = Messages.get_msg_data(msg)
-                        if "authid" in cdata:
-                            authid = cls.ctrl["cfg"].sessions.find(gateid=cdata["gate"].get_id())
-                        else:
-                            authid = None
-                        cls.connect(cdata["space"], cdata["gate"], authid)
+                        session = Messages.get_msg_data(msg)
+                        cls.connect(session.get_id())
                     elif msg.startswith(Messages.DISCONNECT):
-                        cdata = Messages.get_msg_data(msg)
-                        cls.disconnect(cdata["gateid"], cdata["spaceid"])
+                        connectionid = Messages.get_msg_data(msg)
+                        cls.disconnect(connectionid)
                     elif msg.startswith(Messages.CONNECT_INFO):
-                        data = Messages.get_msg_data(msg)
+                        connection = Connection(cls.ctrl["cfg"], connection=Messages.get_msg_data(msg))
                         p = {
-                            "process": cls.find_process_by_pid(data["data"]["pid"]),
-                            "space": data["space"],
-                            "gate": data["gate"],
-                            "endpoint": data["gate"].get_endpoint(),
-                            "authid": data["authid"],
-                            "ports": data["data"]["ports"],
-                            "port": data["data"]["port"],
-                            "connectionid": data["data"]["connectionid"]
+                            "process": False,
+                            "connection": connection
                         }
+                        conns = cls.get_connections()
+                        if connection.get_parent():
+                            parent = conns.get(connection.get_parent())
+                            if parent:
+                                parent.add_children(connection.get_id())
+                        conns.add(connection)
+                        cls.update_connections(conns)
                         cls.processes.append(p)
                 except _queue.Empty:
                     continue
