@@ -25,6 +25,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vdp'
+        '401':
+          description: Access token is missing or invalid
+        '402':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
         '500':
           description: server error
     post:
@@ -44,8 +50,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vdp'
+        '401':
+          description: Access token is missing or invalid
+        '402':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
         '443':
           description: Error in VDP
+        '500':
+          description: Server error
 
   /api/connect/{sessionid}:
     get:
@@ -67,8 +81,12 @@ paths:
                 $ref: '#/components/schemas/Connection'
         '400':
           description: Bad request
+        '401':
+          description: Access token is missing or invalid
         '402':
           description: Awaiting payment
+        '403':
+          description: Access token is missing or invalid
         '404':
           description: Session not found
         '405':
@@ -96,8 +114,14 @@ paths:
       responses:
         '200':
           description: Disconnected
+        '401':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
         '404':
           description: Bad connection ID
+        '500':
+          description: Server error
 
   /api/connections:
     get:
@@ -111,6 +135,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Connections'
+        '401':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
+        '500':
+          description: Server error
 
   /api/session:
     post:
@@ -128,12 +158,16 @@ paths:
           description: Connected
         '400':
           description: Bad request
+        '401':
+          description: Access token is missing or invalid
         '402':
           description: Waiting for payment
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '403':
+          description: Access token is missing or invalid
         '460':
           description: Unknown/bad space
         '461':
@@ -159,8 +193,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+        '401':
+          description: Access token is missing or invalid
         '402':
           description: Waiting for payment
+        '403':
+          description: Access token is missing or invalid
         '404':
           description: Session not found
         '500':
@@ -194,6 +232,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sessions'
+        '401':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
         '500':
           description: Server error
 
@@ -217,11 +259,23 @@ paths:
                 $ref: '#/components/schemas/Session'
         '201':
           description: Already paid
+        '401':
+          description: Access token is missing or invalid
+        '402':
+          description: Awaiting payment
+        '403':
+          description: Access token is missing or invalid
         '404':
           description: Session not found
         '500':
           description: Server error
 
 components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
 

@@ -105,12 +105,12 @@ class TLSProxy(Service):
         server_socket.bind((host, port))
         server_socket.listen(10)
         server_socket.settimeout(1)
-        cls.log_info("Running TLS proxy 127.0.0.1:%s -> %s" % (port, cls.kwargs["endpoint"]))
+        cls.log_info("Running TLS proxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, port, cls.kwargs["endpoint"]))
         threads = []
         while not cls.exit:
-            cls.log_debug("tlsserver 127.0.0.1:%s loop (%s connections)" % (port, len(threads)))
+            cls.log_debug("tlsserver %s:%s loop (%s connections)" % (cls.ctrl["cfg"].local_bind, port, len(threads)))
             while len(threads) > 20:
-                cls.log_warning("Too many connections to 127.0.0.1:%s (%s)" % (port, len(threads)))
+                cls.log_warning("Too many connections to %s:%s (%s)" % (cls.ctrl["cfg"].local_bind, port, len(threads)))
                 time.sleep(5)
                 continue
             tmp = copy(threads)
@@ -155,7 +155,7 @@ class TLSProxy(Service):
     @classmethod
     def postinit(cls):
         cls.exit = False
-        setproctitle.setproctitle("lvpn-tlsproxy 127.0.0.1:%s -> %s" % (cls.kwargs["port"], cls.kwargs["endpoint"]))
+        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
 
     @classmethod
     def stop(cls):

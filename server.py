@@ -10,6 +10,8 @@ import configargparse
 import multiprocessing
 import stripe
 
+from lib.util import Util
+
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 
@@ -50,7 +52,7 @@ def main():
         os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
     p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/server.ini'])
     p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
-    p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
+    p.add_argument('-l', '--log-level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
                    env_var='WLS_LOGLEVEL')
     p.add_argument("--log-file", help="Log file")
     p.add_argument("--haproxy-cfg", help="HAProxy config file to generate",
@@ -75,6 +77,10 @@ def main():
     p.add_argument('--wallet-rpc-password', help='Wallet RPC password.', required=True)
     p.add_argument('--wallet-address', help='Wallet public address')
     p.add_argument("--coin-unit", help="Coin minimal unit", type=float, default=1e-8)
+    p.add_argument('--manager-local-bind', help='Bind address to use for manager', default="0.0.0.0")
+    p.add_argument('--manager-bearer-auth', help='Bearer authentication string for private APIs', default=None)
+    p.add_argument('--readonly-providers', help='List of providers, delimited by comma, which cannot be updated by VDP',
+                   default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091")
     p.add_argument("--provider-private-key", help="Private provider key",
                    default=os.getenv("WLS_CFG_DIR") + "/provider.private")
     p.add_argument("--provider-public-key", help="Public provider key",
@@ -96,8 +102,11 @@ def main():
     p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
     p.add_argument('--force-manager-wallet',
                    help='Manually override wallet address url for all spaces. Used just for tests')
+    p.add_argument('--on-session-activation',
+                   help='External script to be run on session activation. Session file is passed as argument.')
 
     cfg = p.parse_args()
+    cfg.l = cfg.log_level
     if not cfg.log_file:
         cfg.log_file = cfg.var_dir + "/lvpn-server.log"
     fh = logging.FileHandler(cfg.log_file)
@@ -111,6 +120,7 @@ def main():
     logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
     cfg.vdp = VDP(cfg)
     cfg.sessions = Sessions(cfg)
+    cfg.readonly_providers = cfg.readonly_providers.split(",")
     processes = {}
 
     Wizard().files(cfg)
@@ -185,6 +195,10 @@ def main():
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
+        if Util.every_x_seconds(10):
+            ctrl["cfg"].sessions.load(cleanup=True)
+            ctrl["cfg"].sessions.refresh_status()
+            logging.getLogger("wallet").warning(repr(ctrl["cfg"].sessions))
 
     logging.getLogger("server").warning("Waiting for subprocesses to exit")
     for p in processes.values():

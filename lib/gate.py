@@ -75,5 +75,12 @@ class Gateway(VDPObject):
     def get_title(self):
         return self._data["name"]
 
+    def activate(self, session):
+        if self.get_type() == "ssh":
+            pass
+        elif self.get_type() == "http-proxy":
+            pass
+        return True
+
     def __repr__(self):
         return "Gateway %s/%s" % (self._data["gateid"], self._data["name"])

@@ -36,21 +36,15 @@ class Sessions:
         self.load(cleanup=True)
 
     def refresh_status(self):
-        toremove = []
         for s in self.find(notpaid=True):
             mrpc = ManagerRpcCall(s.get_manager_url())
             try:
                 data = mrpc.get_session_info(s)
-                if data is None:
-                    # Session not found on server - remove it
-                    toremove.append(s)
-                elif data:
+                if data:
                     s = Session(self._cfg, data)
                     self.update(s)
             except Exception as e:
                 pass
-        for s in toremove:
-            self.remove(s)
 
     def get(self, sessionid):
         if sessionid in self._sessions.keys():
@@ -101,14 +95,16 @@ class Sessions:
         session.save()
 
     def process_payment(self, paymentid, amount, height, txid):
-        for s in self.find(paymentid=paymentid):
+        sessions = self.find(paymentid=paymentid)
+        updated = []
+        for s in sessions:
             if s.add_payment(amount, height, txid):
                 s.save()
                 self.update(s)
-                return s
-            else:
-                return False
-        return False
+                updated.append(s)
+        if len(updated) == 0:
+            logging.getLogger().debug("Paymentid %s did not match any session" % paymentid)
+        return updated
 
     def __repr__(self):
         return "Sessions[all=%s,active=%s,notpaid=%s]" % (len(self.find()), len(self.find(active=True)), len(self.find(notpaid=True)))

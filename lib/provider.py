@@ -25,6 +25,12 @@ class Provider(VDPObject):
     def get_ca(self):
         return "\n".join(self._data["ca"])
 
+    def get_manager_url(self):
+        if self.cfg and self.cfg.force_manager_url:
+            logging.getLogger("vdp").warning("Using forced manager URL %s" % self.cfg.force_manager_url)
+            return self.cfg.force_manager_url
+        return self._data["manager-url"]
+
     def save(self, cfg=None):
         if cfg:
             self.cfg = cfg

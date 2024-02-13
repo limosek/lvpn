@@ -25,6 +25,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vdp'
+        '500':
+          description: Server error
     post:
       summary: Post new VDP to server
       description: Post new VDP to server
@@ -42,8 +44,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vdp'
+        '401':
+          description: Access token is missing or invalid
+        '402':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
         '443':
           description: Error in VDP
+        '500':
+          description: Server error
 
   /api/session:
     post:
@@ -101,6 +111,45 @@ paths:
         '500':
           description: Server error
 
+  /api/sessions:
+    get:
+      summary: Get server sessions
+      description: Get sessions. This means all prepaid sessions, some of them can be connected, some disconnected
+      operationId: getSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: active
+          schema:
+            type: boolean
+            default: False
+        - in: query
+          name: notpaid
+          schema:
+            type: boolean
+            default: False
+        - in: query
+          name: expired
+          schema:
+            type: boolean
+            default: False
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessions'
+        '401':
+          description: Access token is missing or invalid
+        '402':
+          description: Access token is missing or invalid
+        '403':
+          description: Access token is missing or invalid
+        '500':
+          description: Server error
+
   /api/pay/stripe:
     get:
       summary: Get Link for the Stripe payment
@@ -128,6 +177,12 @@ paths:
           description: Cannot use Stripe now. Please try again later
 
 components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
 
 # Openapi providers definition
@@ -425,7 +480,11 @@ components:
           $ref: '#/components/schemas/WgSessionData'
         proxy:
           $ref: '#/components/schemas/ProxySessionData'
+        ssh:
+          $ref: '#/components/schemas/SSHSessionData'
         sessionid:
+          type: string
+        reuse_sessionid:
           type: string
         expires:
           type: integer
@@ -486,7 +545,14 @@ components:
       type: object
       additionalProperties: false
       properties:
-        crt:
+        key:
+          type: string
+
+    SSHSessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
           type: string
 # Openapi VDP definition
 ###################################

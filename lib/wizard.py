@@ -56,7 +56,9 @@ class Wizard:
         cfgc.spaces_dir = cfg.app_dir + "/config/spaces/"
         cfgc.providers_dir = cfg.app_dir + "/config/providers/"
         v = VDP(cfgc)
-        v.save(cfg)
+        cfgc = copy(cfg)
+        cfgc.readonly_providers = []
+        v.save(cfgc)
 
     @staticmethod
     def cfg(cfg, p, vardir):

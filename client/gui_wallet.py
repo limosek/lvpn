@@ -36,7 +36,7 @@ class Wallet(GridLayout):
         price = self.ids.amount_to_send.text
         paymentid = self.ids.paymentid_to_send.text
         wallet = self.ids.wallet_to_send.text
-        client.gui.GUI.queue.put(Messages.pay(wallet, price, paymentid))
+        client.gui.GUI.queue.put(Messages.pay([{"wallet": wallet, "amount": float(price)}], paymentid))
         time.sleep(2)
         self.main()
 

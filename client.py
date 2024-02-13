@@ -14,7 +14,6 @@ import subprocess
 from client.connection import Connections
 
 os.environ["KIVY_NO_ARGS"] = "1"
-os.environ["KCFG_KIVY_LOG_LEVEL"] = "debug"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
 
@@ -90,7 +89,7 @@ def main():
     p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
     p.add_argument('--daemon-bin', help='Daemon binary file')
     p.add_argument("--http-port", help="HTTP port to use for manager", default=8124)
-    p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
+    p.add_argument('-l', '--log-level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
                    env_var='WLC_LOGLEVEL')
     p.add_argument("--log-file", help="Log file")
     p.add_argument("--tmp-dir", help="Temp directory")
@@ -126,6 +125,11 @@ def main():
     p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
     p.add_argument('--force-manager-wallet', help='Manually override wallet address url for all spaces. Used just for tests')
     p.add_argument('--use-http-proxy', type=str, help='Use HTTP proxy (CONNECT) to services', env_var="HTTP_PROXY")
+    p.add_argument('--local-bind', help='Bind address to use for proxy and TLS ports', default="127.0.0.1")
+    p.add_argument('--manager-local-bind', help='Bind address to use for manager', default="127.0.0.1")
+    p.add_argument('--manager-bearer-auth', help='Bearer authentication string for private APIs', default=None)
+    p.add_argument('--readonly-providers', help='List of providers, delimited by comma, which cannot be updated by VDP',
+                   default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091")
     p.add_argument('--auto-connect', type=str, help='Auto connect uris',
                        default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,active"
                    )
@@ -134,6 +138,7 @@ def main():
     p.add_argument("cmd", help="Choose command", nargs="*", type=str)
 
     cfg = p.parse_args()
+    cfg.l = cfg.log_level
     try:
         os.mkdir(vardir) # We need to have vardir created for logs
     except Exception as e:
@@ -157,6 +162,8 @@ def main():
 
     if not cfg.wallet_rpc_password:
         cfg.wallet_rpc_password = secrets.token_urlsafe(12)
+
+    cfg.readonly_providers = cfg.readonly_providers.split(",")
 
     cfg.var_dir = vardir
     cfg.bin_dir = bindir
@@ -439,8 +446,6 @@ def main():
             ctrl["cfg"].sessions.load(cleanup=True)
             ctrl["cfg"].sessions.refresh_status()
             logging.getLogger("wallet").warning(repr(ctrl["cfg"].sessions))
-        if Util.every_x_seconds(60):
-            ctrl["cfg"].sessions.save()
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():

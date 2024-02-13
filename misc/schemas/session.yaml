@@ -41,7 +41,11 @@
           $ref: '#/components/schemas/WgSessionData'
         proxy:
           $ref: '#/components/schemas/ProxySessionData'
+        ssh:
+          $ref: '#/components/schemas/SSHSessionData'
         sessionid:
+          type: string
+        reuse_sessionid:
           type: string
         expires:
           type: integer
@@ -102,5 +106,12 @@
       type: object
       additionalProperties: false
       properties:
-        crt:
+        key:
+          type: string
+
+    SSHSessionData:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
           type: string

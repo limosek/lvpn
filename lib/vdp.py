@@ -201,10 +201,19 @@ class VDP:
             self.cfg = cfg
         for g in self.gate_ids():
             go = self.get_gate(g)
+            if go.get_provider().get_id() in self.cfg.readonly_providers:
+                logging.getLogger("vdp").warning("Not saving gate %s (Readonly provider)" % go.get_id())
+                continue
             go.save(cfg=cfg)
         for s in self.space_ids():
             so = self.get_space(s)
+            if so.get_provider().get_id() in self.cfg.readonly_providers:
+                logging.getLogger("vdp").warning("Not saving space %s (Readonly provider)" % so.get_id())
+                continue
             so.save(cfg=cfg)
         for p in self.provider_ids():
+            if p in self.cfg.readonly_providers:
+                logging.getLogger("vdp").warning("Not saving provider %s (Readonly provider)" % p)
+                continue
             po = self.get_provider(p)
             po.save(cfg=cfg)

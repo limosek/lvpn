@@ -54,7 +54,7 @@ class SSHProxy(Service):
                 gobj.set_name(gate.get_name() + "/" + gobj.get_name())
                 if gobj.is_tls():
                     lport = cls.find_free_port()
-                    gobj.set_endpoint("localhost", lport)
+                    gobj.set_endpoint("127.0.0.1", lport)
                     gobj.set_name("%s/%s" % (gate.get_name(), gobj.get_name()))
                     connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
                         "endpoint": gobj.get_endpoint()
@@ -78,9 +78,9 @@ class SSHProxy(Service):
                         messages.append(
                             Messages.connected_info(connection)
                         )
-                local_addresses.append(("localhost", lport))
+                local_addresses.append((cls.ctrl["cfg"].local_bind, lport))
                 remote_addresses.append((rhost, int(rport)))
-                cls.log_info("Create port forward request localhost:%s -> %s:%s" % (lport, rhost, rport))
+                cls.log_info("Create port forward request %s:%s -> %s:%s" % (cls.ctrl["cfg"].local_bind, lport, rhost, rport))
             else:
                 cls.log_error("Non-existent SSH gateway %s" % g)
                 messages.append(

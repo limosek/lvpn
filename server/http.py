@@ -25,11 +25,29 @@ openapi_validated = FlaskOpenAPIViewDecorator(openapi)
 
 def make_response(code, reason, data=None):
     if data is None:
-        data = {}
+        data = {"code": code, "reason": reason}
     if type(data) is str:
         return Response(data, "%s %s" % (code, reason), {'content-type': 'text/plain'})
     else:
         return Response(json.dumps(data, indent=2), "%s %s" % (code, reason), {'content-type': 'application/json'})
+
+
+@app.errorhandler(404)
+def error_404(e):
+    return make_response(404, "Not found", e)
+
+
+def check_authentication():
+    if Manager.ctrl["cfg"].manager_bearer_auth:
+        bearer = request.headers.get('Authorization')
+        if not bearer:
+            return make_response(403, "Missing Auth Bearer")
+        if len(bearer.split()) != 2:
+            return make_response(403, "Missing Auth Bearer")
+        token = bearer.split()[1]
+        if token != Manager.ctrl["cfg"].manager_bearer_auth:
+            return make_response(403, "Bad Auth Bearer")
+    return False
 
 
 @app.route('/api/vdp', methods=['GET'])
@@ -185,6 +203,18 @@ def get_session():
             return make_response(404, "Session not found", {})
     else:
         return make_response(400, "Missing sessionid", {})
+
+
+@app.route('/api/sessions', methods=['GET'])
+@openapi_validated
+def sessions():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
+    sessions = []
+    for c in Manager.ctrl["cfg"].sessions.find():
+        sessions.append(c.get_dict())
+    return sessions
 
 
 class Manager(Service):

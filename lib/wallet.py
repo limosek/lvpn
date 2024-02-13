@@ -140,6 +140,7 @@ class Wallet(Service):
     @classmethod
     def loop(cls):
         logging.getLogger(cls.myname).debug("Wallet loop")
+        skew = 20000
         while "norun" in cls.kwargs or not cls.p.poll():
             if cls.pc:
                 try:
@@ -151,11 +152,12 @@ class Wallet(Service):
                 #cls.refresh()
                 height = cls.get_height()
                 if bool(height):
-                    transfers = cls.get_in_transfers(height["height"] - 5000)
+                    transfers = cls.get_in_transfers(height["height"] - skew)
                     for transfer in transfers["in"]:
                         processed = cls.ctrl["cfg"].sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
-                        if processed:
-                            cls.log_warning("Processed payment %s(%s) to session %s" % (transfer["txid"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, processed.get_id()))
+                        if len(processed) > 0:
+                            cls.log_warning("Updated %s sessions for payment: txid=%s,amount=%s" % (len(processed), transfer["txid"], transfer["amount"] * cls.ctrl["cfg"].coin_unit))
+                    skew = 100
                 else:
                     logging.getLogger("wallet").error("Cannot get height. Continuing")
             if not cls.myqueue.empty():

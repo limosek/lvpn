@@ -6,6 +6,7 @@ cd /home/lvpn/src
 
 export WLC_VAR_DIR=/home/lvpn
 export WLS_VAR_DIR=/home/lvpn
+export NO_KIVY=1
 
 case $1 in
 
@@ -16,7 +17,7 @@ client|lvpnc)
 
 server|lvpns)
   shift
-  python3 server.py $LVPNS_ARGS "$@"
+  python3 server.py --local-bind=0.0.0.0 $LVPNS_ARGS "$@"
   ;;
 
 mgmt)

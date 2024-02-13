@@ -52,6 +52,8 @@ class Session:
         now = int(time.time())
         self._data["expires"] = now + self._data["days"] * 3600 * 24
         self._data["activated"] = now
+        self._gate.activate(self)
+        self._space.activate(self)
         logging.getLogger().warning("Activated session %s" % self.get_id())
 
     def get_spaceid(self):
@@ -86,16 +88,19 @@ class Session:
 
     def add_payment(self, amount, height, txid):
         payment = {"amount": amount, "height": height, "txid": txid}
-        if payment not in self._data["payments"]:
-            self._data["payments"].append(payment)
-            if self.get_payment() >= self._data["price"]:
-                self._data["paid"] = True
-                self.activate()
-            else:
-                self._data["paid"] = False
-            return True
+        for p in self._data["payments"]:
+            if p["height"] == height and p["txid"] == txid:
+                logging.getLogger().debug(
+                    "Ignoring payment to session %s (already processed,paid:%s)" % (self.get_id(), self.get_payment()))
+                return False
+        logging.getLogger().info("Adding new payment to session %s (paid:%s)" % (self.get_id(), self.get_payment()))
+        self._data["payments"].append(payment)
+        if self.get_payment() >= self._data["price"]:
+            self._data["paid"] = True
+            self.activate()
         else:
-            return False
+            self._data["paid"] = False
+        return True
 
     def set_parent(self, parentid):
         self._data["parent"] = parentid

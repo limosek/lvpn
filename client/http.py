@@ -31,9 +31,30 @@ def make_response(code, reason, data=None):
     return Response(json.dumps(data, indent=2), "%s %s" % (code, reason), {'content-type': 'application/json'})
 
 
+def check_authentication():
+    if Manager.ctrl["cfg"].manager_bearer_auth:
+        bearer = request.headers.get('Authorization')
+        if not bearer:
+            return make_response(403, "Missing Auth Bearer")
+        if len(bearer.split()) != 2:
+            return make_response(403, "Missing Auth Bearer")
+        token = bearer.split()[1]
+        if token != Manager.ctrl["cfg"].manager_bearer_auth:
+            return make_response(403, "Bad Auth Bearer")
+    return False
+
+
+@app.errorhandler(404)
+def error_404(e):
+    return make_response(404, "Not found")
+
+
 @app.route('/api/vdp', methods=['GET'])
 @openapi_validated
 def get_vdp():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     jsn = json.loads(Manager.ctrl["cfg"].vdp.get_json())
     spc = openapi.spec.contents()
     resolver = jsonschema.validators.RefResolver.from_schema(spc)
@@ -47,6 +68,9 @@ def get_vdp():
 
 @app.route('/api/vdp', methods=['POST'])
 def post_vdp():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     spc = openapi.spec.contents()
     resolver = jsonschema.validators.RefResolver.from_schema(spc)
     validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"]["Vdp"], resolver=resolver)
@@ -75,6 +99,9 @@ def post_vdp():
 @app.route('/api/connections', methods=['GET'])
 @openapi_validated
 def connections():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     conns = []
     for c in Manager.get_value("connections"):
         conns.append(c.get_dict())
@@ -84,6 +111,9 @@ def connections():
 @app.route('/api/sessions', methods=['GET'])
 @openapi_validated
 def sessions():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     sessions = []
     for c in Manager.ctrl["cfg"].sessions.find():
         sessions.append(c.get_dict())
@@ -93,6 +123,9 @@ def sessions():
 @app.route('/api/session', methods=['POST'])
 @openapi_validated
 def create_session():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     days = request.openapi.body["days"]
     space = Manager.ctrl["cfg"].vdp.get_space(request.openapi.body["spaceid"])
     if not space:
@@ -123,6 +156,9 @@ def create_session():
 @app.route('/api/session', methods=['GET'])
 @openapi_validated
 def get_session():
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     if "sessionid" in request.args:
         session = Manager.ctrl["cfg"].sessions.get(request.args["sessionid"])
         if session:
@@ -131,12 +167,15 @@ def get_session():
             else:
                 return make_response(200, "OK", session.get_dict())
         else:
-            return make_response(404, "Session not found", {})
+            return make_response(404, "Session not found")
 
 
 @app.route('/api/connect/<sessionid>', methods=['GET'])
 @openapi_validated
 def connect(sessionid):
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     session = Manager.ctrl["cfg"].sessions.get(sessionid)
     if session:
         if session.is_active():
@@ -164,6 +203,9 @@ def connect(sessionid):
 @app.route('/api/disconnect/<connectionid>', methods=['GET'])
 @openapi_validated
 def disconnect(connectionid):
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     connection = Connections(Manager.ctrl["connections"]).get(connectionid)
     if connection:
         m = Messages.disconnect(connection.get_id())
@@ -183,6 +225,9 @@ def disconnect(connectionid):
 @app.route('/api/pay/session/<sessionid>', methods=['GET'])
 @openapi_validated
 def pay_session(sessionid):
+    notauth = check_authentication()
+    if notauth:
+        return notauth
     session = Manager.ctrl["cfg"].sessions.get(sessionid)
     if session:
         if session.is_active():

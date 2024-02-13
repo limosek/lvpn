@@ -7,7 +7,7 @@
   "name": "1st Lethean Gateway Wireguard endpoint",
   "description": "First Lethean Gateway used for testing and Proof of concept",
   "price": {
-    "per-day": 0.1
+    "per-day": 100
   },
   "wg": {
     "host": "vpn.lethean.space",
