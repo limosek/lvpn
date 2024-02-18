@@ -2,7 +2,7 @@ import time
 from kivy.uix.gridlayout import GridLayout
 
 import client
-from lib.shared import Messages
+from lib.messages import Messages
 from lib.vdp import VDP
 
 

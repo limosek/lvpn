@@ -4,7 +4,7 @@ from copy import copy
 import stripe
 
 from lib.service import Service
-from lib.shared import Messages
+from lib.messages import Messages
 
 
 class StripeManager(Service):

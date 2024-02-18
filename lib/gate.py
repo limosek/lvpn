@@ -1,6 +1,12 @@
 import logging
+import os.path
 import socket
+import time
 
+from ownca import CertificateAuthority
+
+from lib.runcmd import RunCmd
+from lib.util import Util
 from lib.vdpobject import VDPObject, VDPException
 
 
@@ -10,6 +16,7 @@ class Gateway(VDPObject):
         self.cfg = cfg
         self.validate(gwinfo, "Gate", file)
         self._data = gwinfo
+        self._provider = self.cfg.vdp.get_provider(self._data["providerid"])
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["gateid"]
@@ -75,11 +82,77 @@ class Gateway(VDPObject):
     def get_title(self):
         return self._data["name"]
 
+    def get_gate_data(self, gate):
+        if gate in self._data:
+            return self._data[gate]
+        else:
+            return False
+
     def activate(self, session):
         if self.get_type() == "ssh":
-            pass
-        elif self.get_type() == "http-proxy":
-            pass
+            user_key = "%s/user-%s" % (self.cfg.tmp_dir, session.get_id())
+            user_key_pub = "%s.pub" % user_key
+            user_cert = "%s/user-%s-cert.pub" % (self.cfg.tmp_dir, session.get_id())
+            username = session.get_gate().get_gate_data("ssh")["username"]
+            cmd = [
+                "ssh-keygen",
+                "-f", user_key,
+                "-C", "%s-%s" % (username, self.get_id()),
+                "-t", "ecdsa",
+                "-N", ""
+            ]
+            logging.getLogger().info("Running command: %s" % (" ".join(cmd)))
+            if RunCmd.get_output(cmd):
+                pass
+            else:
+                logging.getLogger().error("Error activating session %s" % self.get_id())
+            cmd = [
+                "ssh-keygen",
+                "-s", self.cfg.ssh_user_ca_private,
+                "-C", "gateid=%s,username=%s,sessionid=%s" % (session.get_gate().get_id(), username, self.get_id()),
+                "-I", session.get_id() + "@lvpn",
+                "-n", username,
+                "-V", "+%sd" % (session.days_left() + 1),
+                user_key_pub]
+            logging.getLogger().info("Running command %s" % " ".join(cmd))
+            if RunCmd.get_output(cmd):
+                pass
+            else:
+                logging.getLogger().error("Error activating session %s" % self.get_id())
+            with open(user_cert, "r") as f:
+                crt = f.read(10000)
+            with open(user_key, "r") as f:
+                key = f.read(10000)
+            if not session.is_free():
+                session.set_gate_data("ssh", {
+                    "key": key,
+                    "crt": crt,
+                    "port": Util.find_random_free_port()
+                })
+            else:
+                session.set_gate_data("ssh", {
+                    "key": key,
+                    "crt": crt
+                })
+
+        elif self.get_type() in ["http-proxy", "socks-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy"] and self.is_tls():
+            ca = CertificateAuthority(ca_storage=self.cfg.ca_dir)
+            lckfile = "%s/lock" % self.cfg.ca_dir
+            while os.path.exists(lckfile):
+                time.sleep(0.1)
+            with open(lckfile, "w") as lck:
+                lck.write(str(os.getpid()))
+            try:
+                crt = ca.issue_certificate("%s.lvpn" % session.get_id(), maximum_days=session.days_left() + 1, key_size=4096)
+                session.set_gate_data("proxy", {
+                    "key": crt.key_bytes.decode("utf-8"),
+                    "crt": crt.cert_bytes.decode("utf-8")
+                })
+            except Exception as e:
+                os.unlink(lckfile)
+                return False
+            os.unlink(lckfile)
+
         return True
 
     def __repr__(self):

@@ -12,7 +12,8 @@ from requests.auth import HTTPDigestAuth
 
 from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
-from lib.shared import Messages
+from lib.sessions import Sessions
+from lib.messages import Messages
 from lib.util import Util
 
 
@@ -149,17 +150,25 @@ class Wallet(Service):
                     logging.getLogger(cls.myname).error(e)
             time.sleep(1)
             if Util.every_x_seconds(10):
-                #cls.refresh()
+                sessions = Sessions(cls.ctrl["cfg"])
+                in_transfers = []
                 height = cls.get_height()
+                matched = 0
                 if bool(height):
-                    transfers = cls.get_in_transfers(height["height"] - skew)
-                    for transfer in transfers["in"]:
-                        processed = cls.ctrl["cfg"].sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
-                        if len(processed) > 0:
-                            cls.log_warning("Updated %s sessions for payment: txid=%s,amount=%s" % (len(processed), transfer["txid"], transfer["amount"] * cls.ctrl["cfg"].coin_unit))
+                    height = height["height"]
+                    transfers = cls.get_in_transfers(height - skew)
+                    if transfers and "in" in transfers:
+                        in_transfers = transfers["in"]
+                        for transfer in transfers["in"]:
+                            processed = sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.ctrl["cfg"].coin_unit, transfer["height"], transfer["txid"])
+                            if len(processed) > 0:
+                                cls.log_warning("Updated %s sessions for payment: txid=%s,amount=%s" % (len(processed), transfer["txid"], transfer["amount"] * cls.ctrl["cfg"].coin_unit))
+                                matched += len(processed)
                     skew = 100
                 else:
                     logging.getLogger("wallet").error("Cannot get height. Continuing")
+                    height = False
+                cls.log_info("Inspected wallet payments, from_height=%s, to_height=%s,transfers=%s, updated=%s" % (height - skew, height, len(in_transfers), matched))
             if not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get(block=False, timeout=0.01)
@@ -229,10 +238,12 @@ class Wallet(Service):
         balance = cls.get_unlocked_balance()
         if balance is False or balance is None:
             cls.log_error("Cannot get balance from wallet")
+            cls.log_gui("wallet", "Cannot conntact wallet. Is it syncing?")
             return False
         else:
             if balance < amount:
-                cls.log_error("Not enough balance (%s, needs %s)" % (balance, amount))
+                cls.log_error("Not enough balance to send (%s, needs %s)" % (balance, amount))
+                cls.log_gui("wallet", "Not enough balance to send (%s, needs %s)" % (balance, amount))
                 return False
         try:
             cls.rpc("transfer_split",
@@ -245,9 +256,11 @@ class Wallet(Service):
                         "payment_id": paymentid
                     })
             cls.log_warning("Transferring coins finished OK: %s" % msg)
+            cls.log_gui("wallet", "Transferring coins finished OK: %s" % msg)
             return True
         except WalletException as e:
             cls.log_warning("Transferring coins error: %s" % e.message)
+            cls.log_gui("wallet", "Transferring coins error: %s" % e.message)
             return False
 
     @classmethod

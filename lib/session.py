@@ -4,7 +4,8 @@ import time
 import secrets
 from copy import copy
 
-from lib.shared import Messages
+from lib.runcmd import RunCmd
+from lib.messages import Messages
 from lib.vdpobject import VDPException
 
 
@@ -48,13 +49,35 @@ class Session:
         if self.get_price() == 0:
             self.activate()
 
+    def reuse(self, days):
+        price = (self._space.get_price() + self._gate.get_price()) * days
+        self._data["sessionid"] = "s-" + secrets.token_hex(8)
+        self._data["wallet"] = self._space.get_wallet()
+        self._data["created"] = int(time.time())
+        self._data["paymentid"] = secrets.token_hex(8)
+        self._data["password"] = secrets.token_hex(10)
+        self._data["bearer"] = "b-" + secrets.token_hex(12)
+        self._data["days"] = int(days)
+        self._data["expires"] = int(time.time()) + self._cfg.unpaid_expiry
+        self._data["paid"] = False
+        self._data["payments"] = []
+        self._data["activated"] = 0
+        self._data["price"] = price,
+        self._data["payment_sent"] = False
+
     def activate(self):
-        now = int(time.time())
-        self._data["expires"] = now + self._data["days"] * 3600 * 24
-        self._data["activated"] = now
-        self._gate.activate(self)
-        self._space.activate(self)
-        logging.getLogger().warning("Activated session %s" % self.get_id())
+        try:
+            now = int(time.time())
+            self._gate.activate(self)
+            self._space.activate(self)
+            if self._cfg.on_session_activation:
+                RunCmd.run("%s %s" % (self._cfg.on_session_activation, self.get_filename()))
+            logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
+            self._data["expires"] = now + self._data["days"] * 3600 * 24
+            self._data["activated"] = now
+        except Exception as e:
+            logging.getLogger().warning("Error activating session %s:%s" % (self.get_id(), e))
+            raise
 
     def get_spaceid(self):
         return self._space.get_id()
@@ -76,6 +99,9 @@ class Session:
 
     def get_price(self):
         return self._data["price"]
+
+    def get_expiry(self):
+        return self._data["expires"]
 
     def get_payment(self):
         paid = 0
@@ -158,9 +184,34 @@ class Session:
         seconds = (self._data["expires"] - time.time())
         return int(seconds/3600/24)
 
+    def hours_left(self):
+        seconds = (self._data["expires"] - time.time())
+        return int(seconds/3600)
+
     def seconds_left(self):
         seconds = (self._data["expires"] - time.time())
         return int(seconds)
+
+    def pay_info(self):
+        if self.is_paid():
+            left = "left"
+        else:
+            left = "left to pay"
+        if self.is_payment_sent() and not self.is_active():
+            payment = "payment sent"
+        elif self.is_paid():
+            payment = "active"
+        elif self.is_free():
+            payment = "free"
+        elif not self.is_active():
+            payment = "notpaid"
+        if self._data["expires"] - time.time() < 3600:
+            tme = "%s seconds" % self.seconds_left()
+        elif self._data["expires"] - time.time() < 3600 * 24:
+            tme = "%s hours" % self.hours_left()
+        else:
+            tme = "%s days" % self.days_left()
+        return "%s,%s %s" % (payment, tme, left)
 
     def is_fresh(self):
         return self._data["expires"] > time.time()
@@ -170,6 +221,15 @@ class Session:
         if "payment_sent" in data:
             del data["payment_sent"]
         return data
+
+    def set_gate_data(self, gate, data):
+        self._data[gate] = data
+
+    def get_gate_data(self, gate):
+        if gate in self._data:
+            return self._data[gate]
+        else:
+            return False
 
     def get_pay_msg(self):
         m = Messages.pay([{
@@ -187,7 +247,8 @@ class Session:
 
     def __repr__(self):
         try:
-            txt = "Session-%s[%s/%s,days=%s,price=%s,payments=%s,paid=%s,fresh=%s]" % (self.get_gate(), self.get_space(), self._data["days"], self.get_id(), self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
+            txt = "Session-%s[%s/%s,days=%s,price=%s,payments=%s,paid=%s,fresh=%s]" % (self.get_id(), self.get_gate(), self.get_space(), self.days_left()
+                                                                                       , self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
         except Exception as e:
             txt = "Session[Empty]"
         return txt

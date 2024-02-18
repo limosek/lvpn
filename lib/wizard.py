@@ -9,8 +9,10 @@ import nacl.encoding
 from ownca import CertificateAuthority
 from copy import copy
 
-from lib.shared import Messages
+from lib.runcmd import RunCmd
+from lib.messages import Messages
 from lib.signverify import Sign, Verify
+from lib.util import Util
 from lib.vdp import VDP
 
 
@@ -52,12 +54,7 @@ class Wizard:
         except FileExistsError as e:
             pass
 
-        cfgc.gates_dir = cfg.app_dir + "/config/gates/"
-        cfgc.spaces_dir = cfg.app_dir + "/config/spaces/"
-        cfgc.providers_dir = cfg.app_dir + "/config/providers/"
         v = VDP(cfgc)
-        cfgc = copy(cfg)
-        cfgc.readonly_providers = []
         v.save(cfgc)
 
     @staticmethod
@@ -78,12 +75,27 @@ wallet-rpc-password = %s
     @staticmethod
     def ca(cfg):
         logging.getLogger("Wizard: Creating CA")
-        ca = CertificateAuthority(ca_storage=cfg.ca_dir, common_name=cfg.ca_name)
+        ca = CertificateAuthority(ca_storage=cfg.ca_dir, common_name=cfg.ca_name, maximum_days=820)
+
+    @staticmethod
+    def ssh_ca(cfg):
+        RunCmd.get_output(['ssh-keygen', '-t', 'ed25519', '-f', cfg.ssh_user_ca_private, '-N', ''])
+        Util.set_key_permissions(cfg.ssh_user_ca_private)
+
+    @staticmethod
+    def ssh_key(cfg):
+        cmd = [
+            "ssh-keygen",
+            "-f", cfg.ssh_user_key,
+            "-C", "lvpn",
+            "-t", "ed25519",
+            "-N", ""
+        ]
+        RunCmd.get_output(cmd)
 
     @staticmethod
     def provider(cfg):
         logging.getLogger("Wizard: Creating Provider IDs")
-        ca = CertificateAuthority(ca_storage=cfg.ca_dir, common_name=cfg.ca_name)
         signing_key = nacl.signing.SigningKey.generate()
         verification_key = signing_key.verify_key
 
@@ -93,12 +105,13 @@ wallet-rpc-password = %s
 
         with open(cfg.provider_private_key, 'wb') as private_key_file:
             private_key_file.write(signing_key_bytes)
+        Util.set_key_permissions(cfg.provider_private_key)
 
         with open(cfg.provider_public_key, 'wb') as public_key_file:
             public_key_file.write(verification_key_bytes)
 
     @staticmethod
-    def provider_vdp(cfg, providername="Easy LVPN provider", spacename="Free", wallet="[fill-in]", host="[fill-in]"):
+    def provider_vdp(cfg, providername="Easy LVPN provider", spacename="free", wallet="[fill-in]", host="[fill-in]"):
         logging.getLogger("Wizard: Creating Provider VDP")
         with open(cfg.ca_dir + "/ca.crt", "r") as cf:
             cert = cf.read(-1)
@@ -110,16 +123,16 @@ wallet-rpc-password = %s
             "name": providername,
             "description": providername,
             "ca": [cert],
-            "wallet": "[example-wallet-address]",
-            "manager-url": "https://[some-fqdn]:8790/",
+            "wallet": wallet,
+            "manager-url": "https://%s:8790/" % host,
             "spaces": [
-                "free"
+                spacename
             ]
         }
         space = {
           "filetype": "LetheanSpace",
           "version": "1.0",
-          "spaceid": "free",
+          "spaceid": spacename.lower(),
           "providerid": verification_key,
           "name": spacename,
           "description": spacename,

@@ -8,11 +8,11 @@ from lib.session import Session
 
 class Sessions:
 
-    def __init__(self, cfg, cleanup=True):
+    def __init__(self, cfg, cleanup=True, noload=False):
         self._cfg = cfg
         self._sessions = {}
-        self.load(cleanup)
-        logging.getLogger("wallet").warning(repr(self))
+        if not noload:
+            self.load(cleanup)
 
     def load(self, cleanup=False):
         for f in glob.glob(self._cfg.sessions_dir + "/*.lsession"):
@@ -43,6 +43,9 @@ class Sessions:
                 if data:
                     s = Session(self._cfg, data)
                     self.update(s)
+                else:
+                    logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
+                    self.remove(s)
             except Exception as e:
                 pass
 
@@ -59,7 +62,7 @@ class Sessions:
             else:
                 return False
 
-    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None, noparent=None):
+    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None, noparent=None, notfree=None, paid=None, free=None, needpay=None):
         res = []
         for a in self._sessions.values():
             if notpaid and a.is_paid():
@@ -76,6 +79,15 @@ class Sessions:
                 continue
             if noparent and a.get_parent():
                 continue
+            if notfree and a.is_free():
+                continue
+            if paid and not a.is_paid():
+                continue
+            if free and not a.is_free():
+                continue
+            if needpay:
+                if a.is_free() or a.is_paid():
+                    continue
             res.append(a)
 
         return sorted(res, key=lambda d: d.days_left())
@@ -89,6 +101,7 @@ class Sessions:
             del self._sessions[session.get_id()]
         if os.path.exists(session.get_filename()):
             os.unlink(session.get_filename())
+        self.load()
 
     def update(self, session):
         self._sessions[session.get_id()] = session
@@ -107,4 +120,5 @@ class Sessions:
         return updated
 
     def __repr__(self):
-        return "Sessions[all=%s,active=%s,notpaid=%s]" % (len(self.find()), len(self.find(active=True)), len(self.find(notpaid=True)))
+        return "Sessions[all=%s,active=%s,free=%s,paid=%s,needpay=%s]" % (
+            len(self.find()), len(self.find(active=True)), len(self.find(free=True)), len(self.find(paid=True)), len(self.find(needpay=True)))

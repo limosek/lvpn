@@ -21,7 +21,7 @@ class Status(GridLayout):
             self.ids.balance.text = str(client.gui.GUI.ctrl["balance"])
             self.ids.unlocked_balance.text = str(client.gui.GUI.ctrl["unlocked_balance"])
             self.ids.height.text = str(client.gui.GUI.ctrl["daemon_height"])
-            self.ids.log.text = client.gui.GUI.ctrl["log"]
+            self.ids.log.text = "\n".join(client.gui.GUI.ctrl["log"])
             if client.gui.GUI.ctrl["daemon_height"] > 0  and client.gui.GUI.ctrl["wallet_height"] > 0:
                 self.ids.wallet_sync_progress.value = client.gui.GUI.ctrl["wallet_height"] / client.gui.GUI.ctrl["daemon_height"]
                 if client.gui.GUI.ctrl["daemon_height"] - 2 > client.gui.GUI.ctrl["wallet_height"] and client.gui.GUI.ctrl["wallet_height"]:

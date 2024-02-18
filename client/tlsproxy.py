@@ -1,4 +1,5 @@
 import logging
+import os.path
 import socket
 import ssl
 import threading
@@ -7,7 +8,9 @@ from copy import copy
 import setproctitle
 import urllib3
 
-from lib.service import Service
+from lib.service import Service, ServiceException
+from lib.sessions import Sessions
+from lib.util import Util
 
 
 class TLSProxy(Service):
@@ -103,7 +106,7 @@ class TLSProxy(Service):
         server_socket = socket.socket()
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((host, port))
-        server_socket.listen(10)
+        server_socket.listen(100)
         server_socket.settimeout(1)
         cls.log_info("Running TLS proxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, port, cls.kwargs["endpoint"]))
         threads = []
@@ -133,29 +136,46 @@ class TLSProxy(Service):
 
     @classmethod
     def connect(cls, endpoint, ca):
-        try:
-            if cls.ctrl["cfg"].use_http_proxy:
-                proxydata = urllib3.util.parse_url(cls.ctrl["cfg"].use_http_proxy)
-                s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
-            else:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(5)
-                s.connect(endpoint)
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            ctx.load_verify_locations(cadata=ca)
-            ctx.set_ciphers("HIGH")
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_REQUIRED
-            client = ctx.wrap_socket(s)
-            return client
-        except Exception as e:
-            cls.log_error("Cannot connect to %s: %s" % (endpoint, e))
-            raise
+        if cls.ctrl["cfg"].use_http_proxy:
+            proxydata = urllib3.util.parse_url(cls.ctrl["cfg"].use_http_proxy)
+            s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect(endpoint)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.load_cert_chain(cls.crtfile, cls.keyfile)
+        ctx.load_verify_locations(cadata=ca)
+        ctx.set_ciphers("HIGH")
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        client = ctx.wrap_socket(s)
+        return client
 
     @classmethod
     def postinit(cls):
         cls.exit = False
         setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
+        sessionid = cls.kwargs["sessionid"]
+        sessions = Sessions(cls.ctrl["cfg"])
+        session = sessions.get(sessionid)
+        proxydata = session.get_gate_data("proxy")
+        if proxydata:
+            keyfile = "%s/rsa_%s.pem" % (cls.ctrl["cfg"].tmp_dir, session.get_id())
+            crtfile = "%s/rsa_%s.crt" % (cls.ctrl["cfg"].tmp_dir, session.get_id())
+            if os.path.exists(keyfile):
+                os.unlink(keyfile)
+            with open(keyfile, "w") as f:
+                f.write(proxydata["key"])
+            Util.set_key_permissions(keyfile)
+            with open(crtfile, "w") as f:
+                f.write(proxydata["crt"])
+            cls.keyfile = keyfile
+            cls.crtfile = crtfile
+        else:
+            cls.log_error("Missing Proxy data for session %s" % session.get_id())
+            raise ServiceException(2, "Missing Proxy data for session %s" % session.get_id())
+        cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
 
     @classmethod
     def stop(cls):

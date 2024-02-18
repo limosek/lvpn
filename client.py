@@ -11,12 +11,12 @@ import logging.handlers
 import secrets
 import subprocess
 
-from client.connection import Connections
-
 os.environ["KIVY_NO_ARGS"] = "1"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
 
+from client.arguments import ClientArguments
+from lib.arguments import SharedArguments
 from client.http import Manager
 from lib.mngrrpc import ManagerRpcCall
 from lib.session import Session
@@ -24,10 +24,9 @@ from lib.util import Util
 from lib.sessions import Sessions
 from lib.queue import Queue
 from lib.runcmd import RunCmd
-from lib.shared import Messages
+from lib.messages import Messages
 if "NO_KIVY" not in os.environ:
     from client.gui import GUI
-    from client import SplashScreen, splash_screen
 from client.proxy import Proxy
 from client.wallet import ClientWallet
 from client.daemon import ClientDaemon
@@ -71,71 +70,27 @@ def main():
         vardir = os.getenv("WLC_VAR_DIR")
     else:
         vardir = os.path.expanduser("~") + "/lvpn/"
-    if os.getenv("WLC_CONFIG_DIR"):
-        cfgdir = os.getenv("WLC_CONFIG_DIR")
+
+    os.environ["WLC_VAR_DIR"] = vardir
+
+    if os.getenv("WLC_CFG_DIR"):
+        cfgdir = os.getenv("WLC_CFG_DIR")
     else:
         if os.path.exists("/etc/lvpn/"):
             cfgdir = "/etc/lvpn/"
         else:
             cfgdir = os.path.expanduser("~") + "/lvpn/"
+    os.environ["WLC_CFG_DIR"] = cfgdir
+
     if os.getenv("WLC_BIN_DIR"):
         bindir = os.getenv("WLC_BIN_DIR")
     else:
         bindir = appdir + "/bin/"
 
     p = configargparse.ArgParser(default_config_files=['/etc/lvpn/client.ini', cfgdir + "/client.ini", vardir + "/client.ini"])
-    p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path')
-    p.add_argument('--wallet-rpc-bin', help='Wallet RPC binary file')
-    p.add_argument('--wallet-cli-bin', help='Wallet CLI binary file')
-    p.add_argument('--daemon-bin', help='Daemon binary file')
-    p.add_argument("--http-port", help="HTTP port to use for manager", default=8124)
-    p.add_argument('-l', '--log-level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO',
-                   env_var='WLC_LOGLEVEL')
-    p.add_argument("--log-file", help="Log file")
-    p.add_argument("--tmp-dir", help="Temp directory")
-    p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs", default=os.path.abspath(vardir + "/spaces"))
-    p.add_argument("--gates-dir", help="Directory containing all gateway VDPs", default=os.path.abspath(vardir + "/gates"))
-    p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
-                   default=os.path.abspath(vardir + "/providers"))
-    p.add_argument("--sessions-dir", help="Directory containing all sessions", default=os.path.abspath(vardir + "/sessions"))
-    p.add_argument("--ca-dir", help="Directory for Certificate authority",
-                   default=os.path.abspath(vardir + "/ca"))
-    p.add_argument("--ca-name", help="Common name for CA creation",
-                   default="LVPN-easy-provider")
-    p.add_argument("--coin-type", help="Coin type to sue", default="lethean", type=str, choices=["lethean", "monero"],
-                   env_var="WLC_COINTYPE")
-    p.add_argument("--coin-unit", help="Coin minimal unit", type=float)
-    p.add_argument('--run-gui', default=1, type=int, choices=[0, 1], help='Run GUI')
-    p.add_argument('--run-proxy', default=1, type=int, choices=[0, 1], help='Run local proxy')
-    p.add_argument('--run-wallet', default=1, type=int, choices=[0, 1], help='Run local wallet')
-    p.add_argument('--run-daemon', default=0, type=int, choices=[0, 1], help='Run local daemon RPC')
-    p.add_argument('--edge-bin', help='Edge browser binary',
-                   default="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
-    p.add_argument('--chromium-bin', help='Chromium browser binary', default="chromium")
-    p.add_argument('--daemon-host', help='Daemon host', default='localhost')
-    p.add_argument('--daemon-p2p-port', help='Daemon P2P port', type=int)
-    p.add_argument('--daemon-rpc-url', help='Daemon RPC URL')
-    p.add_argument('--wallet-rpc-url', help='Wallet RPC URL', default='http://localhost:1444/json_rpc')
-    p.add_argument('--wallet-rpc-port', help='Wallet RPC port', type=int, default=1444)
-    p.add_argument('--wallet-rpc-user', help='Wallet RPC user', default='vpn')
-    p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random')
-    p.add_argument('--wallet-name', help='Wallet name')
-    p.add_argument('--wallet-password', help='Wallet password')
-    p.add_argument('--wallet-address', help='Wallet public address')
-    p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
-    p.add_argument('--force-manager-wallet', help='Manually override wallet address url for all spaces. Used just for tests')
-    p.add_argument('--use-http-proxy', type=str, help='Use HTTP proxy (CONNECT) to services', env_var="HTTP_PROXY")
-    p.add_argument('--local-bind', help='Bind address to use for proxy and TLS ports', default="127.0.0.1")
-    p.add_argument('--manager-local-bind', help='Bind address to use for manager', default="127.0.0.1")
-    p.add_argument('--manager-bearer-auth', help='Bearer authentication string for private APIs', default=None)
-    p.add_argument('--readonly-providers', help='List of providers, delimited by comma, which cannot be updated by VDP',
-                   default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091")
-    p.add_argument('--auto-connect', type=str, help='Auto connect uris',
-                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,active"
-                   )
-    p.add_argument("--unpaid-expiry", help="Unpaid sessions will expire after this seconds",
-                   default=3600, type=int)
-    p.add_argument("cmd", help="Choose command", nargs="*", type=str)
+    p = SharedArguments.define(p, os.environ["WLC_CFG_DIR"], os.environ["WLC_VAR_DIR"], os.path.dirname(__file__),
+                               "WLC", "client")
+    p = ClientArguments.define(p, os.environ["WLC_CFG_DIR"], os.environ["WLC_VAR_DIR"], os.path.dirname(__file__))
 
     cfg = p.parse_args()
     cfg.l = cfg.log_level
@@ -181,33 +136,6 @@ def main():
     # Initialize RunCmd
     RunCmd.init(cfg)
 
-    if cfg.coin_type == "lethean":
-        if not cfg.wallet_rpc_bin:
-            cfg.wallet_rpc_bin = "lethean-wallet-rpc"
-        if not cfg.wallet_cli_bin:
-            cfg.wallet_cli_bin = "lethean-wallet-cli"
-        if not cfg.daemon_rpc_url:
-            cfg.daemon_rpc_url = "http://localhost:48782/json_rpc"
-        if not cfg.daemon_bin:
-            cfg.daemon_bin = "letheand"
-        if not cfg.daemon_p2p_port:
-            cfg.daemon_p2p_port = 48772
-        if not cfg.wallet_name:
-            cfg.wallet_name = "wallet-lthn"
-        if not cfg.coin_unit:
-            cfg.coin_unit = 1e-8
-    elif cfg.coin_type == "monero":
-        if not cfg.wallet_rpc_bin:
-            cfg.wallet_rpc_bin = "monero-wallet-rpc"
-        if not cfg.daemon_rpc_url:
-            cfg.daemon_rpc_url = "http://localhost:18081/json_rpc"
-        if not cfg.daemon_p2p_port:
-            cfg.daemon_p2p_port = 18080
-        if not cfg.wallet_name:
-            cfg.wallet_name = "wallet-monero"
-        if not cfg.coin_unit:
-            cfg.coin_unit = 1e-12
-
     try:
         cfg.vdp = VDP(cfg)
     except VDPException as e:
@@ -224,99 +152,13 @@ def main():
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
     http_queue = Queue(multiprocessing.get_context(), "http")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
-    cfg.sessions = Sessions(cfg)
+    sessions = Sessions(cfg)
     tmpdir = cfg.tmp_dir
-    ctrl["log"] = ""
-    ctrl["daemon_height"] = -1
-    ctrl["selected_gate"] = None
-    ctrl["selected_space"] = None
-    ctrl["connections"] = []
-    ctrl["wallet_address"] = ""
-    ctrl["payments"] = {}
-    ctrl["balance"] = -1
-    ctrl["unlocked_balance"] = -1
-    ctrl["wallet_height"] = -1
-    ctrl["wallet_address"] = ""
+    Messages.init_ctrl(ctrl)
     ctrl["wizard"] = wizard
 
     if not os.path.exists(cfg.var_dir + "/" + cfg.wallet_name):
         Wizard.wallet(wallet_queue)
-
-    if cfg.cmd:
-
-        if cfg.cmd[0] == "connect":
-            if len(cfg.cmd) == 2:
-                ctrl["cfg"] = cfg
-                url = cfg.cmd[1]
-                (gateid, spaceid) = url.split("/")
-                if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                    proxy_queue.put(Messages.connect(cfg.vdp.get_space(spaceid), cfg.vdp.get_gate(gateid), None))
-                else:
-                    logging.getLogger("Cannot connect to connect uri %s: gate or space does not exists." % (url))
-                Proxy.run(ctrl, queue, proxy_queue)
-                sys.exit()
-            else:
-                logging.getLogger().error("You need to specify connect uri")
-                sys.exit(1)
-
-        elif cfg.cmd[0] == "list-spaces":
-            print("id,name")
-            for s in cfg.vdp.spaces():
-                print("%s,%s" % (s.get_id(), s.get_name()))
-            sys.exit()
-
-        elif cfg.cmd[0] == "list-gates":
-            print("id,type,internal,name")
-            for s in cfg.vdp.gates():
-                print("%s,%s,%s,%s" % (s.get_id(), s.get_type(), s.is_internal(), s.get_name()))
-            sys.exit()
-
-        elif cfg.cmd[0] == "create-wallet":
-            if cfg.wallet_name and cfg.wallet_password:
-                logging.getLogger().warning("Creating wallet")
-                wallet_queue.put(Messages.CREATE_WALLET)
-            else:
-                logging.getLogger().error("You need to specify --wallet-name and --wallet-password.")
-                sys.exit(1)
-
-        elif cfg.cmd[0] == "import-wallet":
-            if not cfg.wallet_name and cfg.wallet_password:
-                logging.getLogger().error("You need to specify --wallet-name and --wallet-password.")
-                sys.exit(1)
-            if len(cfg.cmd) < 2:
-                logging.error(
-                    "Use import-wallet 'seed'")
-                sys.exit(2)
-            else:
-                seed = " ".join(cfg.cmd[1:])
-                wallet_queue.put(Messages.wallet_restore(seed))
-            pass
-
-        elif cfg.cmd[0] == "import-vdp":
-            if len(cfg.cmd) == 2:
-                vdp = VDP(cfg.cmd[1])
-                vdp.save(cfg.gates_dir, cfg.spaces_dir)
-                sys.exit()
-            else:
-                logging.error(
-                    "Use import-vdp file-or-url")
-
-        elif cfg.cmd[0] == "test-gui":
-            cfg.sessions = Sessions(cfg.sessions_dir)
-            cfg.vdp = VDP(cfg)
-            ctrl["cfg"] = cfg
-            GUI.run(ctrl=ctrl, queue=queue, myqueue=gui_queue)
-            sys.exit()
-
-        elif cfg.cmd[0] == "run":
-            print("run")
-
-        else:
-            logging.error(
-                "Bad command '%s'. Use one of connect,create-wallet,run,wizard,import-vdp" % " ".join(cfg.cmd))
-            sys.exit(1)
-    else:
-        cfg.cmd = ["run"]
 
     # Test binaries
     test_binary([cfg.wallet_cli_bin, "--version"])
@@ -333,18 +175,17 @@ def main():
             print("Trying to connect to %s" % url)
             (gateid, spaceid) = url.split("/")
             if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                sessions = cfg.sessions.find(gateid=gateid, spaceid=spaceid, active=True)
-                if len(sessions) > 0:
-                    proxy_queue.put(Messages.connect(sessions[0]))
+                sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                if len(sess) > 0:
+                    proxy_queue.put(Messages.connect(sess[0]))
                 else:
                     space = cfg.vdp.get_space(spaceid)
                     mr = ManagerRpcCall(space.get_manager_url())
                     try:
-                        session = Session(cfg, mr.create_session(gateid, spaceid, 1))
-                        session.save()
-                        cfg.sessions.add(session)
+                        session = Session(cfg, mr.create_session(gateid, spaceid, 30))
+                        sessions.add(session)
                     except Exception as e:
-                        logging.getLogger("client").error(e)
+                        logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
             else:
                 logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
                 print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
@@ -352,7 +193,7 @@ def main():
             logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
 
     if "active" in connects:
-        for session in cfg.sessions.find(active=True, noparent=True):
+        for session in sessions.find(active=True, noparent=True):
             proxy_queue.put(Messages.connect(session))
 
     os.chdir(tmpdir)
@@ -442,10 +283,6 @@ def main():
                 logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
-        if Util.every_x_seconds(10):
-            ctrl["cfg"].sessions.load(cleanup=True)
-            ctrl["cfg"].sessions.refresh_status()
-            logging.getLogger("wallet").warning(repr(ctrl["cfg"].sessions))
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():

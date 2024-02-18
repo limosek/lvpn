@@ -10,7 +10,7 @@ from client.gui_status import Status
 from client.gui_wizard import Wizard
 from client.gui_wallet import Wallet
 import client
-from lib.shared import Messages
+from lib.messages import Messages
 
 
 class Switcher(GridLayout):
@@ -58,6 +58,15 @@ class Switcher(GridLayout):
             msg = client.gui.GUI.myqueue.get(block=False, timeout=0.01)
             if msg:
                 if msg.startswith(Messages.GUI_POPUP):
+                    data = Messages.get_msg_data(msg)
+                    box = BoxLayout(orientation='vertical', padding=(10))
+                    btn1 = Button(text="OK")
+                    box.add_widget(btn1)
+                    popup = Popup(title=data, title_size=(30),
+                                  title_align='center', content=box)
+                    btn1.bind(on_press=popup.dismiss)
+                    popup.open()
+                if msg.startswith(Messages.UNPAID):
                     data = Messages.get_msg_data(msg)
                     box = BoxLayout(orientation='vertical', padding=(10))
                     btn1 = Button(text="OK")

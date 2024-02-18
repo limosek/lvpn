@@ -32,17 +32,20 @@ class VDP:
             try:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = vdpdata
+                self.cfg.vdp = self
                 if "filetype" in self._data and self._data["filetype"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:
                             prov = Provider(self.cfg, p)
                             self._providers[prov.get_id()] = prov
+                    self.cfg.vdp = self
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
                             spc = Space(self.cfg, s)
                             if not spc.get_provider_id() in self.provider_ids():
                                 raise VDPException("Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
                             self._spaces[spc.get_id()] = spc
+                    self.cfg.vdp = self
                     if "gates" in self._data:
                         for g in self._data["gates"]:
                             gt = Gateway(self.cfg, g)
@@ -59,8 +62,12 @@ class VDP:
             except Exception as e:
                 raise VDPException(str(e))
 
-        elif self.cfg.gates_dir and self.cfg.spaces_dir:
-            for providerf in glob.glob(self.cfg.providers_dir + "/*lprovider"):
+        else:
+            self.cfg.vdp = self
+            providerfiles = glob.glob(self.cfg.providers_dir + "/*lprovider")
+            providerfiles.extend(glob.glob(self.cfg.my_providers_dir + "/*lprovider"))
+            providerfiles.extend(glob.glob(self.cfg.app_dir + "/config/providers/*lprovider"))
+            for providerf in providerfiles:
                 logging.getLogger().info("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
@@ -70,7 +77,11 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (providerf, e))
 
-            for spacef in glob.glob(self.cfg.spaces_dir + "/*lspace"):
+            self.cfg.vdp = self
+            spacefiles = glob.glob(self.cfg.spaces_dir + "/*lspace")
+            spacefiles.extend(glob.glob(self.cfg.my_spaces_dir + "/*lspace"))
+            spacefiles.extend(glob.glob(self.cfg.app_dir + "/config/spaces/*lspace"))
+            for spacef in spacefiles:
                 logging.getLogger().info("Loading space %s" % spacef)
                 with open(spacef, "r") as f:
                     jsn = f.read(-1)
@@ -84,7 +95,11 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (spacef, e))
 
-            for gwf in glob.glob(self.cfg.gates_dir + "/*lgate"):
+            self.cfg.vdp = self
+            gatefiles = glob.glob(self.cfg.gates_dir + "/*lgate")
+            gatefiles.extend(glob.glob(self.cfg.my_gates_dir + "/*lgate"))
+            gatefiles.extend(glob.glob(self.cfg.app_dir + "/config/gates/*lgate"))
+            for gwf in gatefiles:
                 logging.getLogger().info("Loading gate %s" % gwf)
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
@@ -100,9 +115,6 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (gwf, e))
 
-        else:
-            logging.error("Need spaces directory and gates directory")
-            sys.exit(1)
         self._dict = {
             "filetype": "VPNDescriptionProtocol",
             "version": "1.0",
@@ -111,7 +123,6 @@ class VDP:
             "providers": json.loads(self.providers(as_json=True))
         }
         self._json = json.dumps(self._dict, indent=2)
-        #VDPObject.validate(self._json, "Vdp", vdpfile)
         logging.getLogger("vdp").warning("%s gates and %s spaces available" % (len(self._gates), len(self._spaces)))
 
     def gates(self, filter="", spaceid=None, as_json=False, internal=True):
@@ -202,18 +213,21 @@ class VDP:
         for g in self.gate_ids():
             go = self.get_gate(g)
             if go.get_provider().get_id() in self.cfg.readonly_providers:
-                logging.getLogger("vdp").warning("Not saving gate %s (Readonly provider)" % go.get_id())
+                logging.getLogger("vdp").info("Not saving gate %s (Readonly provider)" % go.get_id())
                 continue
             go.save(cfg=cfg)
         for s in self.space_ids():
             so = self.get_space(s)
             if so.get_provider().get_id() in self.cfg.readonly_providers:
-                logging.getLogger("vdp").warning("Not saving space %s (Readonly provider)" % so.get_id())
+                logging.getLogger("vdp").info("Not saving space %s (Readonly provider)" % so.get_id())
                 continue
             so.save(cfg=cfg)
         for p in self.provider_ids():
             if p in self.cfg.readonly_providers:
-                logging.getLogger("vdp").warning("Not saving provider %s (Readonly provider)" % p)
+                logging.getLogger("vdp").info("Not saving provider %s (Readonly provider)" % p)
                 continue
             po = self.get_provider(p)
             po.save(cfg=cfg)
+
+    def __repr__(self):
+        return "VDP[providers=%s,spaces=%s,gates=%s]" % (len(self._providers), len(self._spaces), len(self._gates))

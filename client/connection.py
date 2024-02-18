@@ -1,6 +1,9 @@
 import logging
 import secrets
+import socket
 from copy import copy
+
+from lib.sessions import Sessions
 
 
 class Connection:
@@ -8,7 +11,8 @@ class Connection:
     def __init__(self, cfg, session=None, data=None, parent=None, connection=None, port=None):
         if connection:
             self._data = connection
-            session = cfg.sessions.get(connection["sessionid"])
+            sessions = Sessions(cfg, noload=True)
+            session = sessions.get(connection["sessionid"])
             if not session:
                 raise Exception("Non-existent session %s for connection %s" % (connection["sessionid"], connection["connectionid"]))
         elif session:
@@ -73,6 +77,20 @@ class Connection:
         txt = "%s/%s[id=%s,port=%s]" % (self.get_gate().get_title(), self.get_space().get_title(), self.get_id(), self.get_port())
         return txt
 
+    def check_alive(self):
+        if self.get_port():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            try:
+                s.connect(("127.0.0.1", self.get_port()))
+                s.close()
+                logging.getLogger().info("Connection %s is alive" % self.get_id())
+                return True
+            except Exception as e:
+                logging.getLogger().error("Connection %s is dead: %s" % (self.get_id(), e))
+                return False
+        return True
+
     def __repr__(self):
         if "port" in self._data:
             txt = "Connection/%s[port=%s][%s/%s/%s]" % (
@@ -120,6 +138,19 @@ class Connections:
         if not removed:
             logging.getLogger().error("Removing non-existent connection %s" % connectionid)
 
+    def find_replaced(self, connection):
+        for c in self._data:
+            if c.get_gate().get_id() == connection.get_gate().get_id():
+                return c
+
     def get_dict(self):
         return self._data
+
+    def check_alive(self):
+        for c in self._data:
+            if not c.check_alive():
+                self.remove(c.get_id())
+
+    def __repr__(self):
+        return "%s active connections" % len(self._data)
 

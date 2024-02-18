@@ -4,6 +4,10 @@ import requests
 import json
 
 
+class ManagerException(Exception):
+    pass
+
+
 class ManagerRpcCall:
 
     def __init__(self, url):
@@ -31,7 +35,7 @@ class ManagerRpcCall:
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
         else:
-            return False
+            raise ManagerException(r.text)
 
     def get_session_info(self, session):
         r = requests.get(
@@ -42,4 +46,4 @@ class ManagerRpcCall:
         elif r.status_code == 404:
             return None
         else:
-            return False
+            raise ManagerException(r.text)

@@ -1,0 +1,27 @@
+{
+  "filetype": "LetheanGateway",
+  "type": "ssh",
+  "version": "1.0",
+  "gateid": "ssh",
+  "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
+  "name": "Lethean SSH gateway",
+  "description": "Lethean Gateway to multiplex more streams using SSH",
+  "price": {
+    "per-day": 10
+  },
+  "ssh": {
+    "host": "vpn.lethean.space",
+    "port": 443,
+    "username": "paid-lvpn"
+  },
+  "spaces": [
+    "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"
+  ],
+  "gates": [
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.socks-proxy",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.daemon-p2p",
+     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.daemon-rpc"
+  ],
+  "replaces": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh"
+}

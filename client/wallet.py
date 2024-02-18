@@ -30,6 +30,10 @@ class ClientWallet(Wallet):
                 h = cls.get_height()
                 if h:
                     cls.set_value("wallet_height", h["height"])
+                    if cls.ctrl["daemon_height"] - 2 > cls.ctrl["wallet_height"]:
+                        cls.log_gui("wallet", "Syncing")
+                    else:
+                        cls.log_gui("wallet", "Synced")
                 a = cls.get_address()
                 if a:
                     cls.set_value("wallet_address", a)

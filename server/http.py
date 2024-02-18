@@ -34,7 +34,7 @@ def make_response(code, reason, data=None):
 
 @app.errorhandler(404)
 def error_404(e):
-    return make_response(404, "Not found", e)
+    return make_response(404, "Not found", str(e))
 
 
 def check_authentication():
@@ -175,14 +175,26 @@ def post_session():
     if not gate:
         return make_response(461, "Unknown gate")
     if not gate.is_for_space(space.get_id()):
-        return make_response(416, "Gate cannot be used with this space")
-    if "sessionid" in request.openapi.body:
-        session = Sessions.find_by_id(request.openapi.body["sessionid"])
+        return make_response(462, "Gate cannot be used with this space")
+    sessions = Sessions(Manager.ctrl["cfg"])
+    if "like_sessionid" in request.openapi.body:
+        session = sessions.find_by_id(request.openapi.body["like_sessionid"])
+        if session:
+            if session.is_free():
+                return make_response(404, "Unknown sessionid to reuse", request.openapi.body["reuse_sessionid"])
+            elif session.get_gate().get_id() != request.openapi.body["gateid"] or session.get_get_space().get_id() != request.openapi.body["spaceid"]:
+                return make_response(464, "Cannot reuse with different gate or space")
+            elif session.is_paid() and session.is_fresh():
+                session.reuse(request.openapi.body["days"])
+                return make_response(402, "Waiting for payment", session.get_dict())
+            else:
+                return make_response(404, "Bad sessionid to reuse", request.openapi.body["reuse_sessionid"])
+        else:
+            return make_response(463, "No permission to reuse session", request.openapi.body["reuse_sessionid"])
     else:
         session = Session(Manager.ctrl["cfg"])
         session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
-        Manager.ctrl["cfg"].sessions.add(session)
-        session.save()
+        sessions.add(session)
     if not session.is_paid():
         return make_response(402, "Waiting for payment", session.get_dict())
     else:
@@ -192,8 +204,9 @@ def post_session():
 @app.route('/api/session', methods=['GET'])
 @openapi_validated
 def get_session():
+    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
     if "sessionid" in request.args:
-        session = Manager.ctrl["cfg"].sessions.get(request.args["sessionid"])
+        session = sessions.get(request.args["sessionid"])
         if session:
             if not session.is_paid():
                 return make_response(402, "Waiting for payment", session.get_dict())
@@ -211,10 +224,10 @@ def sessions():
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = []
-    for c in Manager.ctrl["cfg"].sessions.find():
-        sessions.append(c.get_dict())
-    return sessions
+    rsessions = []
+    for c in Sessions(Manager.ctrl["cfg"]).find():
+        rsessions.append(c.get_dict())
+    return rsessions
 
 
 class Manager(Service):

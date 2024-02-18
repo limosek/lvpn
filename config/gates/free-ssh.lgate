@@ -11,10 +11,8 @@
   },
   "ssh": {
     "host": "vpn.lethean.space",
-    "port": 443,
-    "username": "lvpn",
-    "ecdsa-server-public-key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBG6cVw7CnM6Z6EF3VWwOk3elUIhngMW4unl5PTFBABW3xviLj6G1TAzacbH6y7ww1q5jrs3UUK90IZn4l94PIsE= root@897960bf90cf",
-    "client-private-key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PAAAAJBDRLv7Q0S7\n+wAAAAtzc2gtZWQyNTUxOQAAACAGkmPlGQLVVIbWa9G4aZ8Jv8dRxpQym0Wss1OTf4G/PA\nAAAEAcGtT9/Q/nu/Wpzi82UN3ZuQxuTpTbRiNFdNygagf4AwaSY+UZAtVUhtZr0bhpnwm/\nx1HGlDKbRayzU5N/gb88AAAADGxtLWFAbnRiMS1sbQE=\n-----END OPENSSH PRIVATE KEY-----"
+    "port": 8789,
+    "username": "free-lvpn"
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
@@ -24,5 +22,6 @@
      "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
      "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-daemon-p2p",
      "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-daemon-rpc"
-  ]
+  ],
+  "replaces": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh"
 }

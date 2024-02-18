@@ -17,7 +17,8 @@ from client.connection import Connections
 from lib.session import Session
 from lib.mngrrpc import ManagerRpcCall
 from lib.service import Service
-from lib.shared import Messages
+from lib.sessions import Sessions
+from lib.messages import Messages
 from lib.vdp import VDP
 
 app = Flask(__name__)
@@ -114,10 +115,11 @@ def sessions():
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = []
-    for c in Manager.ctrl["cfg"].sessions.find():
-        sessions.append(c.get_dict())
-    return sessions
+    sessions = Sessions(Manager.ctrl["cfg"])
+    rsessions = []
+    for c in sessions.find():
+        rsessions.append(c.get_dict())
+    return rsessions
 
 
 @app.route('/api/session', methods=['POST'])
@@ -126,6 +128,7 @@ def create_session():
     notauth = check_authentication()
     if notauth:
         return notauth
+    sessions = Sessions(Manager.ctrl["cfg"])
     days = request.openapi.body["days"]
     space = Manager.ctrl["cfg"].vdp.get_space(request.openapi.body["spaceid"])
     if not space:
@@ -135,7 +138,7 @@ def create_session():
         return make_response(461, "Unknown gate")
     if not gate.is_for_space(space.get_id()):
         return make_response(416, "Gate cannot be used with this space")
-    fresh = Manager.ctrl["cfg"].sessions.find(gateid=gate.get_id(), spaceid=space.get_id(), fresh=True)
+    fresh = sessions.find(gateid=gate.get_id(), spaceid=space.get_id(), fresh=True)
     if fresh:
         fresh = fresh[0]
         if fresh.is_paid():
@@ -146,7 +149,7 @@ def create_session():
         mngr = ManagerRpcCall(space.get_manager_url())
         session = Session(Manager.ctrl["cfg"], mngr.create_session(gate.get_id(), space.get_id(), days))
         session.save()
-        Manager.ctrl["cfg"].sessions.add(session)
+        sessions.add(session)
         if session.is_paid():
             return make_response(200, "OK", session.get_dict())
         else:
@@ -160,7 +163,8 @@ def get_session():
     if notauth:
         return notauth
     if "sessionid" in request.args:
-        session = Manager.ctrl["cfg"].sessions.get(request.args["sessionid"])
+        sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+        session = sessions.get(request.args["sessionid"])
         if session:
             if not session.is_paid():
                 return make_response(402, "Waiting for payment", session.get_dict())
@@ -168,6 +172,8 @@ def get_session():
                 return make_response(200, "OK", session.get_dict())
         else:
             return make_response(404, "Session not found")
+    else:
+        return make_response(400, "Missing sessionid")
 
 
 @app.route('/api/connect/<sessionid>', methods=['GET'])
@@ -176,7 +182,8 @@ def connect(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    session = Manager.ctrl["cfg"].sessions.get(sessionid)
+    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+    session = sessions.get(sessionid)
     if session:
         if session.is_active():
             m = Messages.connect(session)
@@ -228,7 +235,8 @@ def pay_session(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    session = Manager.ctrl["cfg"].sessions.get(sessionid)
+    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+    session = sessions.get(sessionid)
     if session:
         if session.is_active():
             return make_response(201, "Already paid")
@@ -237,13 +245,12 @@ def pay_session(sessionid):
             waited = 0
             paid = False
             while waited < 30 and not paid:
-                session = Manager.ctrl["cfg"].sessions.get(session.get_id())
+                session = sessions.get(session.get_id())
                 if session.is_paid():
                     return make_response(200, "OK", session.get_dict())
                 if Manager.myqueue and not Manager.myqueue.empty():
                     try:
                         msg = Manager.myqueue.get(block=False, timeout=0.1)
-                        print(msg)
                         if msg.startswith(Messages.PAID):
                             data = Messages.get_msg_data(msg)
                             if data == session.get_pay_msg():

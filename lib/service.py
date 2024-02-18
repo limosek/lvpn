@@ -1,11 +1,11 @@
 import logging
+import signal
+import sys
 import time
-import socket
-from contextlib import closing
 import _queue
 import setproctitle
 
-from lib.shared import Messages
+from lib.messages import Messages
 
 
 class ServiceException(Exception):
@@ -26,23 +26,16 @@ class Service:
     myname = None
 
     @classmethod
-    def find_free_port(cls):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('', 0))
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            return s.getsockname()[1]
-
-    @classmethod
     def loop(cls):
         """ Default loop for every service. """
         while not cls.exit:
             if cls.myqueue and not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get(block=False, timeout=0.01)
+                    if msg == Messages.EXIT:
+                        break
                 except _queue.Empty:
                     pass
-                if msg == Messages.EXIT:
-                    break
             time.sleep(1)
 
     @classmethod
@@ -106,11 +99,16 @@ class Service:
     @classmethod
     def log_gui(cls, process, value):
         log = cls.get_value("log")
-        if not log:
-            cls.set_value("log", "")
-        log = "\n".join(log.split("\n")[:30])
-        log += "%s:%s\n" % (process, value)
+        log.append("%s:%s" % (process, value))
+        if len(log) > 30:
+            log = log[:30]
         cls.set_value("log", log)
+
+    @classmethod
+    def sigterm(cls, sig, frame):
+        cls.log_warning("Catched signal %s" % sig)
+        cls.stop()
+        sys.exit()
 
     @classmethod
     def log_debug(cls, *args, **kwargs):

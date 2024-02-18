@@ -5,6 +5,9 @@ import configargparse
 
 os.environ["NO_KIVY"] = "1"
 
+from client.arguments import ClientArguments
+from lib.arguments import SharedArguments
+from server.arguments import ServerArguments
 from client.connection import Connection
 from lib.session import Session
 from lib.sessions import Sessions
@@ -19,18 +22,20 @@ class TestSessions(unittest.TestCase):
     def parse_args(self, args):
         p = configargparse.ArgParser(
             default_config_files=[])
-        vardir = os.path.dirname(__file__)
-        p.add_argument("--sessions-dir", help="Directory containing all spaces Sessions",
-                       default=os.path.abspath(vardir + "/sessions"))
-        p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs",
-                       default=os.path.abspath(vardir + "/../config/spaces"))
-        p.add_argument("--gates-dir", help="Directory containing all gateway VDPs",
-                       default=os.path.abspath(vardir + "/../config/gates"))
-        p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
-                       default=os.path.abspath(vardir + "/../config/providers"))
-        p.add_argument("--force-manager-wallet", default = False)
-        p.add_argument("--unpaid-expiry", default=60)
+        vardir = os.path.abspath("./var/")
+        if os.path.exists(os.path.abspath(vardir + "/../config")):
+            appdir = os.path.abspath(vardir + "/../")
+        elif os.path.exists(os.path.dirname(__file__) + "/../config"):
+            appdir = os.path.abspath(os.path.dirname(__file__) + "/../")
+        else:
+            appdir = os.path.abspath(os.environ["PYTHONPATH"])
+        os.environ["WLS_CFG_DIR"] = os.path.abspath("./var/")
+        p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir, "WLS_", "server")
+        p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
+        p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
+        args.extend(["--wallet-rpc-password=1234", "--log-file=%s/sessions.log" % vardir])
         cfg = p.parse_args(args)
+        cfg.l = cfg.log_level
         return cfg
 
     def cleanup(self, cfg):
@@ -67,3 +72,5 @@ class TestSessions(unittest.TestCase):
         pass
 
 
+if __name__ == "main":
+    unittest.main()

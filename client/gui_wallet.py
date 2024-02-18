@@ -5,7 +5,7 @@ from kivy.clock import Clock
 from kivy.uix.gridlayout import GridLayout
 
 import client
-from lib.shared import Messages
+from lib.messages import Messages
 from lib.util import Util
 
 

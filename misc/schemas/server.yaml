@@ -83,6 +83,10 @@ paths:
           description: Unknown/bad gate
         '462':
           description: Cannot use this space/gate combination
+        '463':
+          description: No permission to reuse session
+        '464':
+          description: Cannot reuse with different gate or space
         '500':
           description: Server error
     get:
@@ -346,13 +350,7 @@ components:
               type: string
             port:
               type: integer
-            rsa-server-public-key:
-              type: string
-            ecdsa-server-public-key:
-              type: string
             username:
-              type: string
-            client-private-key:
               type: string
             tls:
               type: boolean
@@ -360,7 +358,6 @@ components:
             - host
             - port
             - username
-            - client-private-key
         spaces:
           type: array
           items:
@@ -369,6 +366,8 @@ components:
           type: array
           items:
             type: string
+        replaces:
+          type: string
         gate-types:
           type: array
           items:
@@ -484,8 +483,6 @@ components:
           $ref: '#/components/schemas/SSHSessionData'
         sessionid:
           type: string
-        reuse_sessionid:
-          type: string
         expires:
           type: integer
       required:
@@ -523,6 +520,8 @@ components:
           type: string
         days:
           type: integer
+        like_sessionid:
+          type: string
       required:
         - spaceid
         - gateid
@@ -547,6 +546,11 @@ components:
       properties:
         key:
           type: string
+        crt:
+          type: string
+      required:
+        - key
+        - crt
 
     SSHSessionData:
       type: object
@@ -554,6 +558,14 @@ components:
       properties:
         key:
           type: string
+        crt:
+          type: string
+        port:
+          type: number
+      required:
+        - key
+        - crt
+
 # Openapi VDP definition
 ###################################
 

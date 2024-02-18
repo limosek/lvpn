@@ -4,7 +4,7 @@ import time
 import threading
 
 from lib.daemon import Daemon
-from lib.shared import Messages
+from lib.messages import Messages
 
 
 class ClientDaemon(Daemon):

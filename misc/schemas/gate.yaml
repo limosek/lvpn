@@ -113,13 +113,7 @@
               type: string
             port:
               type: integer
-            rsa-server-public-key:
-              type: string
-            ecdsa-server-public-key:
-              type: string
             username:
-              type: string
-            client-private-key:
               type: string
             tls:
               type: boolean
@@ -127,7 +121,6 @@
             - host
             - port
             - username
-            - client-private-key
         spaces:
           type: array
           items:
@@ -136,6 +129,8 @@
           type: array
           items:
             type: string
+        replaces:
+          type: string
         gate-types:
           type: array
           items:

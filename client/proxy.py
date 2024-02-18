@@ -7,14 +7,17 @@ import logging
 import socket
 import sys
 import time
+from subprocess import Popen
+
 import _queue
 
 from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
-from lib.runcmd import RunCmd
+from lib.runcmd import RunCmd, Process
 from lib.service import Service
-from lib.shared import Messages
+from lib.sessions import Sessions
+from lib.messages import Messages
 from lib.util import Util
 
 
@@ -67,7 +70,7 @@ class Proxy(Service):
 
     @classmethod
     def connect(cls, sessionid):
-        session = cls.ctrl["cfg"].sessions.get(sessionid)
+        session = Sessions(cls.ctrl["cfg"], noload=True).get(sessionid)
         if not session:
             raise ProxyException("Unknown sessionid")
         else:
@@ -85,6 +88,12 @@ class Proxy(Service):
             cls.run_tls_proxy(gate.get_local_port(), session)
         elif gate.get_type() == "ssh":
             connection = Connection(cls.ctrl["cfg"], session)
+            conns = cls.get_connections()
+            replaces = conns.find_replaced(connection)
+            if replaces:
+                # If this connection replaces other, let us disconnect old first
+                cls.disconnect(replaces)
+                time.sleep(1)
             args = [cls.ctrl, cls.queue, None]
             kwargs = {
                 "gate": gate,
@@ -92,21 +101,35 @@ class Proxy(Service):
                 "sessionid": sessionid,
                 "connectionid": connection.get_id()
             }
-            mp = multiprocessing.Process(target=SSHProxy.run, args=args, kwargs=kwargs)
-            mp.start()
-            connection.set_data({
-                    "endpoint": session.get_gate().get_endpoint(),
-                    "pid": mp.pid
+            if cls.ctrl["cfg"].ssh_engine == "ssh":
+                SSHProxy.run(*args, **kwargs)
+                p = SSHProxy.p
+                connection.set_data({
+                        "endpoint": session.get_gate().get_endpoint(),
+                        "pid": p.pid
+                    }
+                )
+                p = {
+                    "process": p,
+                    "connection": connection
                 }
-            )
-            conns = cls.get_value("connections")
-            conns.append(connection)
-            cls.set_value("connections", conns)
-            p = {
+                cls.processes.append(p)
+            else:
+                mp = Process(target=SSHProxy.run, args=args, kwargs=kwargs)
+                mp.start()
+                connection.set_data({
+                        "endpoint": session.get_gate().get_endpoint(),
+                        "pid": mp.pid
+                    }
+                )
+                p = {
                     "process": mp,
                     "connection": connection
                 }
-            cls.processes.append(p)
+                cls.processes.append(p)
+            conns = cls.get_value("connections")
+            conns.append(connection)
+            cls.set_value("connections", conns)
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
             cls.log_gui("proxy", "Unknown gate type %s" % gate.get_type())
@@ -149,32 +172,37 @@ class Proxy(Service):
             cls.log_debug("Proxy loop")
             for pinfo in cls.processes.copy():
                 if pinfo["process"]:
-                    try:
-                        if pinfo["process"].poll():
-                            cls.log_warning(
-                                "Connection %s died with exit code %s" % (pinfo["connection"],
-                                                                             pinfo["process"].returncode))
-                            cls.log_gui("proxy",
-                                            "Connection %s died with exit code %s" % (pinfo["connection"],
-                                                                                         pinfo["process"].returncode))
-                            cls.processes.remove(pinfo)
-                            conns = cls.get_connections()
-                            conns.remove(pinfo["connection"].get_id())
-                            cls.update_connections(conns)
-                            break
-                    except AttributeError:
-                        if not pinfo["process"].is_alive():
-                            cls.log_warning(
-                                "Connection %s died" % (pinfo["connection"]))
-                            cls.log_gui("proxy",
-                                            "Connection %s died" % (pinfo["connection"]))
-                            cls.processes.remove(pinfo)
-                            conns = cls.get_connections()
-                            conns.remove(pinfo["connection"].get_id())
-                            cls.update_connections(conns)
-                            break
+                    if isinstance(pinfo["process"], Popen):
+                        alive = not pinfo["process"].poll()
+                        if not alive:
+                            returncode = pinfo["process"].returncode
+                    else:
+                        alive = pinfo["process"].is_alive()
+                        if not alive:
+                            returncode = None
+                    if not alive:
+                        cls.log_warning(
+                            "Connection %s died with exit code %s" % (pinfo["connection"], returncode))
+                        cls.log_gui("proxy",
+                                        "Connection %s died with exit code %s" % (pinfo["connection"], returncode))
+                        cls.processes.remove(pinfo)
+                        conns = cls.get_connections()
+                        conn = conns.get(pinfo["connection"].get_id())
+                        if conn:
+                            for ch in conn.get_children():
+                                conns.remove(ch)
+                            conns.remove(conn.get_id())
+                        cls.update_connections(conns)
 
             time.sleep(1)
+            if Util.every_x_seconds(10):
+                sessions = Sessions(cls.ctrl["cfg"])
+                sessions.refresh_status()
+                cls.log_gui("manager", "Connections: %s" % repr(cls.get_connections()))
+                cls.log_gui("manager", "Sessions: %s" % repr(sessions))
+                conns = cls.get_connections()
+                conns.check_alive()
+                cls.update_connections(conns)
             if not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get()
@@ -215,8 +243,10 @@ class Proxy(Service):
             try:
                 if pinfo["process"] and not pinfo["process"].returncode:
                     cls.log_warning("Killing subprocess with PID %s" % pinfo["process"].pid)
-                    os.kill(pinfo["process"].pid, signal.SIGINT)
-                    #pinfo["process"].communicate()
+                    try:
+                        os.kill(pinfo["process"].pid, signal.SIGINT)
+                    except Exception:
+                        pass
             except AttributeError:
                 pinfo["process"].kill()
                 pinfo["process"].join()

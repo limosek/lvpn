@@ -83,6 +83,10 @@ paths:
           description: Unknown/bad gate
         '462':
           description: Cannot use this space/gate combination
+        '463':
+          description: No permission to reuse session
+        '464':
+          description: Cannot reuse with different gate or space
         '500':
           description: Server error
     get:

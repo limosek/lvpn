@@ -11,6 +11,7 @@ class Space(VDPObject):
         self.cfg = cfg
         self.validate(spaceinfo, "Space", file)
         self._data = spaceinfo
+        self._provider = self.cfg.vdp.get_provider(self._data["providerid"])
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["spaceid"]

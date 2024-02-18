@@ -13,7 +13,8 @@ import client
 from lib.mngrrpc import ManagerRpcCall
 from lib.runcmd import RunCmd
 from lib.session import Session
-from lib.shared import Messages
+from lib.sessions import Sessions
+from lib.messages import Messages
 
 
 class SpaceButton(ToggleButton):
@@ -57,22 +58,25 @@ class Connect(GridLayout):
         self.ids.space_filter.bind(text=self.fill_spaces)
         self.ids.connect_button.bind(on_press=self.connect)
         Clock.schedule_interval(self.fill_connections, 1)
+        Clock.schedule_interval(self.update_gate_info, 2)
 
     def connect(self, instance):
         logging.getLogger("gui").info("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
-        sessions = client.gui.GUI.ctrl["cfg"].sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
-        if len(sessions) > 0:
-            client.gui.GUI.queue.put(Messages.connect(sessions[0]))
+        sessions = Sessions(client.gui.GUI.ctrl["cfg"])
+        asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
+        if len(asessions) > 0:
+            client.gui.GUI.queue.put(Messages.connect(asessions[0]))
         else:
             space = client.gui.GUI.ctrl["cfg"].vdp.get_space(client.gui.GUI.ctrl["selected_space"])
             mr = ManagerRpcCall(space.get_manager_url())
             try:
-                session = Session(client.gui.GUI.ctrl["cfg"], mr.create_session(client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], 1))
+                session = Session(client.gui.GUI.ctrl["cfg"], mr.create_session(client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], 30))
                 session.save()
-                client.gui.GUI.ctrl["cfg"].sessions.add(session)
+                asessions.add(session)
                 client.gui.GUI.queue.put(Messages.connect(session))
             except Exception as e:
-                logging.getLogger("gui").error(e)
+                logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
+                client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
 
     def disconnect(self, instance):
         logging.getLogger("gui").warning("Disconnect %s" % (instance.connection))
@@ -145,17 +149,31 @@ class Connect(GridLayout):
         self.ids.connect_button.disabled = True
         self.ids.payment_state.text = "Unknown"
 
-    def select_gate(self, instance):
+    def update_gate_info(self, old):
+        if client.gui.GUI.ctrl["selected_gate"] and client.gui.GUI.ctrl["selected_space"]:
+            gateid = client.gui.GUI.ctrl["selected_gate"]
+            spaceid = client.gui.GUI.ctrl["selected_space"]
+            self.select_gate(None, gateid, spaceid)
+        else:
+            return
+
+    def select_gate(self, instance, gateid=None, spaceid=None):
+        if instance:
+            spaceid = instance.spaceid
+            gateid = instance.gateid
         try:
-            if instance.state == "down":
-                client.gui.GUI.ctrl["selected_gate"] = instance.gateid
+            sessions = Sessions(client.gui.GUI.ctrl["cfg"])
+            if not instance or instance.state == "down":
+                client.gui.GUI.ctrl["selected_gate"] = gateid
                 self.ids.connect_button.disabled = False
-                asessions = client.gui.GUI.ctrl["cfg"].sessions.find(gateid=instance.gateid, spaceid=instance.spaceid,
+                asessions = sessions.find(gateid=gateid, spaceid=spaceid,
                                                                      active=True)
-                fsessions = client.gui.GUI.ctrl["cfg"].sessions.find(gateid=instance.gateid, spaceid=instance.spaceid,
+                fsessions = sessions.find(gateid=gateid, spaceid=spaceid,
                                                                      fresh=True)
-                space = client.gui.GUI.ctrl["cfg"].vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-                gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
+                space = client.gui.GUI.ctrl["cfg"].vdp.get_space(spaceid)
+                gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(gateid)
+                if not space or not gate:
+                    return
                 if (space.get_price() + gate.get_price()) == 0:
                     self.ids.pay_1.disabled = True
                     self.ids.pay_30.disabled = True
@@ -169,27 +187,21 @@ class Connect(GridLayout):
                         self.ids.pay_30.disabled = False
                         self.ids.connect_button.disabled = True
                         self.ids.pay_buttons.clear_widgets()
-                        pay_1 = PayButton(text="Pay 1 day", gateid=client.gui.GUI.ctrl["selected_gate"],
-                                          spaceid=client.gui.GUI.ctrl["selected_space"], days=1, on_press=self.pay_service)
-                        pay_30 = PayButton(text="Pay 30 days", gateid=client.gui.GUI.ctrl["selected_gate"],
-                                           spaceid=client.gui.GUI.ctrl["selected_space"], days=30,
+                        pay_1 = PayButton(text="Pay 1 day", gateid=gateid,
+                                          spaceid=spaceid, days=1, on_press=self.pay_service)
+                        pay_30 = PayButton(text="Pay 30 days", gateid=gateid,
+                                           spaceid=spaceid, days=30,
                                            on_press=self.pay_service)
                         self.ids.pay_buttons.add_widget(pay_1)
                         self.ids.pay_buttons.add_widget(pay_30)
                         self.ids.connect_button.disabled = True
                         self.ids.payment_state.text = "Not paid (%.1f/%.1f per day)" % (space.get_price(), gate.get_price())
                 if len(fsessions) > 0:
-                    session = fsessions[0]
-                    if session.is_free():
-                        free = "[Free]"
+                    if len(asessions) > 0:
+                        session = asessions[0]
                     else:
-                        free = ""
-                    if session.is_active():
-                        self.ids.payment_state.text = "Active%s (%s days left)" % (free, session.days_left())
-                    elif session.is_paid():
-                        self.ids.payment_state.text = "Paid%s (%s days left)" % (free, session.days_left())
-                    else:
-                        self.ids.payment_state.text = "Paying (%s seconds left)" % session.seconds_left()
+                        session = fsessions[0]
+                    self.ids.payment_state.text = "%s" % session.pay_info()
                     if len(asessions) > 0:
                         self.ids.connect_button.disabled = False
                     else:
@@ -200,7 +212,7 @@ class Connect(GridLayout):
                 self.ids.connect_button.disabled = True
                 self.ids.payment_state.text = "Unknown"
         except ReferenceError:
-            pass
+            logging.getLogger().error("Error updating GUI.")
 
     def fill_gates(self, instance, value):
         self.ids.choose_gate.clear_widgets()

@@ -1,6 +1,10 @@
 import logging
+import multiprocessing
+import os
 import platform
+import signal
 import subprocess
+import sys
 
 
 class RunCmd:
@@ -33,3 +37,38 @@ class RunCmd:
     @classmethod
     def run(cls, args, **kwargs):
         return subprocess.Popen(args, **kwargs)
+
+    @classmethod
+    def get_output(cls, args, **kwargs):
+        try:
+            logging.getLogger().debug("runcmd: %s" % (" ".join(args)))
+            ret = subprocess.check_output(args, universal_newlines=True, stderr=subprocess.PIPE, **kwargs)
+            return True
+        except subprocess.CalledProcessError as e:
+            logging.getLogger().error(e)
+            print(e.stderr, file=sys.stderr)
+            raise
+
+    @classmethod
+    def run_wait(cls, args, **kwargs):
+        return os.system(" ".join(args))
+
+    @classmethod
+    def exec(cls, args):
+        os.execvp(args[0], args)
+
+
+class Process(multiprocessing.Process):
+
+    def run(self):
+        termmethod = self._target.__self__.sigterm
+        signal.signal(signal.SIGTERM, termmethod)
+        signal.signal(signal.SIGINT, termmethod)
+        try:
+            signal.signal(signal.CTRL_BREAK_EVENT, termmethod)
+            signal.signal(signal.CTRL_C_EVENT, termmethod)
+        except Exception:
+            pass
+        super().run()
+
+
