@@ -10,22 +10,22 @@ class ServerArguments:
         p.add_argument("--tradeogre-api-key", help="TradeOgre API key for conversions")
         p.add_argument("--tradeogre-api-secret", help="TradeOgre API secret key for conversions")
         p.add_argument("--provider-private-key", help="Private provider key",
-                       default=os.getenv("WLS_CFG_DIR") + "/provider.private")
+                       default=cfgdir + "/provider.private")
         p.add_argument("--provider-public-key", help="Public provider key",
-                       default=os.getenv("WLS_CFG_DIR") + "/provider.public")
+                       default=cfgdir + "/provider.public")
         p.add_argument("--ca-dir", help="Directory for Certificate authority",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ca"))
+                       default=cfgdir + "/ca")
         p.add_argument("--ca-name", help="Common name for CA creation",
                        default="LVPN-easy-provider")
         p.add_argument("--ssh-user-ca-private", help="SSH User CA private file",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ssh-user-ca"))
+                       default=cfgdir + "/ssh-user-ca")
         p.add_argument("--ssh-user-ca-public", help="SSH User CA public file",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ssh-user-ca.pub"))
+                       default=cfgdir + "/ssh-user-ca.pub")
         p.add_argument("--ssh-host-ca-private", help="SSH Host CA private file",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ssh-host-ca"))
+                       default=cfgdir + "/ssh-host-ca")
         p.add_argument("--ssh-host-ca-public", help="SSH Host CA public file",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ssh-host-ca.pub"))
+                       default=cfgdir + "/ssh-host-ca.pub")
         p.add_argument("--ssh-user-key", help="SSH User key",
-                       default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ssh-user"))
+                       default=cfgdir + "/ssh-user")
 
         return p

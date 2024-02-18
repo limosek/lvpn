@@ -4,7 +4,7 @@
   "version": "1.0",
   "gateid": "free-ssh",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
-  "name": "Lethean SSH gateway",
+  "name": "Free Lethean SSH gateway",
   "description": "Free Lethean Gateway to multiplex more streams using SSH",
   "price": {
     "per-day": 0

@@ -23,7 +23,7 @@ class ClientArguments:
         p.add_argument('--ssh-engine', help='SSH engine to use', choices=["paramiko", "ssh"], default="ssh")
 
         p.add_argument('--auto-connect', type=str, help='Auto connect uris',
-                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,active"
+                       default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,paid"
                        )
 
         return p

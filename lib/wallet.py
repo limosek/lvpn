@@ -45,10 +45,10 @@ class Wallet(Service):
                     if exc:
                         raise WalletException(j["error"]["code"], j["error"]["message"])
                     else:
-                        logging.getLogger(cls.myname).error(j)
+                        cls.log_error(j)
                         return False
                 elif "result" in j:
-                    logging.getLogger(cls.myname).debug("Wallet RPC %s result: %s" % (method, j["result"]))
+                    cls.log_debug("Wallet RPC %s result: %s" % (method, j["result"]))
                     return j["result"]
                 else:
                     raise WalletException(501, "Bad response %s" % j)
@@ -134,7 +134,8 @@ class Wallet(Service):
     def get_in_transfers(cls, min_height):
         data = cls.rpc("get_transfers", {
             "in": True,
-            "min_height": min_height
+            "min_height": min_height,
+            "pool": cls.ctrl["cfg"].use_tx_pool
         })
         return data
 
@@ -189,6 +190,7 @@ class Wallet(Service):
                         except Exception as e:
                             logging.getLogger("wallet").error(e)
                             cls.queue.put(Messages.gui_popup(str(e)))
+                            cls.log_gui("wallet", "Error restoring wallet: %s" % e)
                     elif msg.startswith("Wallet/Create"):
                         try:
                             try:
@@ -197,7 +199,8 @@ class Wallet(Service):
                                 cls.queue.put(Messages.gui_popup(str(e)))
                             cls.open()
                         except Exception as e:
-                            logging.getLogger("wallet").error(e)
+                            cls.log_error("Error creating wallet: %s" % e)
+                            cls.log_gui("wallet", "Error creating wallet: %s" % e)
                     elif msg == Messages.EXIT:
                         break
                 except _queue.Empty:
@@ -251,10 +254,6 @@ class Wallet(Service):
                         "destinations": destinations,
                         "payment_id": paymentid
                     }, "POST", exc=True)
-            print({
-                        "destinations": destinations,
-                        "payment_id": paymentid
-                    })
             cls.log_warning("Transferring coins finished OK: %s" % msg)
             cls.log_gui("wallet", "Transferring coins finished OK: %s" % msg)
             return True

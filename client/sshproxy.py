@@ -56,22 +56,21 @@ class SSHProxy(Service):
                     nsession = sessions[0]
                 else:
                     mr = ManagerRpcCall(space.get_manager_url())
-                    try:
-                        nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
-                        nsession.set_parent(session.get_id())
-                        nsession.save()
-                    except Exception as e:
-                        cls.log_error(e)
+                    nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
+                    nsession.set_parent(session.get_id())
+                    nsession.save()
                 gobj.set_name(gate.get_name() + "/" + gobj.get_name())
                 if gobj.is_tls():
                     lport = Util.find_free_port()
                     gobj.set_endpoint("127.0.0.1", lport)
                     gobj.set_name("%s/%s" % (gate.get_name(), gobj.get_name()))
                     connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
-                        "endpoint": gobj.get_endpoint()
+                        "endpoint": gobj.get_endpoint(),
+                        "gateid": gobj.get_id(),
+                        "spaceid": space.get_id()
                     }, parent=connectionid)
                     messages.append(
-                        Messages.connected_info(connection.get_dict())
+                        Messages.connected_info(connection)
                     )
                 else:
                     lport = gobj.get_local_port()
@@ -84,7 +83,10 @@ class SSHProxy(Service):
                     else:
                         connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
                             "endpoint": gobj.get_endpoint(),
-                            "pid": multiprocessing.current_process().pid
+                            "pid": multiprocessing.current_process().pid,
+                            "gateid": gobj.get_id(),
+                            "spaceid": space.get_id()
+
                         }, parent=connectionid)
                         messages.append(
                             Messages.connected_info(connection)
@@ -99,7 +101,12 @@ class SSHProxy(Service):
                     Messages.gui_popup("Non-existent SSH gateway %s" % g)
                 )
         cls.log_info("Connecting to SSH proxy %s:%s" % (gate["ssh"]["host"], gate["ssh"]["port"]))
-        prepareddata = cls.prepare(session, cls.ctrl["cfg"].tmp_dir, redirects)
+        try:
+            prepareddata = cls.prepare(session, cls.ctrl["cfg"].tmp_dir, redirects)
+        except ServiceException as s:
+            cls.log_error("Missing SSH data for session %s" % session.get_id())
+            cls.log_gui("proxy", "Missing SSH data for session %s" % session.get_id())
+            return False
         RunCmd.init(cls.ctrl["cfg"])
         if cls.ctrl["cfg"].ssh_engine == "ssh":
             sshargs = prepareddata["sshargs"]
@@ -134,7 +141,7 @@ class SSHProxy(Service):
                 f.write(sshdata["crt"])
             Util.set_key_permissions(keyfile)
             if "port" in sshdata:
-                redirects.append(["-g", "-R0.0.0.0:%s:127.0.0.1:1234" % sshdata["port"]])
+                redirects.extend(["-g", "-R0.0.0.0:%s:127.0.0.1:1234" % sshdata["port"]])
             sshargs = [
                 "ssh",
                 "-i", keyfile,
@@ -151,7 +158,6 @@ class SSHProxy(Service):
                 "sshcmd": " ".join(sshargs)
             }
         else:
-            cls.log_error("Missing SSH data for session %s" % session.get_id())
             raise ServiceException(2, "Missing SSH data within session")
 
     @classmethod

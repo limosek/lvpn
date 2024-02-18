@@ -48,14 +48,14 @@ class TestVDP(unittest.TestCase):
         vdp = VDP(cfg)
         jsn = vdp.get_json()
         vdp2 = VDP(cfg, vdpdata=jsn)
-        self.assertEqual(len(vdp2.gates()), 13)
+        self.assertEqual(len(vdp2.gates()), 15)
         self.assertEqual(len(vdp2.spaces()), 2)
         self.assertEqual(len(vdp2.providers()), 1)
 
     def test_vdp_from_dirs(self):
         cfg = self.parse_args([])
         vdp = VDP(cfg)
-        self.assertEqual(len(vdp.gates()), 13)
+        self.assertEqual(len(vdp.gates()), 15)
         self.assertEqual(len(vdp.spaces()), 2)
         self.assertEqual(len(vdp.providers()), 1)
 

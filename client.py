@@ -166,36 +166,6 @@ def main():
     if cfg.run_daemon:
         test_binary([cfg.daemon_bin, "--version"])
 
-    connects = cfg.auto_connect.split(",")
-    for url in connects:
-        if url == "active":
-            # We have injected active sessions already
-            continue
-        try:
-            print("Trying to connect to %s" % url)
-            (gateid, spaceid) = url.split("/")
-            if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
-                if len(sess) > 0:
-                    proxy_queue.put(Messages.connect(sess[0]))
-                else:
-                    space = cfg.vdp.get_space(spaceid)
-                    mr = ManagerRpcCall(space.get_manager_url())
-                    try:
-                        session = Session(cfg, mr.create_session(gateid, spaceid, 30))
-                        sessions.add(session)
-                    except Exception as e:
-                        logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
-            else:
-                logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-                print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-        except Exception as e:
-            logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
-
-    if "active" in connects:
-        for session in sessions.find(active=True, noparent=True):
-            proxy_queue.put(Messages.connect(session))
-
     os.chdir(tmpdir)
     cfg.env = os.environ.copy()
     ctrl["cfg"] = cfg
@@ -238,6 +208,43 @@ def main():
 
     if splash:
         splash.kill()
+
+    connects = cfg.auto_connect.split(",")
+    tried = False
+    if "paid" in connects:
+        for session in sessions.find(paid=True, notfree=True, noparent=True):
+            proxy_queue.put(Messages.connect(session))
+            tried = True
+    elif "active" in connects:
+        for session in sessions.find(active=True, noparent=True):
+            proxy_queue.put(Messages.connect(session))
+            tried = True
+    if not tried:
+        for url in connects:
+            if url == "active" or url == "paid":
+                # We have injected active sessions already
+                continue
+            try:
+                print("Trying to connect to %s" % url)
+                (gateid, spaceid) = url.split("/")
+                if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
+                    sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                    if len(sess) > 0:
+                        proxy_queue.put(Messages.connect(sess[0]))
+                    else:
+                        space = cfg.vdp.get_space(spaceid)
+                        mr = ManagerRpcCall(space.get_manager_url())
+                        try:
+                            session = Session(cfg, mr.create_session(gateid, spaceid, 30))
+                            sessions.add(session)
+                        except Exception as e:
+                            logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
+                else:
+                    logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+                    print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+            except Exception as e:
+                logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
+
     should_exit = False
     while not should_exit:
         logging.getLogger("client").debug("Main loop")

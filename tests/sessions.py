@@ -80,7 +80,7 @@ class TestSessions(unittest.TestCase):
         sessions = Sessions(cfg)
         self.assertEqual(len(sessions.find()), 0)
         session = Session(cfg)
-        session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
+        session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session.save()
         sessions.add(session)
         self.assertEqual(len(sessions.find()), 1)
@@ -124,7 +124,7 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 1)
         self.assertEqual(len(sessions.find(notpaid=True)), 0)
-        self.assertEqual(len(sessions.find(active=True, spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")), 1)
+        self.assertEqual(len(sessions.find(active=True, spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")), 1)
         sessions.save()
 
     def LoadedSessions(self, cfg):
@@ -239,7 +239,7 @@ class TestSessions(unittest.TestCase):
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh")),
                          ctrl["activated_ssh"])
         self.assertEqual(len(sessions_end.find(paid=True,
-                                               gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")),
+                                               gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")),
                          ctrl["activated_http"])
         return repr(sessions_end)
 
@@ -285,7 +285,7 @@ class TestSessions(unittest.TestCase):
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh")),
                          ctrl["activated_ssh"])
         self.assertEqual(len(sessions_end.find(paid=True,
-                                               gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")),
+                                               gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")),
                          ctrl["activated_http"])
         return repr(sessions_end)
 
@@ -294,7 +294,7 @@ class TestSessions(unittest.TestCase):
         sessions = Sessions(cfg)
         for i in range(2, 50):
             session = Session(cfg)
-            session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy",
+            session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
             sessions.add(session)
             time.sleep(0.1)
@@ -348,7 +348,7 @@ class TestSessions(unittest.TestCase):
                 sessions.process_payment(paymentid, session.get_price() / 3, random.randint(10000, 200000), secrets.token_hex(8))
                 if session.is_active():
                     activated_ssh += 1
-            notpaid = sessions.find(notpaid=True, gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")
+            notpaid = sessions.find(notpaid=True, gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")
             if len(notpaid) > 0:
                 paid += 1
                 session = notpaid[0]

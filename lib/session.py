@@ -126,6 +126,7 @@ class Session:
             self.activate()
         else:
             self._data["paid"] = False
+        self.save()
         return True
 
     def set_parent(self, parentid):

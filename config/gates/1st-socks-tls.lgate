@@ -2,20 +2,19 @@
   "filetype": "LetheanGateway",
   "type": "socks-proxy",
   "version": "1.0",
-  "gateid": "socks-proxy",
+  "gateid": "socks-proxy-tls",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
-  "name": "1st Lethean Gateway SOCKS5 proxy endpoint",
+  "name": "1st Lethean Gateway SOCKS5 proxy endpoint [TLS]",
   "description": "First Lethean Gateway used for testing and Proof of concept. Use this gate as Socks5 proxy.",
-  "internal": true,
   "price": {
-    "per-day": 0.0
+    "per-day": 100
   },
   "socks-proxy": {
-    "host": "socks.lthn",
-    "port": 1080,
-    "tls": false
+    "host": "vpn.lethean.space",
+    "port": 8775
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"
-  ]
+  ],
+  "replaces": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy-tls"
 }

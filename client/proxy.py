@@ -76,7 +76,7 @@ class Proxy(Service):
         else:
             gateid = session.get_gateid()
             spaceid = session.get_spaceid()
-            connections = Connections(cls.ctrl["connections"])
+            connections = Connections(cls.ctrl["cfg"], cls.ctrl["connections"])
             if connections.is_connected(gateid, spaceid):
                 cls.log_warning("Connection to %s/%s is already active." % (gateid, spaceid))
                 return True
@@ -84,16 +84,17 @@ class Proxy(Service):
             space = cls.ctrl["cfg"].vdp.get_space(spaceid)
         if not gate.is_for_space(space.get_id()):
             raise ProxyException("proxy", "Gate %s is not allowed to connect to space %s" % (gate, space))
+        conns = cls.get_connections()
+        if gate.get_replaces():
+            replaced_connection = conns.find_by_gateid(gate.get_replaces())
+            if replaced_connection:
+                # If this connection replaces other, let us disconnect old first
+                cls.disconnect(replaced_connection)
+                time.sleep(1)
         if gate.get_type() in ["http-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy", "socks-proxy"]:
             cls.run_tls_proxy(gate.get_local_port(), session)
         elif gate.get_type() == "ssh":
             connection = Connection(cls.ctrl["cfg"], session)
-            conns = cls.get_connections()
-            replaces = conns.find_replaced(connection)
-            if replaces:
-                # If this connection replaces other, let us disconnect old first
-                cls.disconnect(replaces)
-                time.sleep(1)
             args = [cls.ctrl, cls.queue, None]
             kwargs = {
                 "gate": gate,
@@ -106,7 +107,9 @@ class Proxy(Service):
                 p = SSHProxy.p
                 connection.set_data({
                         "endpoint": session.get_gate().get_endpoint(),
-                        "pid": p.pid
+                        "pid": p.pid,
+                        "gateid": gate.get_id(),
+                        "spaceid": space.get_id()
                     }
                 )
                 p = {
@@ -119,24 +122,29 @@ class Proxy(Service):
                 mp.start()
                 connection.set_data({
                         "endpoint": session.get_gate().get_endpoint(),
-                        "pid": mp.pid
-                    }
+                        "pid": mp.pid,
+                        "gateid": gate.get_id(),
+                        "spaceid": space.get_id()
+
+                }
                 )
                 p = {
                     "process": mp,
                     "connection": connection
                 }
                 cls.processes.append(p)
-            conns = cls.get_value("connections")
-            conns.append(connection)
-            cls.set_value("connections", conns)
+            conns = Connections(cls.ctrl["cfg"], cls.get_value("connections"))
+            time.sleep(5)
+            if connection.check_alive():
+                conns.add(connection)
+                cls.set_value("connections", conns.get_dict())
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
             cls.log_gui("proxy", "Unknown gate type %s" % gate.get_type())
 
     @classmethod
     def get_connections(cls):
-        return Connections(cls.get_value("connections"))
+        return Connections(cls.ctrl["cfg"], cls.get_value("connections"))
 
     @classmethod
     def update_connections(cls, connections):
@@ -195,7 +203,7 @@ class Proxy(Service):
                         cls.update_connections(conns)
 
             time.sleep(1)
-            if Util.every_x_seconds(10):
+            if Util.every_x_seconds(60):
                 sessions = Sessions(cls.ctrl["cfg"])
                 sessions.refresh_status()
                 cls.log_gui("manager", "Connections: %s" % repr(cls.get_connections()))

@@ -81,5 +81,7 @@ class SharedArguments:
                        help='External script to be run on session activation. Session file is passed as argument.')
         p.add_argument('--unpaid-expiry', type=int, default=3600,
                        help='How long time in seconds before unpaid session is deleted')
+        p.add_argument('--use-tx-pool', type=bool, default=False,
+                       help='Use payments from pool (not confirmed by network) to accept payments.')
 
         return p

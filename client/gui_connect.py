@@ -2,6 +2,7 @@ import logging
 import shutil
 import time
 
+import requests.exceptions
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -72,9 +73,8 @@ class Connect(GridLayout):
             try:
                 session = Session(client.gui.GUI.ctrl["cfg"], mr.create_session(client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], 30))
                 session.save()
-                asessions.add(session)
                 client.gui.GUI.queue.put(Messages.connect(session))
-            except Exception as e:
+            except requests.exceptions.RequestException as e:
                 logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
                 client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
 

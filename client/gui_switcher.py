@@ -23,8 +23,8 @@ class Switcher(GridLayout):
         self._wallet = Wallet()
         self._connect.fill_gates(None, "")
         self._connect.fill_spaces(None, "")
-        Clock.schedule_interval(self.switcher_loop, 0.1)
-        Clock.schedule_interval(self._status.refresh_values, 1)
+        Clock.schedule_interval(self.switcher_loop, 1)
+        Clock.schedule_interval(self._status.refresh_values, 3)
 
     def show_rootmenu(self):
         self.add_widget(Button(text="Main2"))

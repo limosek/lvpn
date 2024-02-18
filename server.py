@@ -11,6 +11,8 @@ import multiprocessing
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 
+from lib.sessions import Sessions
+from lib.util import Util
 from lib.arguments import SharedArguments
 from server.arguments import ServerArguments
 from lib.signverify import Sign, Verify
@@ -147,6 +149,8 @@ def main():
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
+        sessions = Sessions(cfg)
+        logging.warning(repr(sessions))
 
     logging.getLogger("server").warning("Waiting for subprocesses to exit")
     for p in processes.values():

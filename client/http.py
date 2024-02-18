@@ -191,7 +191,7 @@ def connect(sessionid):
             waited = 0
             found = False
             while waited < 10 and not found:
-                conn = Connections(Manager.ctrl["connections"]).get_by_sessionid(session.get_id())
+                conn = Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get_by_sessionid(session.get_id())
                 if conn:
                     return make_response(200, "OK", conn.get_dict())
                 waited += 1
@@ -213,14 +213,14 @@ def disconnect(connectionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    connection = Connections(Manager.ctrl["connections"]).get(connectionid)
+    connection = Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get(connectionid)
     if connection:
         m = Messages.disconnect(connection.get_id())
         Manager.queue.put(m)
         waited = 0
         found = False
         while waited < 10 and not found:
-            if not Connections(Manager.ctrl["connections"]).get(connection.get_id()):
+            if not Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get(connection.get_id()):
                 return make_response(200, "OK")
             waited += 1
             time.sleep(1)

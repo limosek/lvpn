@@ -175,7 +175,7 @@ def post_session():
     if not gate:
         return make_response(461, "Unknown gate")
     if not gate.is_for_space(space.get_id()):
-        return make_response(462, "Gate cannot be used with this space")
+        return make_response(462, "Gate %s cannot be used with space %s" % (gate.get_id(), space.get_id()))
     sessions = Sessions(Manager.ctrl["cfg"])
     if "like_sessionid" in request.openapi.body:
         session = sessions.find_by_id(request.openapi.body["like_sessionid"])

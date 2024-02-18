@@ -49,7 +49,7 @@ class Sessions:
             except Exception as e:
                 pass
 
-    def get(self, sessionid):
+    def get(self, sessionid: str):
         if sessionid in self._sessions.keys():
             return self._sessions[sessionid]
         else:
@@ -112,11 +112,11 @@ class Sessions:
         updated = []
         for s in sessions:
             if s.add_payment(amount, height, txid):
-                s.save()
-                self.update(s)
                 updated.append(s)
         if len(updated) == 0:
             logging.getLogger().debug("Paymentid %s did not match any session" % paymentid)
+        else:
+            self.load()
         return updated
 
     def __repr__(self):

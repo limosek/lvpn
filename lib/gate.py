@@ -45,6 +45,12 @@ class Gateway(VDPObject):
         else:
             return False
 
+    def get_replaces(self):
+        if "replaces" in self._data:
+            return self._data["replaces"]
+        else:
+            return False
+
     def is_tls(self):
         if "tls" in self._data[self.get_type()]:
             if self._data[self.get_type()]["tls"]:
