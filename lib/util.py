@@ -58,16 +58,26 @@ class Util:
             return s.getsockname()[1]
 
     @classmethod
-    def find_random_free_port(cls, max_iters=100):
+    def find_random_free_port(cls, max_iters=100, from_=20000, to_=50000):
         found = False
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         iters = 0
         while not found and iters < max_iters:
             try:
-                port = random.randint(20000, 50000)
+                port = random.randint(from_, to_)
                 s.bind(("127.0.0.1", port))
                 s.close()
                 return port
             except socket.error as e:
                 iters += 1
+
+    @classmethod
+    def test_free_port(cls, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", port))
+            s.close()
+            return True
+        except socket.error as e:
+            return False
 

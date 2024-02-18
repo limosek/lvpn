@@ -203,7 +203,7 @@ class Proxy(Service):
                         cls.update_connections(conns)
 
             time.sleep(1)
-            if Util.every_x_seconds(60):
+            if Util.every_x_seconds(20):
                 sessions = Sessions(cls.ctrl["cfg"])
                 sessions.refresh_status()
                 cls.log_gui("manager", "Connections: %s" % repr(cls.get_connections()))

@@ -65,13 +65,25 @@ class Gateway(VDPObject):
 
     def get_local_port(self):
         if self.get_type() == "http-proxy":
-            return 8080
+            if Util.test_free_port(8080):
+                return 8080
+            else:
+                return Util.find_free_port()
         elif self.get_type() == "daemon-rpc-proxy":
-            return 48782
+            if Util.test_free_port(48782):
+                return 48782
+            else:
+                return Util.find_free_port()
         elif self.get_type() == "daemon-p2p-proxy":
-            return 48772
+            if Util.test_free_port(48782):
+                return 48782
+            else:
+                return Util.find_free_port()
         elif self.get_type() == "socks-proxy":
-            return 8081
+            if Util.test_free_port(8081):
+                return 8081
+            else:
+                return Util.find_free_port()
         else:
             return None
 

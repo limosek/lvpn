@@ -50,7 +50,7 @@ class Connection:
     def get_dict(self) -> dict:
         return self._data
 
-    def get_port(self) -> int:
+    def get_port(self) -> [int, None]:
         if "port" in self._data:
             return self._data["port"]
         else:
@@ -149,6 +149,11 @@ class Connections:
     def find_by_gateid(self, gateid: str):
         for conn in self._data:
             if conn and conn.get_gate().get_id() == gateid:
+                return conn.get_id()
+
+    def find_by_port(self, port: int):
+        for conn in self._data:
+            if conn and conn.get_port() and conn.get_port() == port:
                 return conn.get_id()
 
     def get_dict(self):
