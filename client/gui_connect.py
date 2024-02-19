@@ -37,7 +37,7 @@ class DisconnectButton(Button):
 
 
 class BrowserButton(Button):
-    def __init__(self, proxy, url=None, **kwargs):
+    def __init__(self, proxy=None, url=None, **kwargs):
         super().__init__(**kwargs)
         self.proxy = proxy
         self.url = url
@@ -83,14 +83,16 @@ class Connect(GridLayout):
         client.gui.GUI.queue.put(Messages.disconnect(instance.connection.get_id()))
 
     @classmethod
-    def run_edge(cls, instance):
-        args = [
-            client.gui.GUI.ctrl["cfg"].edge_bin,
-            "--inprivate",
-            "--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir,
-            "--proxy-server=%s" % instance.proxy,
-            instance.url
-        ]
+    def run_edge(cls, instance, incognito: bool = True):
+        if incognito:
+            incognito = "--inprivate"
+        args = [client.gui.GUI.ctrl["cfg"].edge_bin]
+        if incognito:
+            args.append(incognito)
+            args.append("--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir)
+        if instance.proxy:
+            args.append("--proxy-server=%s" % instance.proxy)
+        args.append(instance.url)
         logging.getLogger().debug("Running %s" % " ".join(args))
         try:
             RunCmd.run(args, shell=False)
@@ -98,14 +100,16 @@ class Connect(GridLayout):
             logging.getLogger("gui").error(e)
 
     @classmethod
-    def run_chromium(cls, instance):
-        args = [
-            client.gui.GUI.ctrl["cfg"].chromium_bin,
-            "--incognito",
-            "--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir,
-            "--proxy-server=%s" % instance.proxy,
-            instance.url
-        ]
+    def run_chromium(cls, instance, incognito: bool = True):
+        if incognito:
+            incognito = "--incognito"
+        args = [client.gui.GUI.ctrl["cfg"].chromium_bin]
+        if incognito:
+            args.append(incognito)
+            args.append("--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir)
+        if instance.proxy:
+            args.append("--proxy-server=%s" % instance.proxy)
+        args.append(instance.url)
         logging.getLogger().debug("Running %s" % " ".join(args))
         try:
             RunCmd.run(args, shell=False)
@@ -113,11 +117,11 @@ class Connect(GridLayout):
             logging.getLogger("gui").error(e)
 
     @classmethod
-    def run_browser(cls, instance):
+    def run_browser(cls, instance, incognito=True):
         if shutil.which(client.gui.GUI.ctrl["cfg"].chromium_bin):
-            cls.run_chromium(instance)
+            cls.run_chromium(instance, incognito=incognito)
         elif shutil.which(client.gui.GUI.ctrl["cfg"].edge_bin):
-            cls.run_edge(instance)
+            cls.run_edge(instance, incognito=incognito)
         else:
             pass
 

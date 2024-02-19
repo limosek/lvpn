@@ -166,7 +166,7 @@ def get_session():
         sessions = Sessions(Manager.ctrl["cfg"], noload=True)
         session = sessions.get(request.args["sessionid"])
         if session:
-            if not session.is_paid():
+            if not session.is_active():
                 return make_response(402, "Waiting for payment", session.get_dict())
             else:
                 return make_response(200, "OK", session.get_dict())
@@ -197,7 +197,7 @@ def connect(sessionid):
                 waited += 1
                 time.sleep(1)
             return make_response(500, "Server error")
-        elif not session.is_paid():
+        elif not session.is_active():
             return make_response(402, "Waiting for payment")
         elif not session.is_fresh():
             return make_response(405, "Session expired")

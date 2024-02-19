@@ -287,9 +287,7 @@ def main():
             elif Messages.is_for_wallet(msg) and cfg.run_wallet:
                 wallet_queue.put(msg)
             else:
-                logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
-                should_exit = True
-                break
+                logging.getLogger("client").warning("Unknown msg %s requested" % msg)
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():

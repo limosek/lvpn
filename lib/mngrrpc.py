@@ -16,11 +16,15 @@ class ManagerRpcCall:
     def parse_response(self, response):
         return json.loads(response)
 
-    def get_payment_url(self, wallet, paymentid):
+    def get_payment_url(self, wallet: str, paymentid: str) -> [str, bool]:
         r = requests.get(
             self._baseurl + "/api/pay/stripe?wallet=%s&paymentid=%s" % (wallet, paymentid)
         )
-        return r.text
+        if r.status_code == 200:
+            return r.text
+        else:
+            logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
+            return False
 
     def create_session(self, gateid, spaceid, days):
         r = requests.post(

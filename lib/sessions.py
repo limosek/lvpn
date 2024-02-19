@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import time
 
 from lib.mngrrpc import ManagerRpcCall
 from lib.session import Session
@@ -17,13 +18,16 @@ class Sessions:
     def load(self, cleanup=False):
         for f in glob.glob(self._cfg.sessions_dir + "/*.lsession"):
             s = Session(self._cfg)
-            s.load(f)
+            try:
+                s.load(f)
+            except FileNotFoundError:
+                self.remove(s)
+                continue
             if s.is_fresh():
                 self._sessions[s.get_id()] = s
             else:
                 if cleanup:
                     logging.getLogger("wallet").error("Cleaned session %s" % s.get_id())
-                    os.unlink(f)
                     self.remove(s)
 
     def save(self):
@@ -48,6 +52,7 @@ class Sessions:
                     self.remove(s)
             except Exception as e:
                 pass
+            time.sleep(10)
 
     def get(self, sessionid: str):
         if sessionid in self._sessions.keys():

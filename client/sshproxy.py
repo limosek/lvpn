@@ -16,7 +16,7 @@ import urllib3
 
 from client.connection import Connection, Connections
 from client.tlsproxy import TLSProxy
-from lib.mngrrpc import ManagerRpcCall
+from lib.mngrrpc import ManagerRpcCall, ManagerException
 from lib.runcmd import RunCmd
 from lib.service import Service, ServiceException
 from lib.session import Session
@@ -55,10 +55,15 @@ class SSHProxy(Service):
                 if len(sessions) > 0:
                     nsession = sessions[0]
                 else:
-                    mr = ManagerRpcCall(space.get_manager_url())
-                    nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
-                    nsession.set_parent(session.get_id())
-                    nsession.save()
+                    try:
+                        mr = ManagerRpcCall(space.get_manager_url())
+                        nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
+                        nsession.set_parent(session.get_id())
+                        nsession.save()
+                    except ManagerException as e:
+                        cls.log_error("Cannot contact manager at %s: %s" % (space.get_manager_url(), e))
+                        cls.log_gui("proxy", "Cannot contact manager at %s: %s" % (space.get_manager_url(),e))
+                        raise ServiceException(4, e)
                 gobj.set_name(gate.get_name() + "/" + gobj.get_name())
                 if gobj.is_tls():
                     lport = Util.find_free_port()
@@ -101,18 +106,14 @@ class SSHProxy(Service):
                     Messages.gui_popup("Non-existent SSH gateway %s" % g)
                 )
         cls.log_info("Connecting to SSH proxy %s:%s" % (gate["ssh"]["host"], gate["ssh"]["port"]))
-        try:
-            prepareddata = cls.prepare(session, cls.ctrl["cfg"].tmp_dir, redirects)
-        except ServiceException as s:
-            cls.log_error("Missing SSH data for session %s" % session.get_id())
-            cls.log_gui("proxy", "Missing SSH data for session %s" % session.get_id())
-            return False
+        prepareddata = cls.prepare(session, cls.ctrl["cfg"].tmp_dir, redirects)
         RunCmd.init(cls.ctrl["cfg"])
         if cls.ctrl["cfg"].ssh_engine == "ssh":
             sshargs = prepareddata["sshargs"]
             for m in messages:
                 cls.queue.put(m)
             cls.p = RunCmd.popen(sshargs)
+            return cls.p
         else:
             cls.tunnel = sshtunnel.SSHTunnelForwarder(
                 ssh_username=gate["ssh"]["username"],

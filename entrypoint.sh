@@ -13,6 +13,11 @@ export NO_KIVY=1
 
 mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR"
 
+if [ -n "$DAEMON_HOST" ]
+then
+  ARGS="--daemon-host $DAEMON_HOST"
+fi
+
 lvpnc() {
   . /usr/src/lvpn/venv/bin/activate
   python3 /usr/src/lvpn/client.py "$@"
@@ -32,13 +37,13 @@ case $1 in
 
 client|lvpnc)
   shift
-  lvpnc $LVPNC_ARGS "$@"
+  lvpnc $LVPNC_ARGS $ARGS "$@"
   ;;
 
 server|lvpns)
   mkdir -p "$WLS_CFG_DIR"
   shift
-  lvpns --manager-local-bind=0.0.0.0 $LVPNS_ARGS "$@"
+  lvpns --manager-local-bind=0.0.0.0 $ARGS $LVPNS_ARGS "$@"
   ;;
 
 mgmt)
@@ -49,6 +54,13 @@ mgmt)
 easy-provider)
   shift
   LMGMT="/usr/src/lvpn/venv/bin/python3 /usr/src/lvpn/mgmt.py" easy-provider.sh "$@"
+  ;;
+
+tests)
+  shift
+  cp -R /usr/src/lvpn/tests/ /tmp/tests
+  cd /tmp/tests
+  PYTHONPATH=/usr/src/lvpn ./tests.sh
   ;;
 
 sh)

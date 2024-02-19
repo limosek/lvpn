@@ -1,3 +1,4 @@
+import datetime
 import logging
 import signal
 import sys
@@ -48,6 +49,7 @@ class Service:
             raise NotImplementedError("You cannot use base Service class.")
 
         cls.ctrl = ctrl
+        cls.cfg = ctrl["cfg"]
         cls.queue = queue
         cls.myqueue = myqueue
         cls.args = args
@@ -99,7 +101,7 @@ class Service:
     @classmethod
     def log_gui(cls, process, value):
         log = cls.get_value("log")
-        log.append("%s:%s" % (process, value))
+        log.append("%s:%s:%s" % (datetime.datetime.isoformat(datetime.datetime.now()), process, value))
         if len(log) > 30:
             log = log[:30]
         cls.set_value("log", log)

@@ -38,7 +38,7 @@ class Session:
             "wallet": self._cfg.vdp.get_space(spaceid).get_wallet(),
             "days": int(days),
             "expires": int(time.time()) + self._cfg.unpaid_expiry,
-            "paid": price == 0,
+            "paid": False,
             "payments": [],
             "activated": 0,
             "price": price,
@@ -46,7 +46,7 @@ class Session:
         }
         self._gate = self._cfg.vdp.get_gate(gateid)
         self._space = self._cfg.vdp.get_space(spaceid)
-        if self.get_price() == 0:
+        if self.is_free():
             self.activate()
 
     def reuse(self, days):

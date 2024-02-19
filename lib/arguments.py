@@ -38,7 +38,7 @@ class SharedArguments:
         p.add_argument('--wallet-rpc-user', help='Wallet RPC user', default='vpn')
 
         if mode == "server":
-            p.add_argument('--wallet-rpc-password', help='Wallet RPC password.', required=True)
+            p.add_argument('--wallet-rpc-password', help='Wallet RPC password. If not entered, wallet subprocess is not started and payments are not processed.')
         else:
             p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random.')
         p.add_argument('--wallet-address', help='Wallet public address')

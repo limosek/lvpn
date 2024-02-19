@@ -9,6 +9,10 @@ import ownca
 
 os.environ["NO_KIVY"] = "1"
 
+from client.arguments import ClientArguments
+from lib.arguments import SharedArguments
+from server.arguments import ServerArguments
+from client.tlsproxy import TLSProxy
 from client.sshproxy import SSHProxy
 from lib.mngrrpc import ManagerRpcCall
 from lib.session import Session
@@ -24,27 +28,11 @@ def main():
     if not os.getenv("WLS_VAR_DIR"):
         os.environ["WLS_VAR_DIR"] = os.path.expanduser("~") + "/lvpn"
 
-    p = configargparse.ArgParser(default_config_files=['/etc/lthn/mgmt.conf'])
-    p.add_argument('-c', '--config', required=False, is_config_file=True, help='Config file path', env_var='WLS_CONFIG')
-    p.add_argument('-l', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='WARNING',
-                   env_var='WLS_LOGLEVEL')
-    p.add_argument("--ca-dir", help="Directory for Certificate authority",
-                   default=os.path.abspath(os.getenv("WLS_CFG_DIR") + "/ca"))
-    p.add_argument("--app-dir", help="App directory", default=os.path.dirname(__file__))
-    p.add_argument("--var-dir", help="Var directory", default=os.getenv("WLS_VAR_DIR"), env_var="WLS_VAR_DIR")
-    p.add_argument("--spaces-dir", help="Directory containing all spaces SDPs",
-                   default=os.getenv("WLS_VAR_DIR") + "/spaces")
-    p.add_argument("--gates-dir", help="Directory containing all gateway SDPs",
-                   default=os.getenv("WLS_VAR_DIR") + "/gates")
-    p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
-                   default=os.getenv("WLS_VAR_DIR") + "/providers")
-    p.add_argument("--provider-private-key", help="Provider private key file",
-                   default=os.getenv("WLS_CFG_DIR") + "/provider.private")
-    p.add_argument("--provider-public-key", help="Provider public key file",
-                   default=os.getenv("WLS_CFG_DIR") + "/provider.public")
-    p.add_argument("--sessions-dir", help="Directory containing all sessions",
-                   default=os.getenv("WLS_VAR_DIR") + "/sessions")
-    p.add_argument('--force-manager-url', help='Manually override manager url for all spaces. Used just for tests')
+    p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/mgmt.ini'])
+    p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__),
+                               "WLS", "client")
+    p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
+    p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
     p.add_argument("cmd", help="Command to be used", type=str, choices={
         "init": "Initialize files",
         "show-vdp": "Print VDP from actual spaces and gates to stdout",
@@ -56,7 +44,7 @@ def main():
         "generate-ca": "Generate certificate authority",
         "generate-vdp": "Generate basic VDP data for provider",
         "create-session": "Create session to connect to gate/space",
-        "prepare-session-data": "Prepare local files for session"
+        "prepare-client-session": "Prepare client files based on sessionid"
     })
     p.add_argument("args", help="Args for command", nargs="*")
 
@@ -169,7 +157,7 @@ def main():
                 logging.error("Unknown gate or space")
                 sys.exit(1)
 
-    elif cfg.cmd == "prepare-session-data":
+    elif cfg.cmd == "prepare-client-session":
         if cfg.args and len(cfg.args) == 2:
             sessionid = cfg.args[0]
             dir = cfg.args[1]
@@ -181,11 +169,13 @@ def main():
             if session:
                 if session.get_gate_data("ssh"):
                     print(json.dumps(SSHProxy.prepare(session, dir, []), indent=2))
+                elif session.get_gate_data("proxy"):
+                    print(json.dumps(TLSProxy.prepare(session, dir), indent=2))
             else:
                 logging.errod("Bad sessionid")
                 sys.exit(2)
         else:
-            logging.error("Use prepare-session-data sessionid directory")
+            logging.error("Use prepare-client-session sessionid directory")
             sys.exit(1)
 
     else:

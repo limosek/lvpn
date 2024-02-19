@@ -4,6 +4,8 @@ import socket
 import time
 from copy import copy
 
+import requests
+
 from lib.gate import Gateway
 from lib.session import Session
 from lib.sessions import Sessions
@@ -12,13 +14,15 @@ from lib.space import Space
 
 class Connection:
 
-    def __init__(self, cfg, session: Session = None, data: dict = None, parent: Session = None, connection: dict = None, port: int = None):
+    def __init__(self, cfg, session: Session = None, data: dict = None, parent: Session = None, connection: dict = None,
+                 port: int = None):
         if connection:
             self._data = connection
             sessions = Sessions(cfg, noload=True)
             session = sessions.get(connection["sessionid"])
             if not session:
-                raise Exception("Non-existent session %s for connection %s" % (connection["sessionid"], connection["connectionid"]))
+                raise Exception(
+                    "Non-existent session %s for connection %s" % (connection["sessionid"], connection["connectionid"]))
         elif session:
             self._data = {
                 "connectionid": "c-" + secrets.token_hex(8),
@@ -78,28 +82,66 @@ class Connection:
         self._data["data"] = data
 
     def get_title(self) -> str:
-        txt = "%s/%s[id=%s,port=%s]" % (self.get_gate().get_title(), self.get_space().get_title(), self.get_id(), self.get_port())
+        txt = "%s/%s[id=%s,port=%s]" % (
+        self.get_gate().get_title(), self.get_space().get_title(), self.get_id(), self.get_port())
         return txt
 
     def check_alive(self) -> bool:
         if self.get_port():
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2)
-            try:
-                s.connect(("127.0.0.1", self.get_port()))
-                time.sleep(2.1)
-                s.close()
-                logging.getLogger().info("Connection %s is alive" % self.get_id())
-                return True
-            except Exception as e:
-                logging.getLogger().error("Connection %s is dead: %s" % (self.get_id(), e))
-                return False
+            if self.get_gate().get_type() == "http-proxy":
+                try:
+                    r = requests.request("GET", "http://www.lthn/",
+                                         proxies={'http': "http://127.0.0.1:%s" % self.get_port()}, timeout=5)
+                    if r.status_code == 200:
+                        return True
+                    else:
+                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), r))
+                        return False
+                except requests.RequestException as e:
+                    logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                    return False
+            elif self.get_gate().get_type() == "socks-proxy":
+                try:
+                    r = requests.request("GET", "http://www.lthn/",
+                                         proxies={'http': "socks5h://127.0.0.1:%s" % self.get_port()}, timeout=5)
+                    if r.status_code == 200:
+                        return True
+                    else:
+                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), r))
+                        return False
+                except requests.RequestException as e:
+                    logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                    return False
+            elif self.get_gate().get_type() == "daemon-rpc-proxy":
+                try:
+                    r = requests.request("GET", "http://127.0.0.1:%s/api_jsonrpc" % self.get_port(), timeout=5)
+                    if r.status_code == 404:
+                        return True
+                    else:
+                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), r))
+                        return False
+                except requests.RequestException as e:
+                    logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                    return False
+            else:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(5)
+                try:
+                    s.connect(("127.0.0.1", self.get_port()))
+                    time.sleep(5.1)
+                    s.close()
+                    logging.getLogger().info("Connection %s is alive" % self.get_id())
+                    return True
+                except Exception as e:
+                    logging.getLogger().error("Connection %s is dead: %s" % (self.get_id(), e))
+                    return False
         return True
 
     def __repr__(self):
         if "port" in self._data:
             txt = "Connection/%s[port=%s][%s/%s/%s]" % (
-                self.get_id(), self._data["port"], self.get_gate().get_title(), self.get_space().get_title(), self.get_sessionid())
+                self.get_id(), self._data["port"], self.get_gate().get_title(), self.get_space().get_title(),
+                self.get_sessionid())
         else:
             txt = "Connection/%s[%s/%s/%s]" % (
                 self.get_id(), self.get_gate().get_title(), self.get_space().get_title(), self.get_sessionid())
@@ -163,10 +205,10 @@ class Connections:
         for c in self._data:
             if not c.check_alive():
                 self.remove(c.get_id())
+            time.sleep(10)
 
     def __repr__(self):
-        return "%s active connections" % len(self._data)
+        return "%s active connections" % len(self)
 
     def __len__(self):
         return len(self._data)
-

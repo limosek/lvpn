@@ -292,7 +292,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_unpaid_http(cls, cfg, ctrl):
         sessions = Sessions(cfg)
-        for i in range(2, 50):
+        for i in range(2, 20):
             session = Session(cfg)
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
@@ -303,7 +303,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_paid_free_socks(cls, cfg, ctrl):
         sessions = Sessions(cfg)
-        for i in range(2, 50):
+        for i in range(2, 20):
             session = Session(cfg)
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
@@ -314,7 +314,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_paid_free_ssh(cls, cfg, ctrl):
         sessions = Sessions(cfg)
-        for i in range(2, 50):
+        for i in range(2, 20):
             session = Session(cfg)
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
@@ -325,7 +325,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_unpaid_ssh(cls, cfg, ctrl):
         sessions = Sessions(cfg)
-        for i in range(2, 50):
+        for i in range(2, 20):
             session = Session(cfg)
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)

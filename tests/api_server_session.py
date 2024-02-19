@@ -24,7 +24,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         j = json.loads(r.text)
         self.assertEqual(j["price"], 0)
-        self.assertEqual(j["paid"], True)
+        self.assertGreater(j["activated"], 0)
         self.assertLess(j["created"], time.time())
         self.GetPaidSession(j["sessionid"])
 
@@ -42,6 +42,7 @@ class TestAPI(unittest.TestCase):
         j = json.loads(r.text)
         self.assertGreater(j["price"], 1)
         self.assertEqual(j["paid"], False)
+        self.assertEqual(j["activated"], 0)
         self.assertLess(j["created"], time.time())
         self.GetUnpaidSession(j["sessionid"])
 
@@ -52,7 +53,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(r.status_code, 402)
         j = json.loads(r.text)
         self.assertGreater(j["price"], 1)
-        self.assertEqual(j["paid"], False)
+        self.assertEqual(j["activated"], 0)
         self.assertLess(j["created"], time.time())
 
     def GetPaidSession(self, sessionid="1"):
@@ -61,5 +62,5 @@ class TestAPI(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 200)
         j = json.loads(r.text)
-        self.assertEqual(j["paid"], True)
+        self.assertGreater(j["activated"], 0)
         self.assertLess(j["created"], time.time())

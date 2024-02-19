@@ -71,6 +71,8 @@ def main():
     logging.root.setLevel(logging.NOTSET)
     logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
     cfg.readonly_providers = cfg.readonly_providers.split(",")
+    if not cfg.wallet_rpc_password:
+        logging.getLogger("server").error("Missing Wallet RPC password! Payments will not be processed!")
     processes = {}
 
     Wizard().files(cfg)
@@ -109,9 +111,12 @@ def main():
         stripemngr = multiprocessing.Process(target=StripeManager.run, args=[ctrl, queue, stripe_queue], name="StripeManager")
         stripemngr.start()
         processes["stripemngr"] = stripemngr
-    wallet = multiprocessing.Process(target=ServerWallet.run, args=[ctrl, queue, wallet_queue], kwargs={"norun": True}, name="ServerWallet")
-    wallet.start()
-    processes["wallet"] = wallet
+    if cfg.wallet_rpc_password:
+        wallet = multiprocessing.Process(target=ServerWallet.run, args=[ctrl, queue, wallet_queue], kwargs={"norun": True}, name="ServerWallet")
+        wallet.start()
+        processes["wallet"] = wallet
+    else:
+        wallet = False
     manager = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, mngr_queue], name="Manager")
     manager.start()
     processes["manager"] = manager
@@ -139,12 +144,14 @@ def main():
                     logging.getLogger("server").warning("Exit requested, exiting")
                     break
             elif Messages.is_for_all(msg):
-                wallet_queue.put(msg)
+                if wallet:
+                    wallet_queue.put(msg)
                 mngr_queue.put(msg)
                 if cfg.stripe_api_key:
                     stripe_queue.put(msg)
             elif Messages.is_for_wallet(msg):
-                wallet_queue.put(msg)
+                if wallet:
+                    wallet_queue.put(msg)
             else:
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True

@@ -75,8 +75,8 @@ class Gateway(VDPObject):
             else:
                 return Util.find_free_port()
         elif self.get_type() == "daemon-p2p-proxy":
-            if Util.test_free_port(48782):
-                return 48782
+            if Util.test_free_port(48772):
+                return 48772
             else:
                 return Util.find_free_port()
         elif self.get_type() == "socks-proxy":

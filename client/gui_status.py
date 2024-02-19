@@ -33,7 +33,7 @@ class Status(GridLayout):
                         self.ids.buy_credit.disabled = False
                     self.ids.sync_progress_info.text = "Synced (%s)" % client.gui.GUI.ctrl["wallet_height"]
                     self.ids.sync_progress_info.color = (0, 0.7, 0)
-            logging.getLogger("gui").debug("Refreshed Status info")
+            logging.getLogger("gui").debug("Refreshed GUI Status info")
         except ReferenceError:
             pass
 
@@ -45,7 +45,11 @@ class Status(GridLayout):
                 murl = provider.get_manager_url()
                 mngr = ManagerRpcCall(murl)
                 purl = mngr.get_payment_url(client.gui.GUI.ctrl["wallet_address"], "0000000000000000")
-                b = BrowserButton(text="Run browser", proxy="http://127.0.0.1:8080", url=purl)
-                Connect.run_browser(b)
+                if purl:
+                    b = BrowserButton(text="Run browser", url=purl, proxy=None)
+                    Connect.run_browser(b, incognito=False)
+                else:
+                    client.gui.GUI.log_gui("client", "Cannot get Stripe payment URL. Please try again later.")
+
             except Exception as e:
                 logging.getLogger("gui").error(e)

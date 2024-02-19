@@ -9,6 +9,7 @@ import setproctitle
 import urllib3
 
 from lib.service import Service, ServiceException
+from lib.session import Session
 from lib.sessions import Sessions
 from lib.util import Util
 
@@ -153,16 +154,11 @@ class TLSProxy(Service):
         return client
 
     @classmethod
-    def postinit(cls):
-        cls.exit = False
-        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
-        sessionid = cls.kwargs["sessionid"]
-        sessions = Sessions(cls.ctrl["cfg"])
-        session = sessions.get(sessionid)
+    def prepare(cls, session: Session, directory: str):
         proxydata = session.get_gate_data("proxy")
         if proxydata:
-            keyfile = "%s/rsa_%s.pem" % (cls.ctrl["cfg"].tmp_dir, session.get_id())
-            crtfile = "%s/rsa_%s.crt" % (cls.ctrl["cfg"].tmp_dir, session.get_id())
+            keyfile = "%s/rsa_%s.pem" % (directory, session.get_id())
+            crtfile = "%s/rsa_%s.crt" % (directory, session.get_id())
             if os.path.exists(keyfile):
                 os.unlink(keyfile)
             with open(keyfile, "w") as f:
@@ -175,6 +171,15 @@ class TLSProxy(Service):
         else:
             cls.log_error("Missing Proxy data for session %s" % session.get_id())
             raise ServiceException(2, "Missing Proxy data for session %s" % session.get_id())
+
+    @classmethod
+    def postinit(cls):
+        cls.exit = False
+        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (cls.ctrl["cfg"].local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
+        sessionid = cls.kwargs["sessionid"]
+        sessions = Sessions(cls.ctrl["cfg"])
+        session = sessions.get(sessionid)
+        cls.prepare(session, cls.ctrl["cfg"].tmp_dir)
         cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
 
     @classmethod

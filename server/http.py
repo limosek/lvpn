@@ -38,14 +38,14 @@ def error_404(e):
 
 
 def check_authentication():
-    if Manager.ctrl["cfg"].manager_bearer_auth:
+    if Manager.cfg.manager_bearer_auth:
         bearer = request.headers.get('Authorization')
         if not bearer:
             return make_response(403, "Missing Auth Bearer")
         if len(bearer.split()) != 2:
             return make_response(403, "Missing Auth Bearer")
         token = bearer.split()[1]
-        if token != Manager.ctrl["cfg"].manager_bearer_auth:
+        if token != Manager.cfg.manager_bearer_auth:
             return make_response(403, "Bad Auth Bearer")
     return False
 
@@ -53,7 +53,7 @@ def check_authentication():
 @app.route('/api/vdp', methods=['GET'])
 @openapi_validated
 def get_vdp():
-    jsn = json.loads(Manager.ctrl["cfg"].vdp.get_json())
+    jsn = json.loads(Manager.cfg.vdp.get_json())
     spc = openapi.spec.contents()
     resolver = jsonschema.validators.RefResolver.from_schema(spc)
     validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"]["Vdp"], resolver=resolver)
@@ -67,7 +67,7 @@ def get_vdp():
 @app.route('/api/pay/stripe', methods=['GET'])
 @openapi_validated
 def stripe_payment():
-    if not Manager.ctrl["cfg"].stripe_api_key or not Manager.ctrl["cfg"].stripe_plink_id:
+    if not Manager.cfg.stripe_api_key or not Manager.cfg.stripe_plink_id:
         return make_response(500, "Server not configured.", {})
     paymentid = request.args["paymentid"]
     wallet = request.args["wallet"]
@@ -75,15 +75,15 @@ def stripe_payment():
         return make_response(400, "Bad paymentid", {})
     if not Util.check_wallet_address(wallet):
         return make_response(400, "Bad wallet", {})
-    stripe.api_key = Manager.ctrl["cfg"].stripe_api_key
-    if Manager.ctrl["cfg"].lthn_price[0] == "*":
-        price1 = Market.get_price_coingecko() * float(Manager.ctrl["cfg"].lthn_price[1:])
+    stripe.api_key = Manager.cfg.stripe_api_key
+    if Manager.cfg.lthn_price[0] == "*":
+        price1 = Market.get_price_coingecko() * float(Manager.cfg.lthn_price[1:])
     else:
-        price1 = float(Manager.ctrl["cfg"].lthn_price)
+        price1 = float(Manager.cfg.lthn_price)
     if price1:
         amount1 = 1 / price1
         found = None
-        for p in Manager.ctrl["cfg"].stripe_plink_id.split(","):
+        for p in Manager.cfg.stripe_plink_id.split(","):
             try:
                 pl = stripe.PaymentLink.retrieve(p)
             except Exception as e:
@@ -129,12 +129,12 @@ def stripe_payment():
                 return make_response(200, "OK", foundpl.url)
             except Exception as e:
                 logging.getLogger("http").error("Cannot modify payment link %s:%s" % (found, e))
-                return make_response(502, "Cannot use Stripe now. Please try again later.", {})
+                return make_response(502, "Cannot use Stripe now. Please try again later.")
         else:
             logging.getLogger("http").error("No Stripe payment link available")
-            return make_response(502, "Cannot use Stripe now. Please try again later.", {})
+            return make_response(502, "Cannot use Stripe now. Please try again later.")
     else:
-        return make_response(501, "Cannot contact market API", {})
+        return make_response(501, "Cannot contact market API")
 
 
 @app.route('/api/vdp', methods=['POST'])
@@ -153,7 +153,7 @@ def post_vdp():
         if check:
             return make_response(200, "OK", jsn)
         else:
-            vdp = VDP(Manager.ctrl["cfg"], vdpdata=request.data)
+            vdp = VDP(Manager.cfg, vdpdata=request.data)
             try:
                 vdp.save()
             except Exception as e:
@@ -168,15 +168,15 @@ def post_vdp():
 @app.route('/api/session', methods=['POST'])
 @openapi_validated
 def post_session():
-    space = Manager.ctrl["cfg"].vdp.get_space(request.openapi.body["spaceid"])
+    space = Manager.cfg.vdp.get_space(request.openapi.body["spaceid"])
     if not space:
         return make_response(460, "Unknown space")
-    gate = Manager.ctrl["cfg"].vdp.get_gate(request.openapi.body["gateid"])
+    gate = Manager.cfg.vdp.get_gate(request.openapi.body["gateid"])
     if not gate:
         return make_response(461, "Unknown gate")
     if not gate.is_for_space(space.get_id()):
         return make_response(462, "Gate %s cannot be used with space %s" % (gate.get_id(), space.get_id()))
-    sessions = Sessions(Manager.ctrl["cfg"])
+    sessions = Sessions(Manager.cfg)
     if "like_sessionid" in request.openapi.body:
         session = sessions.find_by_id(request.openapi.body["like_sessionid"])
         if session:
@@ -192,10 +192,10 @@ def post_session():
         else:
             return make_response(463, "No permission to reuse session", request.openapi.body["reuse_sessionid"])
     else:
-        session = Session(Manager.ctrl["cfg"])
+        session = Session(Manager.cfg)
         session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
         sessions.add(session)
-    if not session.is_paid():
+    if not session.is_active():
         return make_response(402, "Waiting for payment", session.get_dict())
     else:
         return make_response(200, "OK", session.get_dict())
@@ -204,11 +204,11 @@ def post_session():
 @app.route('/api/session', methods=['GET'])
 @openapi_validated
 def get_session():
-    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+    sessions = Sessions(Manager.cfg, noload=True)
     if "sessionid" in request.args:
         session = sessions.get(request.args["sessionid"])
         if session:
-            if not session.is_paid():
+            if not session.is_active():
                 return make_response(402, "Waiting for payment", session.get_dict())
             else:
                 return make_response(200, "OK", session.get_dict())
@@ -225,7 +225,7 @@ def sessions():
     if notauth:
         return notauth
     rsessions = []
-    for c in Sessions(Manager.ctrl["cfg"]).find():
+    for c in Sessions(Manager.cfg).find():
         rsessions.append(c.get_dict())
     return rsessions
 
