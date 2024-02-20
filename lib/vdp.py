@@ -30,7 +30,10 @@ class VDP:
                     vdpdata = f.read(1000000000)
         if vdpdata or vdpfile:
             if type(vdpdata) is str:
-                vdpdata = json.loads(vdpdata)
+                try:
+                    vdpdata = json.loads(vdpdata)
+                except Exception as e:
+                    raise VDPException(str(e))
             try:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = vdpdata
@@ -67,22 +70,22 @@ class VDP:
                     self.cfg.vdp = self
                     if "gates" in self._data:
                         for g in self._data["gates"]:
-                            gt = Gateway(self.cfg, g)
-                            if not gt.get_provider_id() in self.provider_ids():
+                            gw = Gateway(self.cfg, g)
+                            if not gw.get_provider_id() in self.provider_ids():
                                 raise VDPException(
-                                    "Providerid %s for gate %s does not exists!" % (g.get_provider_id(), gt))
-                            for s in gt.space_ids():
+                                    "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
+                            for s in gw.space_ids():
                                 if s not in self.space_ids():
-                                    raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gt))
-                            oldgt = self.get_gate(gt.get_id())
+                                    raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
+                            oldgw = self.get_gate(gw.get_id())
                             # Check if we have newer revision, otherwise do not update
-                            if oldgt:
-                                if oldgt.get_revision() <= gt.get_revision():
-                                    self._gates[gt.get_id()] = gt
+                            if oldgw:
+                                if oldgw.get_revision() <= gw.get_revision():
+                                    self._gates[gw.get_id()] = gw
                                 else:
-                                    logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gt.get_id())
+                                    logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gw.get_id())
                             else:
-                                self._gates[gt.get_id()] = gt
+                                self._gates[gw.get_id()] = gw
                 else:
                     if vdpfile:
                         logging.error("Bad VDP file %s" % vdpfile)
@@ -193,7 +196,7 @@ class VDP:
         VDPObject.validate(self._dict, "Vdp")
         logging.getLogger("vdp").warning(repr(self))
 
-    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = False, as_json: bool = False):
+    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, as_json: bool = False):
         """Return all gates"""
         gates = []
         for g in self._gates.values():

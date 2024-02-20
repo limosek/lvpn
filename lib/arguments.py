@@ -83,5 +83,8 @@ class SharedArguments:
                        help='How long time in seconds before unpaid session is deleted')
         p.add_argument('--use-tx-pool', type=bool, default=False,
                        help='Use payments from pool (not confirmed by network) to accept payments.')
+        p.add_argument('--wg-dev', type=str, help="Wireguard device to use. Default is to use device name as gateid")
+        p.add_argument('--wg-prefix-cmd', type=str, default="",
+                       help="Wireguard prefix to run wg command. Can be 'sudo' or 'ssh root@server' or anything else what will be prepended before wg command.")
 
         return p

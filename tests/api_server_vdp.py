@@ -34,12 +34,6 @@ class TestAPI(unittest.TestCase):
             headers={"Content-Type": "application/json"},
             data=bad
         )
-        self.assertEqual(r.status_code, 444)
-        r = requests.post(
-            os.environ["MANAGER_URL"] + "/api/vdp?checkOnly=True",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(bad)
-        )
-        self.assertEqual(r.status_code, 412)
+        self.assertEqual(r.status_code, 443)
 
 

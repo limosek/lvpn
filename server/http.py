@@ -147,14 +147,17 @@ def post_vdp():
         check = False
     jsn = request.data.decode("utf-8")
     try:
-        new_vdp = VDP(Manager.cfg, vdpdata=jsn)
+        try:
+            new_vdp = VDP(Manager.cfg, vdpdata=jsn)
+        except VDPException as e:
+            return make_response(443, "Bad Request data", {"error": str(e)})
         if not check:
             saved = new_vdp.save()
         else:
-            saved = False
+            saved = None
         return make_response(200, "OK", saved)
     except VDPException as e:
-        return make_response(444, "Bad Request data", {"error": str(e)})
+        return make_response(443, "Bad Request data", {"error": str(e)})
 
 
 @app.route('/api/session', methods=['POST'])
