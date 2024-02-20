@@ -17,12 +17,19 @@ class Gateway(VDPObject):
         self.validate(gwinfo, "Gate", file)
         self._data = gwinfo
         self._provider = self.cfg.vdp.get_provider(self._data["providerid"])
+        if not self._provider:
+            raise VDPException("Unknown providerid %s" % self._data["providerid"])
+        self._local = self._provider.is_local()
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["gateid"]
 
     def get_ca(self):
         return self.get_provider().get_ca()
+
+    def set_provider(self, provider):
+        self._provider = provider
+        self._local = self._provider.is_local()
 
     def get_endpoint(self, resolve=False):
         if not resolve:
@@ -174,4 +181,4 @@ class Gateway(VDPObject):
         return True
 
     def __repr__(self):
-        return "Gateway %s/%s" % (self._data["gateid"], self._data["name"])
+        return "Gateway %s/%s[local=%s]" % (self._data["gateid"], self._data["name"], self.is_local())

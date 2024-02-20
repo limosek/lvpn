@@ -63,7 +63,7 @@ class SharedArguments:
             p.add_argument('--manager-local-bind', help='Bind address to use for manager', default="127.0.0.1")
         p.add_argument('--manager-bearer-auth', help='Bearer authentication string for private APIs', default=None)
         p.add_argument('--readonly-providers', default="",
-                       help='List of providers, delimited by comma, which cannot be updated by VDP from outside.')
+                       help='List of providers, delimited by comma, which cannot be updated by VDP from outside. Default to respect --my-providers')
 
         p.add_argument("--sessions-dir", help="Directory containing all sessions",
                        default=os.path.abspath(vardir + "/sessions"))

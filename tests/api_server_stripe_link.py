@@ -22,3 +22,6 @@ class TestAPI(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 502)
 
+
+if __name__ == "main":
+    unittest.main()

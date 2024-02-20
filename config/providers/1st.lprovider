@@ -1,6 +1,6 @@
 {
-  "filetype": "LetheanProvider",
-  "version": "1.0",
+  "file_type": "LetheanProvider",
+  "file_version": "1.1",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "1st Lethean Provider",
   "description": "First Lethean VPN provider",

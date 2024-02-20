@@ -25,6 +25,7 @@ class Service:
     queue = None
     myqueue = None
     myname = None
+    cfg = None
 
     @classmethod
     def loop(cls):
@@ -56,10 +57,10 @@ class Service:
         cls.kwargs = kwargs
         for handler in logging.getLogger(cls.myname).handlers[:]:
             logging.getLogger(cls.myname).removeHandler(handler)
-        fh = logging.FileHandler(cls.ctrl["cfg"].log_file)
-        fh.setLevel(cls.ctrl["cfg"].l)
+        fh = logging.FileHandler(cls.cfg.log_file)
+        fh.setLevel(cls.cfg.l)
         sh = logging.StreamHandler()
-        sh.setLevel(cls.ctrl["cfg"].l)
+        sh.setLevel(cls.cfg.l)
         formatter = logging.Formatter('%(name)s[%(process)d]:%(levelname)s:%(message)s')
         fh.setFormatter(formatter)
         sh.setFormatter(formatter)
@@ -101,6 +102,7 @@ class Service:
     @classmethod
     def log_gui(cls, process, value):
         log = cls.get_value("log")
+        cls.log_info("%s:%s" % (process, value))
         log.append("%s:%s:%s" % (datetime.datetime.isoformat(datetime.datetime.now()), process, value))
         if len(log) > 30:
             log = log[:30]

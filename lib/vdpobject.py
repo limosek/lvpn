@@ -34,6 +34,12 @@ class VDPObject:
         except ValidationError as e:
             raise VDPException("Bad schema: %s/%s/%s" % (file, schema, e.message))
 
+    def is_local(self):
+        return self._local
+
+    def set_as_local(self):
+        self._local = True
+
     def get_name(self):
         return self._data["name"]
 
@@ -78,6 +84,12 @@ class VDPObject:
         with os.fdopen(fd, 'w') as f:
             f.write(self[self.get_type()][key])
         return path
+
+    def get_revision(self):
+        if "revision" in self._data:
+            return self._data["revision"]
+        else:
+            return 0
 
     def is_internal(self):
         if "internal" in self._data:

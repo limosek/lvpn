@@ -1,59 +1,49 @@
 #!/bin/sh
 
 set -e
-. /usr/src/lvpn/venv/bin/activate
 
-export WLC_CFG_DIR=/home/lvpn/client/etc
-export WLS_CFG_DIR=/home/lvpn/server/etc
-export WLC_VAR_DIR=/home/lvpn/client/var
-export WLS_VAR_DIR=/home/lvpn/server/var
-export WLS_TMP_DIR=/tmp/lvpns
-export WLC_TMP_DIR=/tmp/lvpnc
-export NO_KIVY=1
+. /etc/profile
 
 mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR"
 
 if [ -n "$DAEMON_HOST" ]
 then
-  ARGS="--daemon-host $DAEMON_HOST"
+  CARGS="--daemon-host $DAEMON_HOST"
 fi
-
-lvpnc() {
-  . /usr/src/lvpn/venv/bin/activate
-  python3 /usr/src/lvpn/client.py "$@"
-}
-
-lvpns() {
-  . /usr/src/lvpn/venv/bin/activate
-  python3 /usr/src/lvpn/server.py "$@"
-}
-
-lmgmt() {
-  . /usr/src/lvpn/venv/bin/activate
-  python3 /usr/src/lvpn/mgmt.py "$@"
-}
 
 case $1 in
 
 client|lvpnc)
+  mkdir -p "$WLC_CFG_DIR"
   shift
-  lvpnc $LVPNC_ARGS $ARGS "$@"
+  echo "Starting client:" lvpnc $LVPNC_ARGS $CARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
+  lvpnc $LVPNC_ARGS $ARGS $CARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
   ;;
 
 server|lvpns)
   mkdir -p "$WLS_CFG_DIR"
   shift
-  lvpns --manager-local-bind=0.0.0.0 $ARGS $LVPNS_ARGS "$@"
+  echo "Starting server:" lvpns $LVPNS_ARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
+  lvpns --manager-local-bind=0.0.0.0 $LVPNS_ARGS "$@"
   ;;
 
-mgmt)
+mgmt|lmgmt)
   shift
-  mgmt "$@"
+  lmgmt "$@"
   ;;
 
 easy-provider)
   shift
-  LMGMT="/usr/src/lvpn/venv/bin/python3 /usr/src/lvpn/mgmt.py" easy-provider.sh "$@"
+  echo "Generating new provider to /home/lvpn/easy."
+  echo "You can tune this wizard by setting variables"
+  echo "EASY_FQDN - FQDN or IP of your provider"
+  echo "EASY_CA_CN - CN for generated CA"
+  if [ -z "$EASY_FQDN" ]
+  then
+    export EASY_FQDN=localhost
+  fi
+  WLS_CFG_DIR=/home/lvpn/easy LMGMT="/usr/src/lvpn/venv/bin/python3 /usr/src/lvpn/mgmt.py" easy-provider.sh "$@"
+  echo "Do not forget to save /home/lvpn/easy directory!"
   ;;
 
 tests)
@@ -63,22 +53,24 @@ tests)
   PYTHONPATH=/usr/src/lvpn ./tests.sh
   ;;
 
+set-perms)
+  chown -R lvpn:lvpn /home/lvpn
+  ;;
+
 sh)
   shift
-  bash "$@"
+  bash --init-file /etc/profile "$@"
   ;;
 
 *)
   if [ "$MODE" = "server" ];
   then
     exec $0 server "$@"
-  fi
-  if [ "$MODE" = "client" ];
-  then
-    exec $0 client "$@"
+  else
+      exec $0 client "$@"
   fi
 
-  echo "Use client|server|easy-provider|sh"
+  echo "Use client|server|mgmt|set-perms|easy-provider|sh"
   exit 1
   ;;
 

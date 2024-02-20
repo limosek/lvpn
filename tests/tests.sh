@@ -15,7 +15,7 @@ fi
 python3 -m unittest ./vdp.py
 python3 -m unittest ./runproc.py
 python3 -m unittest ./sessions.py
-python3 -m unittest ./connections.py
+python3 -m unittest ./connection.py
 
 export WLS_CFG_DIR=$(realpath ./scfg)
 export WLC_CFG_DIR=$(realpath ./ccfg)
@@ -24,8 +24,8 @@ export WLC_VAR_DIR=$(realpath ./cvar)
 
 mkdir -p ./scfg ./ccfg ./svar ./cvar
 
-python3 $PYTHONPATH/server.py &
-python3 $PYTHONPATH/client.py --run-wallet=0 --run-gui=0 --auto-connect="" &
+python3 $PYTHONPATH/server.py -l DEBUG &
+python3 $PYTHONPATH/client.py --run-wallet=0 --run-gui=0 --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" &
 
 while ! curl -q http://127.0.0.1:8123
 do
@@ -40,3 +40,8 @@ done
 python3 -m unittest ./api_server_session.py
 python3 -m unittest ./api_server_vdp.py
 python3 -m unittest ./api_client_session.py
+
+# Test that autoconnect works
+curl -q -x http://localhost:8080/ http://www.lthn >/dev/null
+
+

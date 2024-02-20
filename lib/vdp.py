@@ -2,6 +2,8 @@ import glob
 import json
 import logging
 import sys
+import time
+
 import requests
 import urllib3
 
@@ -13,7 +15,7 @@ from lib.vdpobject import VDPException, VDPObject
 
 class VDP:
 
-    def __init__(self, cfg, vdpfile=None, vdpdata=None):
+    def __init__(self, cfg, vdpfile=None, vdpdata=None, my_only: bool = False):
         self._gates = {}
         self._spaces = {}
         self._providers = {}
@@ -33,30 +35,59 @@ class VDP:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = vdpdata
                 self.cfg.vdp = self
-                if "filetype" in self._data and self._data["filetype"] == 'VPNDescriptionProtocol':
+                if "file_type" in self._data and self._data["file_type"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:
                             prov = Provider(self.cfg, p)
-                            self._providers[prov.get_id()] = prov
+                            oldprov = self.get_provider(prov.get_id())
+                            # Check if we have newer revision, otherwise do not update
+                            if oldprov:
+                                if oldprov.get_revision() <= prov.get_revision():
+                                    self._providers[prov.get_id()] = prov
+                                else:
+                                    logging.getLogger("vdp").warning("Ignoring provider %s with lower revision" % prov.get_id())
+                            else:
+                                self._providers[prov.get_id()] = prov
                     self.cfg.vdp = self
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
                             spc = Space(self.cfg, s)
                             if not spc.get_provider_id() in self.provider_ids():
-                                raise VDPException("Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
-                            self._spaces[spc.get_id()] = spc
+                                raise VDPException(
+                                    "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
+                            oldspc = self.get_space(spc.get_id())
+                            # Check if we have newer revision, otherwise do not update
+                            if oldspc:
+                                if oldspc.get_revision() <= spc.get_revision():
+                                    self._spaces[spc.get_id()] = spc
+                                else:
+                                    logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
+                            else:
+                                self._spaces[spc.get_id()] = spc
                     self.cfg.vdp = self
                     if "gates" in self._data:
                         for g in self._data["gates"]:
                             gt = Gateway(self.cfg, g)
                             if not gt.get_provider_id() in self.provider_ids():
-                                raise VDPException("Providerid %s for gate %s does not exists!" % (g.get_provider_id(), gt))
+                                raise VDPException(
+                                    "Providerid %s for gate %s does not exists!" % (g.get_provider_id(), gt))
                             for s in gt.space_ids():
                                 if s not in self.space_ids():
                                     raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gt))
-                            self._gates[gt.get_id()] = gt
+                            oldgt = self.get_gate(gt.get_id())
+                            # Check if we have newer revision, otherwise do not update
+                            if oldgt:
+                                if oldgt.get_revision() <= gt.get_revision():
+                                    self._gates[gt.get_id()] = gt
+                                else:
+                                    logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gt.get_id())
+                            else:
+                                self._gates[gt.get_id()] = gt
                 else:
-                    logging.error("Bad VDP file %s" % vdpfile)
+                    if vdpfile:
+                        logging.error("Bad VDP file %s" % vdpfile)
+                    else:
+                        logging.error("Bad VDP data %s" % vdpdata)
                     sys.exit(1)
 
             except Exception as e:
@@ -64,23 +95,40 @@ class VDP:
 
         else:
             self.cfg.vdp = self
-            providerfiles = glob.glob(self.cfg.providers_dir + "/*lprovider")
-            providerfiles.extend(glob.glob(self.cfg.my_providers_dir + "/*lprovider"))
-            providerfiles.extend(glob.glob(self.cfg.app_dir + "/config/providers/*lprovider"))
+            if my_only:
+                providerfiles = glob.glob(self.cfg.my_providers_dir + "/*lprovider")
+            else:
+                providerfiles = glob.glob(self.cfg.providers_dir + "/*lprovider")
+                providerfiles.extend(glob.glob(self.cfg.my_providers_dir + "/*lprovider"))
+                providerfiles.extend(glob.glob(self.cfg.app_dir + "/config/providers/*lprovider"))
             for providerf in providerfiles:
                 logging.getLogger().info("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
                     try:
                         prov = Provider(self.cfg, json.loads(jsn), providerf)
-                        self._providers[prov.get_id()] = prov
+                        if providerf.startswith(self.cfg.my_providers_dir):
+                            prov.set_as_local()
+                        oldprov = self.get_provider(prov.get_id())
+                        # Check if we have newer revision, otherwise do not update
+                        if oldprov:
+                            if oldprov.get_revision() <= prov.get_revision():
+                                self._providers[prov.get_id()] = prov
+                            else:
+                                logging.getLogger("vdp").warning(
+                                    "Ignoring provider %s with lower revision" % prov.get_id())
+                        else:
+                            self._providers[prov.get_id()] = prov
                     except Exception as e:
                         print("Error loading %s: %s" % (providerf, e))
 
             self.cfg.vdp = self
-            spacefiles = glob.glob(self.cfg.spaces_dir + "/*lspace")
-            spacefiles.extend(glob.glob(self.cfg.my_spaces_dir + "/*lspace"))
-            spacefiles.extend(glob.glob(self.cfg.app_dir + "/config/spaces/*lspace"))
+            if my_only:
+                spacefiles = glob.glob(self.cfg.my_spaces_dir + "/*lspace")
+            else:
+                spacefiles = glob.glob(self.cfg.spaces_dir + "/*lspace")
+                spacefiles.extend(glob.glob(self.cfg.my_spaces_dir + "/*lspace"))
+                spacefiles.extend(glob.glob(self.cfg.app_dir + "/config/spaces/*lspace"))
             for spacef in spacefiles:
                 logging.getLogger().info("Loading space %s" % spacef)
                 with open(spacef, "r") as f:
@@ -90,15 +138,25 @@ class VDP:
                         if not spc.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
-                        spc._provider = self._providers[spc.get_provider_id()]
-                        self._spaces[spc.get_id()] = spc
+                        oldspc = self.get_space(spc.get_id())
+                        # Check if we have newer revision, otherwise do not update
+                        if oldspc:
+                            if oldspc.get_revision() <= spc.get_revision():
+                                self._spaces[spc.get_id()] = spc
+                            else:
+                                logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
+                        else:
+                            self._spaces[spc.get_id()] = spc
                     except Exception as e:
                         print("Error loading %s: %s" % (spacef, e))
 
             self.cfg.vdp = self
-            gatefiles = glob.glob(self.cfg.gates_dir + "/*lgate")
-            gatefiles.extend(glob.glob(self.cfg.my_gates_dir + "/*lgate"))
-            gatefiles.extend(glob.glob(self.cfg.app_dir + "/config/gates/*lgate"))
+            if my_only:
+                gatefiles = glob.glob(self.cfg.my_gates_dir + "/*lgate")
+            else:
+                gatefiles = glob.glob(self.cfg.gates_dir + "/*lgate")
+                gatefiles.extend(glob.glob(self.cfg.my_gates_dir + "/*lgate"))
+                gatefiles.extend(glob.glob(self.cfg.app_dir + "/config/gates/*lgate"))
             for gwf in gatefiles:
                 logging.getLogger().info("Loading gate %s" % gwf)
                 with open(gwf, "r") as f:
@@ -106,32 +164,44 @@ class VDP:
                     try:
                         gw = Gateway(self.cfg, json.loads(jsn), gwf)
                         if not gw.get_provider_id() in self.provider_ids():
-                            raise VDPException("Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
+                            raise VDPException(
+                                "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
                         for s in gw.space_ids():
                             if s not in self._spaces.keys():
                                 raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
-                        gw._provider = self._providers[gw.get_provider_id()]
-                        self._gates[gw.get_id()] = gw
+                        gw.set_provider(self._providers[gw.get_provider_id()])
+                        oldgw = self.get_gate(gw.get_id())
+                        # Check if we have newer revision, otherwise do not update
+                        if oldgw:
+                            if oldgw.get_revision() <= gw.get_revision():
+                                self._gates[gw.get_id()] = gw
+                            else:
+                                logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gw.get_id())
+                        else:
+                            self._gates[gw.get_id()] = gw
                     except Exception as e:
                         print("Error loading %s: %s" % (gwf, e))
 
         self._dict = {
-            "filetype": "VPNDescriptionProtocol",
-            "version": "1.0",
+            "file_type": "VPNDescriptionProtocol",
+            "file_version": "1.1",
             "spaces": json.loads(self.spaces(as_json=True)),
             "gates": json.loads(self.gates(as_json=True)),
             "providers": json.loads(self.providers(as_json=True))
         }
         self._json = json.dumps(self._dict, indent=2)
-        logging.getLogger("vdp").warning("%s gates and %s spaces available" % (len(self._gates), len(self._spaces)))
+        VDPObject.validate(self._dict, "Vdp")
+        logging.getLogger("vdp").warning(repr(self))
 
-    def gates(self, filter="", spaceid=None, as_json=False, internal=True):
+    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = False, as_json: bool = False):
         """Return all gates"""
         gates = []
         for g in self._gates.values():
             if not internal and g.is_internal():
                 continue
-            if (filter=="") or g.get_json().find(filter) >= 0:
+            if my_only and not g.is_local():
+                continue
+            if (filter == "") or g.get_json().find(filter) >= 0:
                 if spaceid:
                     if g.is_for_space(spaceid):
                         if as_json:
@@ -148,10 +218,12 @@ class VDP:
         else:
             return gates
 
-    def spaces(self, filter="", as_json=False):
+    def spaces(self, filter: str = "", my_only: bool = False, as_json: bool = False):
         spaces = []
         for s in self._spaces.values():
-            if (filter=="") or s.get_json().find(filter) >= 0:
+            if my_only and not s.is_local():
+                continue
+            if (filter == "") or s.get_json().find(filter) >= 0:
                 if as_json:
                     spaces.append(s.get_dict())
                 else:
@@ -161,10 +233,12 @@ class VDP:
         else:
             return spaces
 
-    def providers(self, filter="", as_json=False):
+    def providers(self, filter: str = "", my_only: bool = False, as_json: bool = False):
         providers = []
         for s in self._providers.values():
-            if (filter=="") or s.get_json().find(filter) >= 0:
+            if my_only and not s.is_local():
+                continue
+            if (filter == "") or s.get_json().find(filter) >= 0:
                 if as_json:
                     providers.append(s.get_dict())
                 else:
@@ -210,24 +284,44 @@ class VDP:
     def save(self, cfg=None):
         if cfg:
             self.cfg = cfg
+        saved_gates = 0
+        saved_spaces = 0
+        saved_providers = 0
+        ignored_gates = 0
+        ignored_spaces = 0
+        ignored_providers = 0
         for g in self.gate_ids():
             go = self.get_gate(g)
             if go.get_provider().get_id() in self.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving gate %s (Readonly provider)" % go.get_id())
+                ignored_gates += 1
                 continue
+            saved_gates += 1
             go.save(cfg=cfg)
         for s in self.space_ids():
             so = self.get_space(s)
             if so.get_provider().get_id() in self.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving space %s (Readonly provider)" % so.get_id())
+                ignored_spaces += 1
                 continue
+            saved_spaces += 1
             so.save(cfg=cfg)
         for p in self.provider_ids():
             if p in self.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving provider %s (Readonly provider)" % p)
+                ignored_providers += 1
                 continue
             po = self.get_provider(p)
+            saved_providers += 1
             po.save(cfg=cfg)
+        return {
+            "saved_spaces": saved_spaces,
+            "saved_providers": saved_providers,
+            "saved_gates": saved_gates,
+            "ignored_spaces": ignored_spaces,
+            "ignored_providers": ignored_providers,
+            "ignored_gates": ignored_gates,
+        }
 
     def __repr__(self):
-        return "VDP[providers=%s,spaces=%s,gates=%s]" % (len(self._providers), len(self._spaces), len(self._gates))
+        return "VDP[providers=%s,spaces=%s,gates=%s,local_providers=%s]" % (len(self._providers), len(self._spaces), len(self._gates), len(self.providers(my_only=True)))

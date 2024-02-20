@@ -5,14 +5,20 @@
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - LetheanGateway
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
+        revision:
+          type: number
+          default: 0
+        ttl:
+          type: number
+          default: 0
         providerid:
           type: string
         gateid:
@@ -148,8 +154,8 @@
         - gateid
         - name
         - providerid
-        - version
-        - filetype
+        - file_version
+        - file_type
         - type
         - spaces
 

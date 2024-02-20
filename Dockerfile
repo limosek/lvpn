@@ -20,6 +20,19 @@ ENV MODE="client"
 ENV DAEMON_HOST="seed.lethean.io"
 ENV HTTP_PROXY=""
 
+# Client MGMT
+EXPOSE 8123
+# Server MGMT
+EXPOSE 8124
+# HTTP Proxy
+EXPOSE 8080
+# Socks Proxy
+EXPOSE 8081
+# Daemon P2P
+EXPOSE 48772
+# Daemon RPC
+EXPOSE 48782
+
 RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \
   mkdir /usr/src/lvpn; chown -R lvpn /usr/src/lvpn
@@ -38,6 +51,7 @@ COPY requirements-lite.txt /usr/src/lvpn/
 COPY build/* /usr/src/lvpn/build/
 COPY tests/* /usr/src/lvpn/tests/
 COPY ./entrypoint.sh /
+COPY ./misc/profile-inc.sh /etc/profile.d/lvpn.sh
 
 WORKDIR /usr/src/lvpn/build/
 RUN wget -nc -c $DAEMON_BIN_URL
@@ -59,6 +73,7 @@ WORKDIR /home/lvpn
 RUN /entrypoint.sh lvpnc -h
 RUN /entrypoint.sh lvpns -h
 RUN /entrypoint.sh lmgmt -h
+RUN /entrypoint.sh lmgmt list-providers
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["client"]
+CMD [""]

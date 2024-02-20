@@ -23,14 +23,14 @@ class GUI(Service):
 
     @classmethod
     def postinit(cls):
-        RunCmd.init(cls.ctrl["cfg"])
+        RunCmd.init(cls.cfg)
         cls.processes = []
         b = threading.Thread(target=cls.loop)
         cls.processes.append(b)
         for p in cls.processes:
             p.start()
 
-        Builder.load_file(cls.ctrl["cfg"].app_dir + '/config/lvpn.kv')
+        Builder.load_file(cls.cfg.app_dir + '/config/lvpn.kv')
         LVpn().run()
         cls.exit = True
 

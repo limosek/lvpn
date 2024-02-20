@@ -141,7 +141,7 @@ def create_session():
     fresh = sessions.find(gateid=gate.get_id(), spaceid=space.get_id(), fresh=True)
     if fresh:
         fresh = fresh[0]
-        if fresh.is_paid():
+        if fresh.is_active():
             return make_response(200, "OK", fresh.get_dict())
         else:
             return make_response(402, "Awaiting payment", fresh.get_dict())
@@ -150,7 +150,7 @@ def create_session():
         session = Session(Manager.ctrl["cfg"], mngr.create_session(gate.get_id(), space.get_id(), days))
         session.save()
         sessions.add(session)
-        if session.is_paid():
+        if session.is_active():
             return make_response(200, "OK", session.get_dict())
         else:
             return make_response(402, "Awaiting payment", session.get_dict())
@@ -282,7 +282,7 @@ class Manager(Service):
     def postinit(cls):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
-        app.run(port=cls.ctrl["cfg"].http_port, host="127.0.0.1")
+        app.run(port=cls.cfg.http_port, host=cls.cfg.manager_local_bind)
         cls.exit = True
 
     @classmethod

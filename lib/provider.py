@@ -11,6 +11,7 @@ class Provider(VDPObject):
         self.cfg = cfg
         self.validate(providerinfo, "Provider", file)
         self._data = providerinfo
+        self._local = False
 
     def get_id(self):
         return self._data["providerid"]
@@ -39,4 +40,4 @@ class Provider(VDPObject):
             f.write(self.get_json())
 
     def __repr__(self):
-        return "Provider %s/%s" % (self._data["providerid"], self._data["name"])
+        return "Provider %s/%s[local=%s]" % (self._data["providerid"], self._data["name"], self.is_local())

@@ -70,7 +70,6 @@ def main():
     sh.setFormatter(formatter)
     logging.root.setLevel(logging.NOTSET)
     logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
-    cfg.readonly_providers = cfg.readonly_providers.split(",")
     if not cfg.wallet_rpc_password:
         logging.getLogger("server").error("Missing Wallet RPC password! Payments will not be processed!")
     processes = {}
@@ -99,6 +98,15 @@ def main():
         sys.exit(1)
 
     cfg.vdp = VDP(cfg)
+    if cfg.readonly_providers:
+        cfg.readonly_providers = cfg.readonly_providers.split(",")
+    else:
+        cfg.readonly_providers = []
+        my_providers = cfg.vdp.providers("", my_only=True)
+        for m in my_providers:
+            cfg.readonly_providers.append(m.get_id())
+
+
     ctrl = multiprocessing.Manager().dict()
     ctrl["cfg"] = cfg
     Messages.init_ctrl(ctrl)

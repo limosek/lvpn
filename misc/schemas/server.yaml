@@ -5,7 +5,7 @@ info:
     This is Lethean VPN API definition
   license:
       name: GPLv3
-  version: "1.0"
+  version: "1.1"
 
 paths:
   /api/vdp:
@@ -43,7 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vdp'
+                $ref: '#/components/schemas/VdpSaveStatus'
         '401':
           description: Access token is missing or invalid
         '402':
@@ -196,14 +196,20 @@ components:
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - LetheanProvider
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
+        revision:
+          type: number
+          default: 0
+        ttl:
+          type: number
+          default: 0
         providerid:
           type: string
         name:
@@ -223,8 +229,8 @@ components:
         wallet:
           type: string
       required:
-        - filetype
-        - version
+        - file_type
+        - file_version
         - providerid
         - name
         - manager-url
@@ -242,14 +248,20 @@ components:
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - LetheanGateway
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
+        revision:
+          type: number
+          default: 0
+        ttl:
+          type: number
+          default: 0
         providerid:
           type: string
         gateid:
@@ -385,8 +397,8 @@ components:
         - gateid
         - name
         - providerid
-        - version
-        - filetype
+        - file_version
+        - file_type
         - type
         - spaces
 
@@ -401,14 +413,20 @@ components:
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - LetheanSpace
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
+        revision:
+          type: number
+          default: 0
+        ttl:
+          type: number
+          default: 0
         providerid:
           type: string
         spaceid:
@@ -434,8 +452,8 @@ components:
       required:
         - spaceid
         - providerid
-        - filetype
-        - version
+        - file_type
+        - file_version
 # Session definition
 ###################################
 
@@ -573,14 +591,14 @@ components:
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - VPNDescriptionProtocol
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
         spaces:
           type: array
           items:
@@ -593,6 +611,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Provider'
+        signatures:
+          type: array
+          items:
+            type: object
+            properties:
+              signing_providerid:
+                type: string
+              signing_time:
+                type: number
+              signed_objectid:
+                type: string
+              object_hash:
+                type: string
+              signed_hash:
+                type: string
       required:
-        - filetype
-        - version
+        - file_type
+        - file_version
+
+    VdpSaveStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        saved_gates:
+          type: number
+        saved_spaces:
+          type: number
+        saved_providers:
+          type: number
+        ignored_gates:
+          type: number
+        ignored_spaces:
+          type: number
+        ignored_providers:
+          type: number

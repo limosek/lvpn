@@ -5,7 +5,7 @@ info:
     This is Lethean VPN API definition
   license:
       name: GPLv3
-  version: "1.0"
+  version: "1.1"
 
 paths:
   /api/vdp:
@@ -43,7 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vdp'
+                $ref: '#/components/schemas/VdpSaveStatus'
         '401':
           description: Access token is missing or invalid
         '402':

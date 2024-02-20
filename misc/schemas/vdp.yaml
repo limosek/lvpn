@@ -5,14 +5,14 @@
       type: object
       additionalProperties: false
       properties:
-        filetype:
+        file_type:
           type: string
           enum:
             - VPNDescriptionProtocol
-        version:
+        file_version:
           type: string
           enum:
-            - "1.0"
+            - "1.1"
         spaces:
           type: array
           items:
@@ -25,6 +25,38 @@
           type: array
           items:
             $ref: '#/components/schemas/Provider'
+        signatures:
+          type: array
+          items:
+            type: object
+            properties:
+              signing_providerid:
+                type: string
+              signing_time:
+                type: number
+              signed_objectid:
+                type: string
+              object_hash:
+                type: string
+              signed_hash:
+                type: string
       required:
-        - filetype
-        - version
+        - file_type
+        - file_version
+
+    VdpSaveStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        saved_gates:
+          type: number
+        saved_spaces:
+          type: number
+        saved_providers:
+          type: number
+        ignored_gates:
+          type: number
+        ignored_spaces:
+          type: number
+        ignored_providers:
+          type: number

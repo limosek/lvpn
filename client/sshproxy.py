@@ -39,12 +39,12 @@ class SSHProxy(Service):
         gate = cls.kwargs["gate"]
         space = cls.kwargs["space"]
         sessionid = cls.kwargs["sessionid"]
-        cls.sessions = Sessions(cls.ctrl["cfg"])
+        cls.sessions = Sessions(cls.cfg)
         session = cls.sessions.get(sessionid)
         connectionid = cls.kwargs["connectionid"]
-        logging.getLogger("paramiko").setLevel(cls.ctrl["cfg"].l)
+        logging.getLogger("paramiko").setLevel(cls.cfg.l)
         for g in gate["gates"]:
-            gobj = cls.ctrl["cfg"].vdp.get_gate(g)
+            gobj = cls.cfg.vdp.get_gate(g)
             if gobj:
                 try:
                     (rhost, rport) = gobj.get_endpoint().split(":")
@@ -57,7 +57,7 @@ class SSHProxy(Service):
                 else:
                     try:
                         mr = ManagerRpcCall(space.get_manager_url())
-                        nsession = Session(cls.ctrl["cfg"], mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
+                        nsession = Session(cls.cfg, mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
                         nsession.set_parent(session.get_id())
                         nsession.save()
                     except ManagerException as e:
@@ -69,7 +69,7 @@ class SSHProxy(Service):
                     lport = Util.find_free_port()
                     gobj.set_endpoint("127.0.0.1", lport)
                     gobj.set_name("%s/%s" % (gate.get_name(), gobj.get_name()))
-                    connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
+                    connection = Connection(cls.cfg, nsession, port=lport, data={
                         "endpoint": gobj.get_endpoint(),
                         "gateid": gobj.get_id(),
                         "spaceid": space.get_id()
@@ -86,7 +86,7 @@ class SSHProxy(Service):
                         )
                         continue
                     else:
-                        connection = Connection(cls.ctrl["cfg"], nsession, port=lport, data={
+                        connection = Connection(cls.cfg, nsession, port=lport, data={
                             "endpoint": gobj.get_endpoint(),
                             "pid": multiprocessing.current_process().pid,
                             "gateid": gobj.get_id(),
@@ -96,19 +96,19 @@ class SSHProxy(Service):
                         messages.append(
                             Messages.connected_info(connection)
                         )
-                local_addresses.append((cls.ctrl["cfg"].local_bind, lport))
+                local_addresses.append((cls.cfg.local_bind, lport))
                 remote_addresses.append((rhost, int(rport)))
-                redirects.append("-L%s:%s:%s:%s" % (cls.ctrl["cfg"].local_bind, lport, rhost, rport))
-                cls.log_info("Create port forward request %s:%s -> %s:%s" % (cls.ctrl["cfg"].local_bind, lport, rhost, rport))
+                redirects.append("-L%s:%s:%s:%s" % (cls.cfg.local_bind, lport, rhost, rport))
+                cls.log_info("Create port forward request %s:%s -> %s:%s" % (cls.cfg.local_bind, lport, rhost, rport))
             else:
                 cls.log_error("Non-existent SSH gateway %s" % g)
                 messages.append(
                     Messages.gui_popup("Non-existent SSH gateway %s" % g)
                 )
         cls.log_info("Connecting to SSH proxy %s:%s" % (gate["ssh"]["host"], gate["ssh"]["port"]))
-        prepareddata = cls.prepare(session, cls.ctrl["cfg"].tmp_dir, redirects)
-        RunCmd.init(cls.ctrl["cfg"])
-        if cls.ctrl["cfg"].ssh_engine == "ssh":
+        prepareddata = cls.prepare(session, cls.cfg.tmp_dir, redirects)
+        RunCmd.init(cls.cfg)
+        if cls.cfg.ssh_engine == "ssh":
             sshargs = prepareddata["sshargs"]
             for m in messages:
                 cls.queue.put(m)
@@ -122,7 +122,7 @@ class SSHProxy(Service):
                 ssh_pkey=prepareddata["key"],
                 local_bind_addresses=local_addresses,
                 remote_bind_addresses=remote_addresses)
-            cls.tunnel.logger.setLevel(cls.ctrl["cfg"].l)
+            cls.tunnel.logger.setLevel(cls.cfg.l)
             cls.tunnel.start()
             for m in messages:
                 cls.queue.put(m)
@@ -163,7 +163,7 @@ class SSHProxy(Service):
 
     @classmethod
     def loop(cls):
-        if cls.ctrl["cfg"].ssh_engine == "ssh":
+        if cls.cfg.ssh_engine == "ssh":
             return
         else:
             while cls.tunnel.is_alive and not cls.exit:

@@ -3,6 +3,8 @@ import logging
 import requests
 import json
 
+from lib.vdp import VDP
+
 
 class ManagerException(Exception):
     pass
@@ -51,3 +53,29 @@ class ManagerRpcCall:
             return None
         else:
             raise ManagerException(r.text)
+
+    def push_vdp(self, vdp: VDP):
+        vdp_jsn = vdp.get_json()
+        try:
+            r = requests.post(
+                self._baseurl + "/api/vdp",
+                data=vdp_jsn
+            )
+            if r.status_code == 200:
+                return r.text
+            else:
+                raise ManagerException(r.text)
+        except requests.RequestException as r:
+            raise ManagerException(str(r))
+
+    def fetch_vdp(self):
+        try:
+            r = requests.get(
+                self._baseurl + "/api/vdp"
+            )
+            if r.status_code == 200:
+                return r.text
+            else:
+                raise ManagerException(r.text)
+        except requests.RequestException as r:
+            raise ManagerException(str(r))

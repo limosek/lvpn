@@ -117,8 +117,8 @@ wallet-rpc-password = %s
             cert = cf.read(-1)
         verification_key = Verify(cfg.provider_public_key).key()
         provider = {
-            "filetype": "LetheanProvider",
-            "version": "1.0",
+            "file_type": "LetheanProvider",
+            "file_version": "1.1",
             "providerid": verification_key,
             "name": providername,
             "description": providername,
@@ -130,8 +130,8 @@ wallet-rpc-password = %s
             ]
         }
         space = {
-          "filetype": "LetheanSpace",
-          "version": "1.0",
+          "file_type": "LetheanSpace",
+          "file_version": "1.1",
           "spaceid": spacename.lower(),
           "providerid": verification_key,
           "name": spacename,
@@ -141,9 +141,9 @@ wallet-rpc-password = %s
           }
         }
         httpgate = {
-          "filetype": "LetheanGateway",
+          "file_type": "LetheanGateway",
           "type": "http-proxy",
-          "version": "1.0",
+          "file_version": "1.1",
           "gateid": "free-http-proxy",
           "providerid": verification_key,
           "name": "HTTP proxy to access other Lethean instances",
@@ -160,8 +160,8 @@ wallet-rpc-password = %s
           ]
         }
         vdp = VDP(cfg, vdpdata={
-            "filetype": "VPNDescriptionProtocol",
-            "version": "1.0",
+            "file_type": "VPNDescriptionProtocol",
+            "file_version": "1.0",
             "providers": [provider],
             "gates": [httpgate],
             "spaces": [space]

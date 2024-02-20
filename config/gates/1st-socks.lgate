@@ -1,7 +1,7 @@
 {
-  "filetype": "LetheanGateway",
+  "file_type": "LetheanGateway",
   "type": "socks-proxy",
-  "version": "1.0",
+  "file_version": "1.1",
   "gateid": "socks-proxy",
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "1st Lethean Gateway SOCKS5 proxy endpoint",

@@ -14,7 +14,7 @@ class StripeManager(Service):
     @classmethod
     def postinit(cls):
         cls._messages = {}
-        stripe.api_key = cls.ctrl["cfg"].stripe_api_key
+        stripe.api_key = cls.cfg.stripe_api_key
 
     @classmethod
     def loop(cls):
@@ -63,7 +63,7 @@ class StripeManager(Service):
 
     @classmethod
     def update_old_plinks(cls):
-        for p in cls.ctrl["cfg"].stripe_plink_id.split(","):
+        for p in cls.cfg.stripe_plink_id.split(","):
             try:
                 pl = stripe.PaymentLink.retrieve(p)
             except Exception as e:

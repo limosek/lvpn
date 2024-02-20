@@ -237,6 +237,7 @@ def main():
                         try:
                             session = Session(cfg, mr.create_session(gateid, spaceid, 30))
                             sessions.add(session)
+                            proxy_queue.put(Messages.connect(session))
                         except Exception as e:
                             logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
                 else:

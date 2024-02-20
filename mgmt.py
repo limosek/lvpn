@@ -14,7 +14,7 @@ from lib.arguments import SharedArguments
 from server.arguments import ServerArguments
 from client.tlsproxy import TLSProxy
 from client.sshproxy import SSHProxy
-from lib.mngrrpc import ManagerRpcCall
+from lib.mngrrpc import ManagerRpcCall, ManagerException
 from lib.session import Session
 from lib.sessions import Sessions
 from lib.signverify import Sign, Verify
@@ -36,6 +36,11 @@ def main():
     p.add_argument("cmd", help="Command to be used", type=str, choices={
         "init": "Initialize files",
         "show-vdp": "Print VDP from actual spaces and gates to stdout",
+        "push-vdp": "Push VDP to server",
+        "fetch-vdp": "Fetch VDP and save locally",
+        "list-providers": "List actual known providers",
+        "list-spaces": "List actual known spaces",
+        "list-gates": "List actual known gates",
         "generate-provider-keys": "Generate provider public and private keys",
         "generate-cfg": "Generate config file",
         "sign-text": "Sign text by provider",
@@ -50,11 +55,72 @@ def main():
 
     cfg = p.parse_args()
     cfg.readonly_providers = []
+    cfg.l = cfg.log_level
     logging.basicConfig(level=cfg.l)
 
     if cfg.cmd == "show-vdp":
         vdp = VDP(cfg)
         print(vdp.get_json())
+
+    elif cfg.cmd == "fetch-vdp":
+        if cfg.args and len(cfg.args) == 1:
+            vdp = VDP(cfg)
+            if cfg.args[0].startswith("http"):
+                url = cfg.args[0]
+            else:
+                if not vdp.get_provider(cfg.args[0]):
+                    print("Unknown providerid!")
+                    sys.exit(4)
+                url = vdp.get_provider(cfg.args[0]).get_manager_url()
+            mgr = ManagerRpcCall(url)
+            try:
+                jsn = mgr.fetch_vdp()
+                vdp = VDP(cfg, vdpdata=jsn)
+                print(vdp.save())
+            except Exception as m:
+                print("Error fetching VDP!")
+                print(m)
+                sys.exit(4)
+        else:
+            print("Use fetch-vdp providerid-or-url")
+            sys.exit(1)
+
+    elif cfg.cmd == "push-vdp":
+        if cfg.args and len(cfg.args) == 1:
+            vdp = VDP(cfg)
+            if vdp.get_provider(cfg.args[0]):
+                mgr = ManagerRpcCall(vdp.get_provider(cfg.args[0]).get_manager_url())
+                try:
+                    pushed = mgr.push_vdp(vdp)
+                    print(pushed)
+                except ManagerException as m:
+                    print("Error pushing VDP!")
+                    print(m)
+                    sys.exit(4)
+            else:
+                print("Unknown providerid!")
+                sys.exit(4)
+        else:
+            print("Use push-vdp providerid")
+            sys.exit(1)
+
+    elif cfg.cmd == "list-providers":
+        vdp = VDP(cfg)
+        print("id,name,local")
+        for p in vdp.providers():
+            print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
+
+    elif cfg.cmd == "list-spaces":
+        vdp = VDP(cfg)
+        print("id,name,local")
+        for p in vdp.spaces():
+            print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
+
+    elif cfg.cmd == "list-gates":
+        vdp = VDP(cfg)
+        print("id,name,local")
+        for p in vdp.gates():
+            print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
 
     elif cfg.cmd == "init":
         Wizard.files(cfg)
@@ -131,6 +197,9 @@ def main():
             space = cfg.args[1]
             fqdn = cfg.args[2]
             wallet = cfg.args[3]
+            cfg.providers_dir = cfg.my_providers_dir
+            cfg.spaces_dir = cfg.my_spaces_dir
+            cfg.gates_dir = cfg.my_gates_dir
             Wizard.provider_vdp(cfg, name,  space, wallet, fqdn)
         else:
             logging.error("Need generate-vdp 'name' 'space' 'fqdn' 'wallet'")

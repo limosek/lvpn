@@ -17,6 +17,7 @@ from lib.service import Service
 from lib.sessions import Sessions
 from lib.util import Util
 from lib.vdp import VDP
+from lib.vdpobject import VDPException
 
 app = Flask(__name__)
 openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/server.yaml")
@@ -140,28 +141,19 @@ def stripe_payment():
 @app.route('/api/vdp', methods=['POST'])
 # @openapi_validated
 def post_vdp():
-    spc = openapi.spec.contents()
-    resolver = jsonschema.validators.RefResolver.from_schema(spc)
-    validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"]["Vdp"], resolver=resolver)
     if "checkOnly" in request.args and request.args["checkOnly"]:
         check = True
     else:
         check = False
+    jsn = request.data.decode("utf-8")
     try:
-        jsn = json.loads(request.data.decode("utf-8"))
-        validator.validate(jsn)
-        if check:
-            return make_response(200, "OK", jsn)
+        new_vdp = VDP(Manager.cfg, vdpdata=jsn)
+        if not check:
+            saved = new_vdp.save()
         else:
-            vdp = VDP(Manager.cfg, vdpdata=request.data)
-            try:
-                vdp.save()
-            except Exception as e:
-                return make_response(500, "Cannot update VDP", {})
-            return make_response(200, "OK", jsn)
-    except ValidationError as e:
-        return make_response(412, "Bad VDP", {"error": str(e.message)})
-    except Exception as e:
+            saved = False
+        return make_response(200, "OK", saved)
+    except VDPException as e:
         return make_response(444, "Bad Request data", {"error": str(e)})
 
 
@@ -239,7 +231,7 @@ class Manager(Service):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
         cls.app = app
-        cls.app.run(port=cls.ctrl["cfg"].http_port, host="0.0.0.0")
+        cls.app.run(port=cls.cfg.http_port, host="0.0.0.0")
         cls.exit = True
 
     @classmethod

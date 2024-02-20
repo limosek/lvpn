@@ -2,7 +2,6 @@ import json
 import os
 import time
 import unittest
-
 import requests
 
 if not "MANAGER_URL" in os.environ:
@@ -64,3 +63,7 @@ class TestAPI(unittest.TestCase):
         j = json.loads(r.text)
         self.assertGreater(j["activated"], 0)
         self.assertLess(j["created"], time.time())
+
+
+if __name__ == "main":
+    unittest.main()
