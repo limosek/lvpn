@@ -7,7 +7,7 @@
   "name": "1st Lethean Gateway SOCKS5 proxy endpoint [TLS]",
   "description": "First Lethean Gateway used for testing and Proof of concept. Use this gate as Socks5 proxy.",
   "price": {
-    "per-day": 100
+    "per-day": 30
   },
   "socks-proxy": {
     "host": "vpn.lethean.space",

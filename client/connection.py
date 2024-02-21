@@ -39,8 +39,12 @@ class Connection:
         if data:
             self._data["data"] = data
         self._session = session
-        self._gate = cfg.vdp.get_gate(self._session.get_gateid())
-        self._space = cfg.vdp.get_space(self._session.get_spaceid())
+        if "gateid" in self.get_data():
+            self._gate = cfg.vdp.get_gate(self.get_data()["gateid"])
+            self._space = cfg.vdp.get_space(self.get_data()["spaceid"])
+        else:
+            self._gate = cfg.vdp.get_gate(self._session.get_gateid())
+            self._space = cfg.vdp.get_space(self._session.get_spaceid())
 
     def get_id(self) -> str:
         return self._data["connectionid"]
@@ -81,9 +85,18 @@ class Connection:
     def set_data(self, data: dict):
         self._data["data"] = data
 
-    def get_title(self) -> str:
-        txt = "%s/%s[id=%s,port=%s]" % (
-        self.get_gate().get_title(), self.get_space().get_title(), self.get_id(), self.get_port())
+    def get_title(self, short: bool = False) -> str:
+        if short:
+            txt = "%s,cid=%s,port=%s,%s" % (
+                self._gate.get_type(),
+                self.get_id(), self.get_port(),
+                self.get_session().get_title(short=True))
+        else:
+            txt = "%s,%s/%s[cid=%s,port=%s,%s]" % (
+                self._gate.get_type(),
+                self.get_gate().get_title(), self.get_space().get_title(),
+                self.get_id(), self.get_port(),
+                self.get_session().get_title(short=True))
         return txt
 
     def check_alive(self) -> bool:
@@ -139,12 +152,12 @@ class Connection:
 
     def __repr__(self):
         if "port" in self._data:
-            txt = "Connection/%s[port=%s][%s/%s/%s]" % (
+            txt = "Connection/%s[port=%s,cid=%s,space=%s,%s]" % (
                 self.get_id(), self._data["port"], self.get_gate().get_title(), self.get_space().get_title(),
-                self.get_sessionid())
+                self.get_session().get_title())
         else:
-            txt = "Connection/%s[%s/%s/%s]" % (
-                self.get_id(), self.get_gate().get_title(), self.get_space().get_title(), self.get_sessionid())
+            txt = "Connection/%s[gate=%s,space=%s,%s]" % (
+                self.get_id(), self.get_gate().get_title(), self.get_space().get_title(), self.get_session().get_title())
         return txt
 
 

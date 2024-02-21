@@ -51,25 +51,12 @@ class SSHProxy(Service):
                 except Exception as e:
                     cls.log_error(e)
                     continue
-                sessions = cls.sessions.find(gateid=gobj.get_id(), spaceid=space.get_id(), active=True)
-                if len(sessions) > 0:
-                    nsession = sessions[0]
-                else:
-                    try:
-                        mr = ManagerRpcCall(space.get_manager_url())
-                        nsession = Session(cls.cfg, mr.create_session(gobj.get_id(), space.get_id(), session.days_left() + 1))
-                        nsession.set_parent(session.get_id())
-                        nsession.save()
-                    except ManagerException as e:
-                        cls.log_error("Cannot contact manager at %s: %s" % (space.get_manager_url(), e))
-                        cls.log_gui("proxy", "Cannot contact manager at %s: %s" % (space.get_manager_url(),e))
-                        raise ServiceException(4, e)
                 gobj.set_name(gate.get_name() + "/" + gobj.get_name())
                 if gobj.is_tls():
                     lport = Util.find_free_port()
                     gobj.set_endpoint("127.0.0.1", lport)
                     gobj.set_name("%s/%s" % (gate.get_name(), gobj.get_name()))
-                    connection = Connection(cls.cfg, nsession, port=lport, data={
+                    connection = Connection(cls.cfg, session, port=lport, data={
                         "endpoint": gobj.get_endpoint(),
                         "gateid": gobj.get_id(),
                         "spaceid": space.get_id()
@@ -86,7 +73,7 @@ class SSHProxy(Service):
                         )
                         continue
                     else:
-                        connection = Connection(cls.cfg, nsession, port=lport, data={
+                        connection = Connection(cls.cfg, session, port=lport, data={
                             "endpoint": gobj.get_endpoint(),
                             "pid": multiprocessing.current_process().pid,
                             "gateid": gobj.get_id(),

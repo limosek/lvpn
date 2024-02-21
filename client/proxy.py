@@ -102,6 +102,7 @@ class Proxy(Service):
                 except ServiceException as s:
                     cls.log_error("Error running ssh proxy %s: %s" % (session.get_id(), s))
                     cls.log_gui("proxy", "Error running ssh proxy %s: %s" % (session.get_id(), s))
+                    cls.queue.put(Messages.gui_popup("Error running ssh proxy %s: %s" % (session.get_id(), s)))
                     return False
                 p = SSHProxy.p
                 connection.set_data({

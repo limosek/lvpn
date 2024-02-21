@@ -51,6 +51,13 @@ class PayButton(Button):
         self._days = days
 
 
+class ConnectionButton(Button):
+    def __init__(self, gateid, spaceid, **kwargs):
+        super().__init__(**kwargs)
+        self.spaceid = spaceid
+        self.gateid = gateid
+
+
 class Connect(GridLayout):
 
     def __init__(self, **kwargs):
@@ -170,10 +177,8 @@ class Connect(GridLayout):
             if not instance or instance.state == "down":
                 client.gui.GUI.ctrl["selected_gate"] = gateid
                 self.ids.connect_button.disabled = False
-                asessions = sessions.find(gateid=gateid, spaceid=spaceid,
-                                                                     active=True)
-                fsessions = sessions.find(gateid=gateid, spaceid=spaceid,
-                                                                     fresh=True)
+                asessions = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                fsessions = sessions.find(gateid=gateid, spaceid=spaceid, fresh=True)
                 space = client.gui.GUI.ctrl["cfg"].vdp.get_space(spaceid)
                 gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(gateid)
                 if not space or not gate:
@@ -218,21 +223,29 @@ class Connect(GridLayout):
         except ReferenceError:
             logging.getLogger().error("Error updating GUI.")
 
-    def fill_gates(self, instance, value):
+    def fill_gates(self, instance=None, value=None, selected=None):
         self.ids.choose_gate.clear_widgets()
         if client.gui.GUI.ctrl["selected_space"]:
             disabled = False
         else:
             disabled = True
         for g in client.gui.GUI.ctrl["cfg"].vdp.gates(self.ids.gate_filter.text, client.gui.GUI.ctrl["selected_space"], internal=False):
-            btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled)
+            if selected and selected == g.get_id():
+                state = "down"
+            else:
+                state = "normal"
+            btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled, state=state)
             setattr(self.ids, g.get_id(), btn)
             self.ids.choose_gate.add_widget(btn)
 
-    def fill_spaces(self, instance, value):
+    def fill_spaces(self, instance=None, value=None, selected=None):
         self.ids.choose_space.clear_widgets()
         for s in client.gui.GUI.ctrl["cfg"].vdp.spaces(self.ids.space_filter.text):
-            btn = SpaceButton(text=s.get_name(), on_press=self.select_space, spaceid=s.get_id())
+            if selected and selected == s.get_id():
+                state = "down"
+            else:
+                state = "normal"
+            btn = SpaceButton(text=s.get_name(), on_press=self.select_space, spaceid=s.get_id(), state=state)
             setattr(self.ids, s.get_id(), btn)
             self.ids.choose_space.add_widget(btn)
 
@@ -240,7 +253,13 @@ class Connect(GridLayout):
         self.ids.connections_info.clear_widgets()
         for c in client.gui.GUI.ctrl["connections"]:
             row = GridLayout(cols=3, rows=1, size_hint_y=0.2)
-            lbl = Label(text=c.get_title(), color=(0, 0.7, 0))
+            if c.get_gate().is_internal():
+                lbl = Label(text=c.get_title(short=True), color=(0.2, 0.2, 2))
+            else:
+                lbl = ConnectionButton(text=c.get_title(short=True),
+                                  spaceid=c.get_space().get_id(),
+                                  gateid=c.get_gate().get_id(),
+                                  on_press=self.show_connection)
             row.add_widget(lbl)
             if c.get_gate().get_type() == "http-proxy":
                 bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c.get_port(), url="http://www.lthn",
@@ -250,6 +269,16 @@ class Connect(GridLayout):
                 bbtn = BrowserButton(text="N/A", proxy=0, url="http://www.lthn",
                                      disabled=True, size_hint_x=0.1)
                 row.add_widget(bbtn)
-            dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, connection=c, size_hint_x=0.2)
-            row.add_widget(dbtn)
+            if c.get_gate().is_internal():
+                dbtn = DisconnectButton(text="N/A ", connection=c, size_hint_x=0.2)
+                row.add_widget(dbtn)
+            else:
+                dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, connection=c, size_hint_x=0.2)
+                row.add_widget(dbtn)
             self.ids.connections_info.add_widget(row)
+
+    def show_connection(self, instance):
+        client.gui.GUI.ctrl["selected_space"] = instance.spaceid
+        client.gui.GUI.ctrl["selected_gate"] = instance.gateid
+        self.fill_spaces(selected=instance.spaceid)
+        self.fill_gates(selected=instance.gateid)

@@ -7,7 +7,7 @@
   "name": "1st Lethean Gateway HTTP proxy endpoint [TLS]",
   "description": "First Lethean Gateway used for testing and Proof of concept. Use this gate as HTTP proxy.",
   "price": {
-    "per-day": 100
+    "per-day": 30
   },
   "http-proxy": {
     "host": "vpn.lethean.space",

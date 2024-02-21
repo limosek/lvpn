@@ -12,7 +12,7 @@ import client
 class LVpn(App):
 
     def build(self):
-        Config.set('graphics', 'width', '1000')
+        Config.set('graphics', 'width', '1200')
         Config.set('graphics', 'height', '700')
         Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
         return client.gui_switcher.Switcher()

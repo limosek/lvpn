@@ -1,4 +1,5 @@
 import glob
+import json
 import logging
 import os
 import time
@@ -21,6 +22,9 @@ class Sessions:
             try:
                 s.load(f)
             except FileNotFoundError:
+                self.remove(s)
+                continue
+            except json.JSONDecodeError:
                 self.remove(s)
                 continue
             if s.is_fresh():

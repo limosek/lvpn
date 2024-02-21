@@ -8,6 +8,7 @@ from copy import copy
 import setproctitle
 import urllib3
 
+from lib.messages import Messages
 from lib.service import Service, ServiceException
 from lib.session import Session
 from lib.sessions import Sessions
@@ -170,6 +171,7 @@ class TLSProxy(Service):
             cls.crtfile = crtfile
         else:
             cls.log_error("Missing Proxy data for session %s" % session.get_id())
+            cls.queue.put(Messages.gui_popup("Missing Proxy data for session %s" % session.get_id()))
             raise ServiceException(2, "Missing Proxy data for session %s" % session.get_id())
 
     @classmethod

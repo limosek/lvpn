@@ -194,25 +194,28 @@ class Session:
         return int(seconds)
 
     def pay_info(self):
-        if self.is_paid():
-            left = "left"
+        if self.get_gate().is_internal():
+            return "Internal"
         else:
-            left = "left to pay"
-        if self.is_payment_sent() and not self.is_active():
-            payment = "payment sent"
-        elif self.is_paid():
-            payment = "active"
-        elif self.is_free():
-            payment = "free"
-        elif not self.is_active():
-            payment = "notpaid"
-        if self._data["expires"] - time.time() < 3600:
-            tme = "%s seconds" % self.seconds_left()
-        elif self._data["expires"] - time.time() < 3600 * 24:
-            tme = "%s hours" % self.hours_left()
-        else:
-            tme = "%s days" % self.days_left()
-        return "%s,%s %s" % (payment, tme, left)
+            if self.is_active():
+                left = "left"
+            else:
+                left = "left to pay"
+            if self.is_payment_sent() and not self.is_active():
+                payment = "payment sent"
+            elif self.is_paid():
+                payment = "active"
+            elif self.is_free():
+                payment = "free"
+            elif not self.is_active():
+                payment = "notpaid"
+            if self._data["expires"] - time.time() < 3600:
+                tme = "%s seconds" % self.seconds_left()
+            elif self._data["expires"] - time.time() < 3600 * 24:
+                tme = "%s hours" % self.hours_left()
+            else:
+                tme = "%s days" % self.days_left()
+            return "%s,%s %s" % (payment, tme, left)
 
     def is_fresh(self):
         return self._data["expires"] > time.time()
@@ -242,8 +245,11 @@ class Session:
     def __str__(self):
         return json.dumps(self._data)
 
-    def get_title(self):
-        txt = "%s/%s" % (self.get_gate(), self.get_space())
+    def get_title(self, short: bool = False):
+        if short:
+            txt = "sid=%s,%s" % (self.get_id(), self.pay_info())
+        else:
+            txt = "%s%s" % (self.get_gate(), self.get_space())
         return txt
 
     def __repr__(self):
