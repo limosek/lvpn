@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ -n "$1" ]
+then
+  export PYTHONPATH=$1
+fi
+
 set -e
 
 cd $(dirname $0)
@@ -16,6 +21,8 @@ python3 -m unittest ./vdp.py
 python3 -m unittest ./runproc.py
 python3 -m unittest ./sessions.py
 python3 -m unittest ./connection.py
+python3 -m unittest ./wg_engine.py
+python3 -m unittest ./wg_service.py
 
 export WLS_CFG_DIR=$(realpath ./scfg)
 export WLC_CFG_DIR=$(realpath ./ccfg)
@@ -24,8 +31,8 @@ export WLC_VAR_DIR=$(realpath ./cvar)
 
 mkdir -p ./scfg ./ccfg ./svar ./cvar
 
-python3 $PYTHONPATH/server.py -l DEBUG &
-python3 $PYTHONPATH/client.py --run-wallet=0 --run-gui=0 --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" &
+python3 $PYTHONPATH/server.py --enable-wg=1 -l DEBUG &
+python3 $PYTHONPATH/client.py --force-manager-url=http://127.0.0.1:8123/ --run-wallet=0 --run-gui=0 --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" &
 
 while ! curl -q http://127.0.0.1:8123
 do

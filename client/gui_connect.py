@@ -11,7 +11,9 @@ from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 
 import client
+import lib.wg_engine
 from lib.mngrrpc import ManagerRpcCall
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.session import Session
 from lib.sessions import Sessions
@@ -70,15 +72,17 @@ class Connect(GridLayout):
 
     def connect(self, instance):
         logging.getLogger("gui").info("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
-        sessions = Sessions(client.gui.GUI.ctrl["cfg"])
+        sessions = Sessions()
         asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
         if len(asessions) > 0:
             client.gui.GUI.queue.put(Messages.connect(asessions[0]))
         else:
-            space = client.gui.GUI.ctrl["cfg"].vdp.get_space(client.gui.GUI.ctrl["selected_space"])
+            space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
             mr = ManagerRpcCall(space.get_manager_url())
             try:
-                session = Session(client.gui.GUI.ctrl["cfg"], mr.create_session(client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], 30))
+                gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
+                space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
+                session = Session(mr.create_session(gate, space, 30))
                 session.save()
                 client.gui.GUI.queue.put(Messages.connect(session))
             except requests.exceptions.RequestException as e:
@@ -93,10 +97,10 @@ class Connect(GridLayout):
     def run_edge(cls, instance, incognito: bool = True):
         if incognito:
             incognito = "--inprivate"
-        args = [client.gui.GUI.ctrl["cfg"].edge_bin]
+        args = [Registry.cfg.edge_bin]
         if incognito:
             args.append(incognito)
-            args.append("--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir)
+            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
         if instance.proxy:
             args.append("--proxy-server=%s" % instance.proxy)
         args.append(instance.url)
@@ -110,10 +114,10 @@ class Connect(GridLayout):
     def run_chromium(cls, instance, incognito: bool = True):
         if incognito:
             incognito = "--incognito"
-        args = [client.gui.GUI.ctrl["cfg"].chromium_bin]
+        args = [Registry.cfg.chromium_bin]
         if incognito:
             args.append(incognito)
-            args.append("--user-data-dir=%s" % client.gui.GUI.ctrl["cfg"].tmp_dir)
+            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
         if instance.proxy:
             args.append("--proxy-server=%s" % instance.proxy)
         args.append(instance.url)
@@ -125,9 +129,9 @@ class Connect(GridLayout):
 
     @classmethod
     def run_browser(cls, instance, incognito=True):
-        if shutil.which(client.gui.GUI.ctrl["cfg"].chromium_bin):
+        if shutil.which(Registry.cfg.chromium_bin):
             cls.run_chromium(instance, incognito=incognito)
-        elif shutil.which(client.gui.GUI.ctrl["cfg"].edge_bin):
+        elif shutil.which(Registry.cfg.edge_bin):
             cls.run_edge(instance, incognito=incognito)
         else:
             pass
@@ -137,12 +141,12 @@ class Connect(GridLayout):
         self.add_widget(client.gui_switcher.Switcher())
 
     def pay_service(self, instance):
-        space = client.gui.GUI.ctrl["cfg"].vdp.get_space(instance._spaceid)
-        gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(instance._gateid)
+        space = Registry.vdp.get_space(instance._spaceid)
+        gate = Registry.vdp.get_gate(instance._gateid)
         try:
             mngr = ManagerRpcCall(space.get_manager_url())
-            data = mngr.create_session(gate.get_id(), space.get_id(), instance._days)
-            session = Session(client.gui.GUI.ctrl["cfg"], data=data)
+            data = mngr.create_session(gate, space, instance._days)
+            session = Session(data=data)
             session.save()
             if not session.is_paid():
                 client.gui.GUI.queue.put(session.get_pay_msg())
@@ -173,14 +177,14 @@ class Connect(GridLayout):
             spaceid = instance.spaceid
             gateid = instance.gateid
         try:
-            sessions = Sessions(client.gui.GUI.ctrl["cfg"])
+            sessions = Sessions()
             if not instance or instance.state == "down":
                 client.gui.GUI.ctrl["selected_gate"] = gateid
                 self.ids.connect_button.disabled = False
                 asessions = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
                 fsessions = sessions.find(gateid=gateid, spaceid=spaceid, fresh=True)
-                space = client.gui.GUI.ctrl["cfg"].vdp.get_space(spaceid)
-                gate = client.gui.GUI.ctrl["cfg"].vdp.get_gate(gateid)
+                space = Registry.vdp.get_space(spaceid)
+                gate = Registry.vdp.get_gate(gateid)
                 if not space or not gate:
                     return
                 if (space.get_price() + gate.get_price()) == 0:
@@ -229,7 +233,7 @@ class Connect(GridLayout):
             disabled = False
         else:
             disabled = True
-        for g in client.gui.GUI.ctrl["cfg"].vdp.gates(self.ids.gate_filter.text, client.gui.GUI.ctrl["selected_space"], internal=False):
+        for g in Registry.vdp.gates(self.ids.gate_filter.text, client.gui.GUI.ctrl["selected_space"], internal=False):
             if selected and selected == g.get_id():
                 state = "down"
             else:
@@ -240,7 +244,7 @@ class Connect(GridLayout):
 
     def fill_spaces(self, instance=None, value=None, selected=None):
         self.ids.choose_space.clear_widgets()
-        for s in client.gui.GUI.ctrl["cfg"].vdp.spaces(self.ids.space_filter.text):
+        for s in Registry.vdp.spaces(self.ids.space_filter.text):
             if selected and selected == s.get_id():
                 state = "down"
             else:

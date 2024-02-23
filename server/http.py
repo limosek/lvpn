@@ -12,12 +12,14 @@ import openapi_schema_validator
 import stripe
 
 from lib.market import Market
+from lib.registry import Registry
 from lib.session import Session
 from lib.service import Service
 from lib.sessions import Sessions
 from lib.util import Util
 from lib.vdp import VDP
 from lib.vdpobject import VDPException
+from lib.wg_service import WGService
 
 app = Flask(__name__)
 openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/server.yaml")
@@ -39,14 +41,14 @@ def error_404(e):
 
 
 def check_authentication():
-    if Manager.cfg.manager_bearer_auth:
+    if Registry.cfg.manager_bearer_auth:
         bearer = request.headers.get('Authorization')
         if not bearer:
             return make_response(403, "Missing Auth Bearer")
         if len(bearer.split()) != 2:
             return make_response(403, "Missing Auth Bearer")
         token = bearer.split()[1]
-        if token != Manager.cfg.manager_bearer_auth:
+        if token != Registry.cfg.manager_bearer_auth:
             return make_response(403, "Bad Auth Bearer")
     return False
 
@@ -54,7 +56,10 @@ def check_authentication():
 @app.route('/api/vdp', methods=['GET'])
 @openapi_validated
 def get_vdp():
-    jsn = json.loads(Manager.cfg.vdp.get_json())
+    if "localOnly" in request.args and request.args["localOnly"]:
+        jsn = json.loads(Registry.vdp.get_json(my_only=True))
+    else:
+        jsn = json.loads(Registry.vdp.get_json())
     spc = openapi.spec.contents()
     resolver = jsonschema.validators.RefResolver.from_schema(spc)
     validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"]["Vdp"], resolver=resolver)
@@ -68,7 +73,7 @@ def get_vdp():
 @app.route('/api/pay/stripe', methods=['GET'])
 @openapi_validated
 def stripe_payment():
-    if not Manager.cfg.stripe_api_key or not Manager.cfg.stripe_plink_id:
+    if not Registry.cfg.stripe_api_key or not Registry.cfg.stripe_plink_id:
         return make_response(500, "Server not configured.", {})
     paymentid = request.args["paymentid"]
     wallet = request.args["wallet"]
@@ -76,15 +81,15 @@ def stripe_payment():
         return make_response(400, "Bad paymentid", {})
     if not Util.check_wallet_address(wallet):
         return make_response(400, "Bad wallet", {})
-    stripe.api_key = Manager.cfg.stripe_api_key
-    if Manager.cfg.lthn_price[0] == "*":
-        price1 = Market.get_price_coingecko() * float(Manager.cfg.lthn_price[1:])
+    stripe.api_key = Registry.cfg.stripe_api_key
+    if Registry.cfg.lthn_price[0] == "*":
+        price1 = Market.get_price_coingecko() * float(Registry.cfg.lthn_price[1:])
     else:
-        price1 = float(Manager.cfg.lthn_price)
+        price1 = float(Registry.cfg.lthn_price)
     if price1:
         amount1 = 1 / price1
         found = None
-        for p in Manager.cfg.stripe_plink_id.split(","):
+        for p in Registry.cfg.stripe_plink_id.split(","):
             try:
                 pl = stripe.PaymentLink.retrieve(p)
             except Exception as e:
@@ -148,7 +153,7 @@ def post_vdp():
     jsn = request.data.decode("utf-8")
     try:
         try:
-            new_vdp = VDP(Manager.cfg, vdpdata=jsn)
+            new_vdp = VDP(Registry.cfg, vdpdata=jsn)
         except VDPException as e:
             return make_response(443, "Bad Request data", {"error": str(e)})
         if not check:
@@ -163,15 +168,15 @@ def post_vdp():
 @app.route('/api/session', methods=['POST'])
 @openapi_validated
 def post_session():
-    space = Manager.cfg.vdp.get_space(request.openapi.body["spaceid"])
-    if not space:
-        return make_response(460, "Unknown space")
-    gate = Manager.cfg.vdp.get_gate(request.openapi.body["gateid"])
-    if not gate:
-        return make_response(461, "Unknown gate")
+    space = Registry.vdp.get_space(request.openapi.body["spaceid"])
+    if not space or not space.is_local():
+        return make_response(460, "Unknown space or space is not local")
+    gate = Registry.vdp.get_gate(request.openapi.body["gateid"])
+    if not gate or not gate.is_local():
+        return make_response(461, "Unknown gate or space is not local")
     if not gate.is_for_space(space.get_id()):
         return make_response(462, "Gate %s cannot be used with space %s" % (gate.get_id(), space.get_id()))
-    sessions = Sessions(Manager.cfg)
+    sessions = Sessions()
     if "like_sessionid" in request.openapi.body:
         session = sessions.find_by_id(request.openapi.body["like_sessionid"])
         if session:
@@ -187,8 +192,13 @@ def post_session():
         else:
             return make_response(463, "No permission to reuse session", request.openapi.body["reuse_sessionid"])
     else:
-        session = Session(Manager.cfg)
+        session = Session()
         session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
+        if gate.get_type() == "wg":
+            if "wg" in request.openapi.body:
+                WGService.prepare_server_session(session, request.openapi.body["wg"])
+            else:
+                return make_response(465, "Missing WG endpoint data")
         sessions.add(session)
     if not session.is_active():
         return make_response(402, "Waiting for payment", session.get_dict())
@@ -199,7 +209,7 @@ def post_session():
 @app.route('/api/session', methods=['GET'])
 @openapi_validated
 def get_session():
-    sessions = Sessions(Manager.cfg, noload=True)
+    sessions = Sessions(noload=True)
     if "sessionid" in request.args:
         session = sessions.get(request.args["sessionid"])
         if session:
@@ -220,7 +230,7 @@ def sessions():
     if notauth:
         return notauth
     rsessions = []
-    for c in Sessions(Manager.cfg).find():
+    for c in Sessions().find():
         rsessions.append(c.get_dict())
     return rsessions
 
@@ -234,7 +244,7 @@ class Manager(Service):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
         cls.app = app
-        cls.app.run(port=cls.cfg.http_port, host="0.0.0.0")
+        cls.app.run(port=Registry.cfg.http_port, host="0.0.0.0", debug=Registry.cfg.l == "DEBUG", use_reloader=False)
         cls.exit = True
 
     @classmethod

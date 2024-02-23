@@ -8,6 +8,8 @@ import openapi_schema_validator
 from jsonschema.exceptions import ValidationError
 from openapi_core import OpenAPI
 
+from lib.registry import Registry
+
 
 class VDPException(Exception):
     def __init__(self, message, *args):
@@ -56,9 +58,9 @@ class VDPObject:
         return self._provider
 
     def get_manager_url(self):
-        if self.cfg and self.cfg.force_manager_url:
-            logging.getLogger("vdp").warning("Using forced manager URL %s" % self.cfg.force_manager_url)
-            return self.cfg.force_manager_url
+        if Registry.cfg and Registry.cfg.force_manager_url:
+            logging.getLogger("vdp").warning("Using forced manager URL %s" % Registry.cfg.force_manager_url)
+            return Registry.cfg.force_manager_url
         return self.get_provider().get_manager_url()
 
     def get_price(self):

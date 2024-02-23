@@ -7,6 +7,8 @@ import time
 import unittest
 import configargparse
 
+from lib.registry import Registry
+
 os.environ["NO_KIVY"] = "1"
 
 from client.arguments import ClientArguments
@@ -67,6 +69,8 @@ class TestSessions(unittest.TestCase):
         os.mkdir("./var/ca")
         Wizard().ssh_ca(cfg)
         Wizard().ca(cfg)
+        cfg.is_server = True
+        Registry.init(cfg, {}, None)
         return cfg
 
     def cleanup_sessions(self):
@@ -74,33 +78,33 @@ class TestSessions(unittest.TestCase):
         os.mkdir("./var/sessions")
 
     def testAll(self):
-        cfg = self.parse_args([])
-        cfg.vdp = VDP(cfg)
+        Registry.cfg = self.parse_args([])
+        Registry.vdp = VDP()
         self.cleanup_sessions()
-        sessions = Sessions(cfg)
+        sessions = Sessions()
         self.assertEqual(len(sessions.find()), 0)
-        session = Session(cfg)
+        session = Session()
         session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session.save()
         sessions.add(session)
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 0)
-        self.LoadSessions(cfg)
-        self.PaySessions(cfg)
-        self.LoadedSessions(cfg)
-        self.Parent(cfg)
-        self.TLSproxy(cfg, session, sessions)
-        self.SSHproxy(cfg, session, sessions)
-        left = self.Serialization(cfg)
-        right = self.Concurrency(cfg)
+        self.LoadSessions()
+        self.PaySessions()
+        self.LoadedSessions()
+        self.Parent()
+        self.TLSproxy(session, sessions)
+        self.SSHproxy(session, sessions)
+        left = self.Serialization()
+        right = self.Concurrency()
         print(left, right)
 
-    def LoadSessions(self, cfg):
-        sessions = Sessions(cfg)
+    def LoadSessions(self):
+        sessions = Sessions()
         self.assertEqual(len(sessions.find()), 1)
 
-    def PaySessions(self, cfg):
-        sessions = Sessions(cfg)
+    def PaySessions(self):
+        sessions = Sessions()
         session = sessions.find(notpaid=True)[0]
         paymentid = session.get_paymentid()
         self.assertEqual(session.get_payment(), 0)
@@ -115,8 +119,8 @@ class TestSessions(unittest.TestCase):
         sessions.process_payment(paymentid, 1, 433333, "txid3")
         self.assertEqual(session.get_payment(), 3)
         self.assertEqual(len(sessions.find(notpaid=True)), 1)
-        sessions.process_payment(paymentid, 3100, 433333, "txid4")
-        self.assertEqual(session.get_payment(), 3103)
+        sessions.process_payment(paymentid, 31000, 433333, "txid4")
+        self.assertEqual(session.get_payment(), 31003)
         self.assertTrue(session.is_paid(), True)
         self.assertTrue(session.is_fresh(), True)
         self.assertGreater(session.get_activation(), 10000)
@@ -127,25 +131,25 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(len(sessions.find(active=True, spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")), 1)
         sessions.save()
 
-    def LoadedSessions(self, cfg):
-        sessions = Sessions(cfg)
+    def LoadedSessions(self):
+        sessions = Sessions()
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 1)
         self.assertEqual(len(sessions.find(notpaid=True)), 0)
 
-    def Parent(self, cfg):
-        sessions = Sessions(cfg)
-        parent = Session(cfg)
+    def Parent(self):
+        sessions = Sessions()
+        parent = Session()
         parent.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         parent.save()
         self.assertTrue(bool(parent.get_gate_data("ssh")))
-        child = Session(cfg)
+        child = Session()
         child.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         child.set_parent(parent.get_id())
         child.save()
-        child2 = Session(cfg)
+        child2 = Session()
         child2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         child2.set_parent(parent.get_id())
@@ -154,13 +158,12 @@ class TestSessions(unittest.TestCase):
         sessions.load()
         self.assertLess(len(sessions.find(active=True, noparent=True)), len(sessions.find(active=True)))
 
-    def TLSproxy(self, cfg, session, sessions):
+    def TLSproxy(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
         sessions.load()
-        cfg.sessions = sessions
-        ctrl = {"cfg": cfg}
-        connection = Connection(ctrl["cfg"], session, port=8888)
+        ctrl = {}
+        connection = Connection(session, port=8888)
         kwargs = {
             "endpoint": session.get_gate().get_endpoint(resolve=True),
             "ca": session.get_gate().get_ca(),
@@ -170,13 +173,12 @@ class TestSessions(unittest.TestCase):
         }
         TLSProxy2.run(ctrl, queue, queue2, **kwargs)
 
-    def SSHproxy(self, cfg, session, sessions):
+    def SSHproxy(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
         sessions.load()
-        cfg.sessions = sessions
-        ctrl = {"cfg": cfg}
-        connection = Connection(ctrl["cfg"], session, port=8888)
+        ctrl = {}
+        connection = Connection(session, port=8888)
         session = sessions.find(gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh")[0]
         kwargs = {
             "gate": session.get_gate(),
@@ -187,19 +189,20 @@ class TestSessions(unittest.TestCase):
         #with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
         #    SSHProxy2.run(ctrl, queue, queue2, **kwargs)
 
-    def Concurrency(self, cfg):
+    def Concurrency(self):
         self.cleanup_sessions()
-        sessions_init = Sessions(cfg)
+        sessions_init = Sessions()
         ctrl = multiprocessing.Manager().dict()
-        p1 = multiprocessing.Process(target=self.generate_unpaid_http, args=[cfg, ctrl])
+        ctrl["cfg"] = Registry.cfg
+        p1 = multiprocessing.Process(target=self.generate_unpaid_http, args=[ctrl])
         p1.start()
-        p2 = multiprocessing.Process(target=self.generate_paid_free_socks, args=[cfg, ctrl])
+        p2 = multiprocessing.Process(target=self.generate_paid_free_socks, args=[ctrl])
         p2.start()
-        p3 = multiprocessing.Process(target=self.generate_paid_free_ssh, args=[cfg, ctrl])
+        p3 = multiprocessing.Process(target=self.generate_paid_free_ssh, args=[ctrl])
         p3.start()
-        p4 = multiprocessing.Process(target=self.generate_unpaid_ssh, args=[cfg, ctrl])
+        p4 = multiprocessing.Process(target=self.generate_unpaid_ssh, args=[ctrl])
         p4.start()
-        p5 = multiprocessing.Process(target=self.pay_unpaid, args=[cfg, ctrl])
+        p5 = multiprocessing.Process(target=self.pay_unpaid, args=[ctrl])
         p5.start()
 
         p1.join()
@@ -208,7 +211,7 @@ class TestSessions(unittest.TestCase):
         p4.join()
         p5.join()
 
-        sessions_end = Sessions(cfg)
+        sessions_end = Sessions()
         sessions_end.load()
         sessions_init.load()
 
@@ -243,18 +246,18 @@ class TestSessions(unittest.TestCase):
                          ctrl["activated_http"])
         return repr(sessions_end)
 
-    def Serialization(self, cfg):
+    def Serialization(self):
         self.cleanup_sessions()
-        sessions_init = Sessions(cfg)
+        sessions_init = Sessions()
 
-        ctrl = {}
-        self.generate_unpaid_http(cfg, ctrl)
-        self.generate_paid_free_socks(cfg, ctrl)
-        self.generate_paid_free_ssh(cfg, ctrl)
-        self.generate_unpaid_ssh(cfg, ctrl)
-        self.pay_unpaid(cfg, ctrl)
+        ctrl = {"cfg": Registry.cfg}
+        self.generate_unpaid_http(ctrl)
+        self.generate_paid_free_socks(ctrl)
+        self.generate_paid_free_ssh(ctrl)
+        self.generate_unpaid_ssh(ctrl)
+        self.pay_unpaid(ctrl)
 
-        sessions_end = Sessions(cfg)
+        sessions_end = Sessions()
         sessions_end.load()
         sessions_init.load()
 
@@ -290,10 +293,11 @@ class TestSessions(unittest.TestCase):
         return repr(sessions_end)
 
     @classmethod
-    def generate_unpaid_http(cls, cfg, ctrl):
-        sessions = Sessions(cfg)
+    def generate_unpaid_http(cls, ctrl):
+        Registry.cfg = ctrl["cfg"]
+        sessions = Sessions()
         for i in range(2, 20):
-            session = Session(cfg)
+            session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
             sessions.add(session)
@@ -301,10 +305,11 @@ class TestSessions(unittest.TestCase):
         ctrl["generate_unpaid_http"] = sessions
 
     @classmethod
-    def generate_paid_free_socks(cls, cfg, ctrl):
-        sessions = Sessions(cfg)
+    def generate_paid_free_socks(cls, ctrl):
+        Registry.cfg = ctrl["cfg"]
+        sessions = Sessions()
         for i in range(2, 20):
-            session = Session(cfg)
+            session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
             sessions.add(session)
@@ -312,10 +317,11 @@ class TestSessions(unittest.TestCase):
         ctrl["generate_paid_free_socks"] = sessions
 
     @classmethod
-    def generate_paid_free_ssh(cls, cfg, ctrl):
-        sessions = Sessions(cfg)
+    def generate_paid_free_ssh(cls, ctrl):
+        Registry.cfg = ctrl["cfg"]
+        sessions = Sessions()
         for i in range(2, 20):
-            session = Session(cfg)
+            session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
             sessions.add(session)
@@ -323,10 +329,11 @@ class TestSessions(unittest.TestCase):
         ctrl["generate_paid_free_ssh"] = sessions
 
     @classmethod
-    def generate_unpaid_ssh(cls, cfg, ctrl):
-        sessions = Sessions(cfg)
+    def generate_unpaid_ssh(cls, ctrl):
+        Registry.cfg = ctrl["cfg"]
+        sessions = Sessions()
         for i in range(2, 20):
-            session = Session(cfg)
+            session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
             sessions.add(session)
@@ -334,8 +341,9 @@ class TestSessions(unittest.TestCase):
         ctrl["generate_unpaid_ssh"] = sessions
 
     @classmethod
-    def pay_unpaid(cls, cfg, ctrl):
-        sessions = Sessions(cfg)
+    def pay_unpaid(cls, ctrl):
+        Registry.cfg = ctrl["cfg"]
+        sessions = Sessions()
         paid = 0
         activated_ssh = 0
         activated_http = 0

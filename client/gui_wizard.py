@@ -3,6 +3,7 @@ from kivy.uix.gridlayout import GridLayout
 
 import client
 from lib.messages import Messages
+from lib.registry import Registry
 from lib.vdp import VDP
 
 
@@ -27,4 +28,4 @@ class Wizard(GridLayout):
 
     def import_vdp(self, instance=None, value=None):
         vdp = VDP(self.ids.vdp_url.text)
-        vdp.save(client.gui.GUI.ctrl["cfg"].gates_dir, client.gui.GUI.ctrl["cfg"].spaces_dir)
+        vdp.save(Registry.cfg.gates_dir, Registry.cfg.spaces_dir)

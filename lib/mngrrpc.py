@@ -1,9 +1,11 @@
 import logging
-
 import requests
 import json
 
+from lib.gate import Gateway
+from lib.space import Space
 from lib.vdp import VDP
+import lib
 
 
 class ManagerException(Exception):
@@ -28,15 +30,18 @@ class ManagerRpcCall:
             logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
             return False
 
-    def create_session(self, gateid, spaceid, days):
+    def create_session(self, gate: Gateway, space: Space, days: int):
+        data = {
+                "gateid": gate.get_id(),
+                "spaceid": space.get_id(),
+                "days": days
+            }
+        if gate.get_type() == "wg":
+            data["wg"] = lib.wg_service.WGService.prepare_session_request(gate)
         r = requests.post(
             self._baseurl + "/api/session",
             headers={"Content-Type": "application/json"},
-            json={
-                "gateid": gateid,
-                "spaceid": spaceid,
-                "days": days
-            }
+            json=data
         )
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)

@@ -84,23 +84,68 @@
           type: integer
         like_sessionid:
           type: string
+        wg:
+          $ref: '#/components/schemas/WgSessionRequestData'
       required:
         - spaceid
         - gateid
         - days
 
+    WgSessionRequestData:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          default: dynamic
+        public_key:
+          type: string
+        network:
+          type: object
+          additionalProperties: false
+          properties:
+            requested_ipv4_prefix:
+              type: number
+      required:
+        - public_key
+
     WgSessionData:
       type: object
       additionalProperties: false
       properties:
-        ip:
+        client_endpoint:
           type: string
-        network_bits:
+        client_public_key:
+          type: string
+        server_public_key:
+          type: string
+        psk:
+          type: string
+        client_ipv4_address:
+          type: string
+        ipv4_prefix:
           type: integer
-        gw:
+        server_ipv4_address:
           type: string
         dns:
-          type: string
+          type: array
+          items:
+            type: string
+        client_ipv4_networks:
+          type: array
+          items:
+            type: string
+        server_ipv4_networks:
+          type: array
+          items:
+            type: string
+      required:
+        - client_public_key
+        - server_public_key
+        - client_ipv4_address
+        - ipv4_prefix
+        - psk
+        - server_ipv4_address
 
     ProxySessionData:
       type: object

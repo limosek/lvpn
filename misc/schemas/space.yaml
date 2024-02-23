@@ -46,3 +46,7 @@
         - providerid
         - file_type
         - file_version
+        - ips
+        - dns_servers
+        - price
+

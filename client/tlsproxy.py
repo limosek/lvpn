@@ -9,6 +9,7 @@ import setproctitle
 import urllib3
 
 from lib.messages import Messages
+from lib.registry import Registry
 from lib.service import Service, ServiceException
 from lib.session import Session
 from lib.sessions import Sessions
@@ -110,12 +111,12 @@ class TLSProxy(Service):
         server_socket.bind((host, port))
         server_socket.listen(100)
         server_socket.settimeout(1)
-        cls.log_info("Running TLS proxy %s:%s -> %s" % (cls.cfg.local_bind, port, cls.kwargs["endpoint"]))
+        cls.log_info("Running TLS proxy %s:%s -> %s" % (Registry.cfg.local_bind, port, cls.kwargs["endpoint"]))
         threads = []
         while not cls.exit:
-            cls.log_debug("tlsserver %s:%s loop (%s connections)" % (cls.cfg.local_bind, port, len(threads)))
+            cls.log_debug("tlsserver %s:%s loop (%s connections)" % (Registry.cfg.local_bind, port, len(threads)))
             while len(threads) > 20:
-                cls.log_warning("Too many connections to %s:%s (%s)" % (cls.cfg.local_bind, port, len(threads)))
+                cls.log_warning("Too many connections to %s:%s (%s)" % (Registry.cfg.local_bind, port, len(threads)))
                 time.sleep(5)
                 continue
             tmp = copy(threads)
@@ -138,8 +139,8 @@ class TLSProxy(Service):
 
     @classmethod
     def connect(cls, endpoint, ca):
-        if cls.cfg.use_http_proxy:
-            proxydata = urllib3.util.parse_url(cls.cfg.use_http_proxy)
+        if Registry.cfg.use_http_proxy:
+            proxydata = urllib3.util.parse_url(Registry.cfg.use_http_proxy)
             s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
         else:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -177,11 +178,11 @@ class TLSProxy(Service):
     @classmethod
     def postinit(cls):
         cls.exit = False
-        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (cls.cfg.local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
+        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (Registry.cfg.local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
         sessionid = cls.kwargs["sessionid"]
-        sessions = Sessions(cls.cfg)
+        sessions = Sessions()
         session = sessions.get(sessionid)
-        cls.prepare(session, cls.cfg.tmp_dir)
+        cls.prepare(session, Registry.cfg.tmp_dir)
         cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
 
     @classmethod

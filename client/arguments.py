@@ -25,6 +25,8 @@ class ClientArguments:
         p.add_argument('--auto-connect', type=str, help='Auto connect uris',
                        default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,paid"
                        )
+        p.add_argument('--auto-reconnect', type=bool, help='Auto reconnect on failure', default=False)
+        p.add_argument('--auto-pay', type=bool, help='Auto pay service when there is an request to connect', default=False)
 
         return p
 

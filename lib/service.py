@@ -1,5 +1,6 @@
 import datetime
 import logging
+import multiprocessing
 import signal
 import sys
 import time
@@ -7,6 +8,7 @@ import _queue
 import setproctitle
 
 from lib.messages import Messages
+from lib.registry import Registry
 
 
 class ServiceException(Exception):
@@ -50,17 +52,19 @@ class Service:
             raise NotImplementedError("You cannot use base Service class.")
 
         cls.ctrl = ctrl
-        cls.cfg = ctrl["cfg"]
+        if multiprocessing.parent_process():
+            Registry.cfg = ctrl["cfg"]
+            Registry.vdp = Registry.cfg.vdp
         cls.queue = queue
         cls.myqueue = myqueue
         cls.args = args
         cls.kwargs = kwargs
         for handler in logging.getLogger(cls.myname).handlers[:]:
             logging.getLogger(cls.myname).removeHandler(handler)
-        fh = logging.FileHandler(cls.cfg.log_file)
-        fh.setLevel(cls.cfg.l)
+        fh = logging.FileHandler(Registry.cfg.log_file)
+        fh.setLevel(Registry.cfg.l)
         sh = logging.StreamHandler()
-        sh.setLevel(cls.cfg.l)
+        sh.setLevel(Registry.cfg.l)
         formatter = logging.Formatter('%(name)s[%(process)d]:%(levelname)s:%(message)s')
         fh.setFormatter(formatter)
         sh.setFormatter(formatter)

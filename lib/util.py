@@ -51,11 +51,17 @@ class Util:
             os.chmod(file, 0o700)
 
     @classmethod
-    def find_free_port(cls):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('', 0))
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            return s.getsockname()[1]
+    def find_free_port(cls, af: str = "tcp"):
+        if af == "tcp":
+            with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+                s.bind(('', 0))
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                return s.getsockname()[1]
+        elif af == "udp":
+            with closing(socket.socket(socket.AF_INET, socket.SOCK_DGRAM)) as s:
+                s.bind(('', 0))
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                return s.getsockname()[1]
 
     @classmethod
     def find_random_free_port(cls, max_iters=100, from_=20000, to_=50000):

@@ -1,4 +1,5 @@
 import os.path
+import platform
 
 
 class SharedArguments:
@@ -83,8 +84,28 @@ class SharedArguments:
                        help='How long time in seconds before unpaid session is deleted')
         p.add_argument('--use-tx-pool', type=bool, default=False,
                        help='Use payments from pool (not confirmed by network) to accept payments.')
-        p.add_argument('--wg-dev', type=str, help="Wireguard device to use. Default is to use device name as gateid")
-        p.add_argument('--wg-prefix-cmd', type=str, default="",
+        p.add_argument('--wg-map-device', type=str, action='append', default=[],
+                       help="Wireguard device map mapping gateid to device name. Use gateid,name")
+        p.add_argument('--wg-cmd-prefix', type=str, default="",
                        help="Wireguard prefix to run wg command. Can be 'sudo' or 'ssh root@server' or anything else what will be prepended before wg command.")
+        if platform.system() == "Windows":
+            p.add_argument('--wg-cmd-set-ip', type=str, default="netsh interface ipv4 set address name={iface} static {ip} {mask}",
+                           help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-create-interface', type=str, default='"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "{fname}"',
+                           help="Wireguard command to create interface. Default to not manage interfaces")
+            p.add_argument('--wg-cmd-delete-interface', type=str, default='"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice "{iface}"',
+                           help="Wireguard command to delete interface. Default to not manage interfaces")
+        else:
+            p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{mask}",
+                       help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-create-interface', type=str, default="ip link add dev {iface} type wireguard",
+                       help="Wireguard command to create interface. Default to not manage interfaces")
+            p.add_argument('--wg-cmd-delete-interface', type=str, default="ip link del dev {iface}",
+                       help="Wireguard command to delete interface. Default to not manage interfaces")
+
+        p.add_argument("--enable-wg", type=int, choices=[0, 1], help="Enable wireguard support", default=0)
+
+        p.add_argument('--is-client', type=bool, help='For internal usage', default=False)
+        p.add_argument('--is-server', type=bool, help='For internal usage', default=False)
 
         return p

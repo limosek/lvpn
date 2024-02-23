@@ -4,6 +4,8 @@ import time
 import unittest
 import requests
 
+from lib.wg_service import WGService
+
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
 
@@ -43,6 +45,31 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(j["paid"], False)
         self.assertEqual(j["activated"], 0)
         self.assertLess(j["created"], time.time())
+        self.GetUnpaidSession(j["sessionid"])
+
+    def testCreateWgPaidSession(self):
+        r = requests.post(
+            os.environ["MANAGER_URL"] + "/api/session",
+            data=json.dumps({
+                "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg",
+                "spaceid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st",
+                "days": 30,
+                "wg": {
+                    "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
+                }
+            }),
+            headers={"Content-Type": "application/json"}
+        )
+        print(r.text)
+        self.assertEqual(r.status_code, 402)
+        j = json.loads(r.text)
+        self.assertGreater(j["price"], 1)
+        self.assertEqual(j["paid"], False)
+        self.assertEqual(j["activated"], 0)
+        self.assertLess(j["created"], time.time())
+        self.assertEqual(j["wg"]["client_public_key"], "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=")
+        self.assertEqual(j["wg"]["server_public_key"],  "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM=")
+        self.assertEqual(j["wg"]["ipv4_prefix"], 16)
         self.GetUnpaidSession(j["sessionid"])
 
     def GetUnpaidSession(self, sessionid="1"):

@@ -5,18 +5,19 @@ import time
 
 from ownca import CertificateAuthority
 
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.util import Util
 from lib.vdpobject import VDPObject, VDPException
+from lib.wg_engine import WGEngine
 
 
 class Gateway(VDPObject):
 
-    def __init__(self, cfg, gwinfo, file=None):
-        self.cfg = cfg
+    def __init__(self, gwinfo, file=None):
         self.validate(gwinfo, "Gate", file)
         self._data = gwinfo
-        self._provider = self.cfg.vdp.get_provider(self._data["providerid"])
+        self._provider = Registry.vdp.get_provider(self._data["providerid"])
         if not self._provider:
             raise VDPException("Unknown providerid %s" % self._data["providerid"])
         self._local = self._provider.is_local()
@@ -99,8 +100,8 @@ class Gateway(VDPObject):
 
     def save(self, cfg=None):
         if cfg:
-            self.cfg = cfg
-        fname = "%s/%s.lgate" % (self.cfg.gates_dir, self.get_id())
+            Registry.cfg = cfg
+        fname = "%s/%s.lgate" % (Registry.cfg.gates_dir, self.get_id())
         with open(fname, "w") as f:
             f.write(self.get_json())
 
@@ -113,11 +114,19 @@ class Gateway(VDPObject):
         else:
             return False
 
-    def activate(self, session):
+    def activate_client(self, session):
+        if self.get_type() == "wg":
+            if Registry.cfg.enable_wg:
+                WGEngine.show_only = True
+                WGEngine.show_cmds = True
+                logging.error("Wireguard support disabled in config. Ignoring activation")
+            WGEngine.remove_peer(self.get_id(), session.get_gate_data("wg")["server_public_key"])
+
+    def activate_server(self, session):
         if self.get_type() == "ssh":
-            user_key = "%s/user-%s" % (self.cfg.tmp_dir, session.get_id())
+            user_key = "%s/user-%s" % (Registry.cfg.tmp_dir, session.get_id())
             user_key_pub = "%s.pub" % user_key
-            user_cert = "%s/user-%s-cert.pub" % (self.cfg.tmp_dir, session.get_id())
+            user_cert = "%s/user-%s-cert.pub" % (Registry.cfg.tmp_dir, session.get_id())
             username = session.get_gate().get_gate_data("ssh")["username"]
             cmd = [
                 "ssh-keygen",
@@ -133,7 +142,7 @@ class Gateway(VDPObject):
                 logging.getLogger().error("Error activating session %s" % self.get_id())
             cmd = [
                 "ssh-keygen",
-                "-s", self.cfg.ssh_user_ca_private,
+                "-s", Registry.cfg.ssh_user_ca_private,
                 "-C", "gateid=%s,username=%s,sessionid=%s" % (session.get_gate().get_id(), username, self.get_id()),
                 "-I", session.get_id() + "@lvpn",
                 "-n", username,
@@ -161,14 +170,15 @@ class Gateway(VDPObject):
                 })
 
         elif self.get_type() in ["http-proxy", "socks-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy"] and self.is_tls():
-            ca = CertificateAuthority(ca_storage=self.cfg.ca_dir)
-            lckfile = "%s/lock" % self.cfg.ca_dir
+            ca = CertificateAuthority(ca_storage=Registry.cfg.ca_dir)
+            lckfile = "%s/lock" % Registry.cfg.ca_dir
             while os.path.exists(lckfile):
                 time.sleep(0.1)
             with open(lckfile, "w") as lck:
                 lck.write(str(os.getpid()))
             try:
-                crt = ca.issue_certificate("%s.lvpn" % session.get_id(), maximum_days=session.days_left() + 1, key_size=4096)
+                crt = ca.issue_certificate("%s.lvpn" % session.get_id(), maximum_days=session.days_left() + 1,
+                                           key_size=4096)
                 session.set_gate_data("proxy", {
                     "key": crt.key_bytes.decode("utf-8"),
                     "crt": crt.cert_bytes.decode("utf-8")
@@ -178,6 +188,17 @@ class Gateway(VDPObject):
                 return False
             os.unlink(lckfile)
 
+        elif self.get_type() == "wg":
+            if Registry.cfg.enable_wg:
+                WGEngine.show_only = True
+                WGEngine.show_cmds = True
+                logging.error("Wireguard support disabled in config. Ignoring activation")
+            WGEngine.add_peer(self.get_id(),
+                              session.get_gate_data("wg")["client_public_key"],
+                              session.get_gate_data("wg")["client_ipv4_address"],
+                              session.get_gate_data("wg")["client_endpoint"],
+                              session.get_gate_data("wg")["psk"]
+                              )
         return True
 
     def __repr__(self):

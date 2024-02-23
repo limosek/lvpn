@@ -5,6 +5,8 @@
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "Free Lethean Space",
   "description": "Free Lethean Space used to getch internal resources",
+  "ips": ["10.168.0.0/16"],
+  "dns_servers": ["10.168.0.1"],
   "price": {
     "per-day": 0
   }

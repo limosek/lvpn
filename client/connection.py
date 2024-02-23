@@ -3,10 +3,11 @@ import secrets
 import socket
 import time
 from copy import copy
-
 import requests
+import icmplib
 
 from lib.gate import Gateway
+from lib.registry import Registry
 from lib.session import Session
 from lib.sessions import Sessions
 from lib.space import Space
@@ -14,11 +15,11 @@ from lib.space import Space
 
 class Connection:
 
-    def __init__(self, cfg, session: Session = None, data: dict = None, parent: Session = None, connection: dict = None,
+    def __init__(self, session: Session = None, data: dict = None, parent: Session = None, connection: dict = None,
                  port: int = None):
         if connection:
             self._data = connection
-            sessions = Sessions(cfg, noload=True)
+            sessions = Sessions(noload=True)
             session = sessions.get(connection["sessionid"])
             if not session:
                 raise Exception(
@@ -40,11 +41,11 @@ class Connection:
             self._data["data"] = data
         self._session = session
         if "gateid" in self.get_data():
-            self._gate = cfg.vdp.get_gate(self.get_data()["gateid"])
-            self._space = cfg.vdp.get_space(self.get_data()["spaceid"])
+            self._gate = Registry.vdp.get_gate(self.get_data()["gateid"])
+            self._space = Registry.vdp.get_space(self.get_data()["spaceid"])
         else:
-            self._gate = cfg.vdp.get_gate(self._session.get_gateid())
-            self._space = cfg.vdp.get_space(self._session.get_spaceid())
+            self._gate = Registry.vdp.get_gate(self._session.get_gateid())
+            self._space = Registry.vdp.get_space(self._session.get_spaceid())
 
     def get_id(self) -> str:
         return self._data["connectionid"]
@@ -136,6 +137,22 @@ class Connection:
                 except requests.RequestException as e:
                     logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
                     return False
+            elif self.get_gate().get_type() == "wg":
+                if Registry.enable_wg:
+                    try:
+                        result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2)
+                        print(result)
+                        if result.is_alive:
+                            return True
+                        else:
+                            logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), result))
+                            return False
+                    except Exception as e:
+                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                        return False
+                else:
+                    logging.getLogger("proxy").error("Connection %s is not alive: Wireguard support disabled" % (self.get_id()))
+                    return False
             else:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(5)
@@ -163,8 +180,7 @@ class Connection:
 
 class Connections:
 
-    def __init__(self, cfg, connections: list = None):
-        self._cfg = cfg
+    def __init__(self, connections: list = None):
         self._data = []
         if connections is None:
             self._data = []

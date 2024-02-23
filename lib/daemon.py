@@ -65,16 +65,16 @@ class Daemon(Service):
     @classmethod
     def postinit(cls):
         args = [
-            cls.cfg.daemon_bin,
-            "--log-file=%s/daemon.log" % cls.cfg.var_dir,
-            "--data-dir=%s/data" % cls.cfg.var_dir,
+            Registry.cfg.daemon_bin,
+            "--log-file=%s/daemon.log" % Registry.cfg.var_dir,
+            "--data-dir=%s/data" % Registry.cfg.var_dir,
             "--add-exclusive-node=127.0.0.1:48772",
             "--p2p-bind-ip=127.0.0.1",
             "--no-igd"
         ]
-        if cls.cfg.run_daemon:
+        if Registry.cfg.run_daemon:
             logging.getLogger(cls.myname).warning("Running daemon subprocess: %s" % " ".join(args))
-            RunCmd.init(cls.cfg)
+            RunCmd.init(Registry.cfg)
             cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
 
     @classmethod

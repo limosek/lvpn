@@ -10,6 +10,7 @@ import _queue
 import requests
 from requests.auth import HTTPDigestAuth
 
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
 from lib.sessions import Sessions
@@ -34,9 +35,9 @@ class Wallet(Service):
         payload = json.dumps({"method": method, "params": params})
         headers = {'content-type': "application/json", 'cache-control': "no-cache"}
         try:
-            response = requests.request(httpmethod, cls.cfg.wallet_rpc_url, data=payload, headers=headers,
-                                        auth=HTTPDigestAuth(cls.cfg.wallet_rpc_user,
-                                                            cls.cfg.wallet_rpc_password), timeout=10)
+            response = requests.request(httpmethod, Registry.cfg.wallet_rpc_url, data=payload, headers=headers,
+                                        auth=HTTPDigestAuth(Registry.cfg.wallet_rpc_user,
+                                                            Registry.cfg.wallet_rpc_password), timeout=10)
             if response.status_code != 200:
                 raise WalletException(code=response.status_code, message=response.content)
             else:
@@ -65,8 +66,8 @@ class Wallet(Service):
     @classmethod
     def create(cls):
         w = cls.rpc("create_wallet", {
-            "filename": cls.cfg.wallet_name,
-            "password": cls.cfg.wallet_password,
+            "filename": Registry.cfg.wallet_name,
+            "password": Registry.cfg.wallet_password,
             "language": "English"
         }, exc=True)
         return w
@@ -74,8 +75,8 @@ class Wallet(Service):
     @classmethod
     def open(cls):
         w = cls.rpc("open_wallet", {
-            "filename": cls.cfg.wallet_name,
-            "password": cls.cfg.wallet_password,
+            "filename": Registry.cfg.wallet_name,
+            "password": Registry.cfg.wallet_password,
             "language": "English"
         }, exc=True)
         return w
@@ -83,24 +84,24 @@ class Wallet(Service):
     @classmethod
     def restore(cls, seed):
         args = [
-            cls.cfg.wallet_cli_bin,
+            Registry.cfg.wallet_cli_bin,
             "--restore-deterministic-wallet",
-            "--generate-new-wallet", "%s/%s" % (cls.cfg.var_dir, cls.cfg.wallet_name),
-            "--daemon-address=%s:48782" % (cls.cfg.daemon_host),
-            "--log-level=1", "--log-file=%s/wallet.log" % cls.cfg.var_dir,
+            "--generate-new-wallet", "%s/%s" % (Registry.cfg.var_dir, Registry.cfg.wallet_name),
+            "--daemon-address=%s:48782" % (Registry.cfg.daemon_host),
+            "--log-level=1", "--log-file=%s/wallet.log" % Registry.cfg.var_dir,
             "--trusted-daemon",
             "--electrum-seed", seed,
-            "--password", cls.cfg.wallet_password,
+            "--password", Registry.cfg.wallet_password,
             "rescan_bc"
         ]
         logging.getLogger("wallet").warning("Running wallet-cli process: %s" % " ".join(args))
-        cls.pc = RunCmd.popen(args, cwd=cls.cfg.tmpdir, shell=False)
+        cls.pc = RunCmd.popen(args, cwd=Registry.cfg.tmpdir, shell=False)
 
     @classmethod
     def get_balance(cls, walletid=0):
         b = cls.rpc("getbalance", {"account_index": walletid})
         if bool(b):
-            return int(b["balance"]) * cls.cfg.coin_unit
+            return int(b["balance"]) * Registry.cfg.coin_unit
         else:
             return False
 
@@ -108,7 +109,7 @@ class Wallet(Service):
     def get_unlocked_balance(cls, walletid=0):
         b = cls.rpc("getbalance", {"account_index": walletid})
         if bool(b):
-            return int(b["unlocked_balance"]) * cls.cfg.coin_unit
+            return int(b["unlocked_balance"]) * Registry.cfg.coin_unit
         else:
             return False
 
@@ -135,7 +136,7 @@ class Wallet(Service):
         data = cls.rpc("get_transfers", {
             "in": True,
             "min_height": min_height,
-            "pool": cls.cfg.use_tx_pool
+            "pool": Registry.cfg.use_tx_pool
         })
         return data
 
@@ -151,7 +152,7 @@ class Wallet(Service):
                     logging.getLogger(cls.myname).error(e)
             time.sleep(1)
             if Util.every_x_seconds(10):
-                sessions = Sessions(cls.cfg)
+                sessions = Sessions()
                 in_transfers = []
                 height = cls.get_height()
                 matched = 0
@@ -161,9 +162,9 @@ class Wallet(Service):
                     if transfers and "in" in transfers:
                         in_transfers = transfers["in"]
                         for transfer in transfers["in"]:
-                            processed = sessions.process_payment(transfer["payment_id"], transfer["amount"] * cls.cfg.coin_unit, transfer["height"], transfer["txid"])
+                            processed = sessions.process_payment(transfer["payment_id"], transfer["amount"] * Registry.cfg.coin_unit, transfer["height"], transfer["txid"])
                             if len(processed) > 0:
-                                cls.log_warning("Updated %s sessions for payment: txid=%s,amount=%s" % (len(processed), transfer["txid"], transfer["amount"] * cls.cfg.coin_unit))
+                                cls.log_warning("Updated %s sessions for payment: txid=%s,amount=%s" % (len(processed), transfer["txid"], transfer["amount"] * Registry.cfg.coin_unit))
                                 matched += len(processed)
                     skew = 100
                 else:
@@ -212,17 +213,17 @@ class Wallet(Service):
             return
         else:
             args = [
-                cls.cfg.wallet_rpc_bin,
-                "--wallet-dir=%s" % cls.cfg.var_dir,
-                "--rpc-login=%s:%s" % (cls.cfg.wallet_rpc_user, cls.cfg.wallet_rpc_password),
-                "--rpc-bind-port=%s" % (cls.cfg.wallet_rpc_port),
-                "--daemon-address=%s:48782" % (cls.cfg.daemon_host),
-                "--log-level=1", "--log-file=%s/wallet.log" % cls.cfg.var_dir,
+                Registry.cfg.wallet_rpc_bin,
+                "--wallet-dir=%s" % Registry.cfg.var_dir,
+                "--rpc-login=%s:%s" % (Registry.cfg.wallet_rpc_user, Registry.cfg.wallet_rpc_password),
+                "--rpc-bind-port=%s" % (Registry.cfg.wallet_rpc_port),
+                "--daemon-address=%s:48782" % (Registry.cfg.daemon_host),
+                "--log-level=1", "--log-file=%s/wallet.log" % Registry.cfg.var_dir,
                 "--trusted-daemon"
             ]
             logging.getLogger("wallet").warning("Running wallet subprocess: %s" % " ".join(args))
-            RunCmd.init(cls.cfg)
-            cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.cfg.tmp_dir, shell=False)
+            RunCmd.init(Registry.cfg)
+            cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=Registry.cfg.tmp_dir, shell=False)
             cls.pc = None
 
     @classmethod
@@ -232,7 +233,7 @@ class Wallet(Service):
         amount = 0
         for p in payments:
             destinations.append(
-                {"amount": int(p["amount"] / cls.cfg.coin_unit), "address": p["wallet"]}
+                {"amount": int(p["amount"] / Registry.cfg.coin_unit), "address": p["wallet"]}
             )
             msg += "amount=%s,address=%s " % (p["amount"], p["wallet"])
             amount += p["amount"]

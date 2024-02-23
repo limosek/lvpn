@@ -23,8 +23,8 @@ client|lvpnc)
 server|lvpns)
   mkdir -p "$WLS_CFG_DIR"
   shift
-  echo "Starting server:" lvpns $LVPNS_ARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
-  lvpns --manager-local-bind=0.0.0.0 $LVPNS_ARGS "$@"
+  echo "Starting server:" lvpns $LVPNS_ARGS --enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 "$@"
+  lvpns --enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 $LVPNS_ARGS "$@"
   ;;
 
 mgmt|lmgmt)
@@ -50,7 +50,7 @@ tests)
   shift
   cp -R /usr/src/lvpn/tests/ /tmp/tests
   cd /tmp/tests
-  PYTHONPATH=/usr/src/lvpn ./tests.sh
+  sudo ./tests.sh /usr/src/lvpn
   ;;
 
 set-perms)

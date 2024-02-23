@@ -48,10 +48,10 @@ class TestSessions(unittest.TestCase):
         cfg.vdp = VDP(cfg)
         cfg.connections = []
         self.cleanup(cfg)
-        sessions = Sessions(cfg)
+        sessions = Sessions()
         cfg.sessions = sessions
         self.assertEqual(len(sessions.find()), 0)
-        session = Session(cfg)
+        session = Session()
         session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session.save()
         sessions.add(session)
@@ -76,23 +76,23 @@ class TestSessions(unittest.TestCase):
         cfg.vdp = VDP(cfg)
         cfg.connections = []
         self.cleanup(cfg)
-        sessions = Sessions(cfg)
+        sessions = Sessions()
         cfg.sessions = sessions
         self.assertEqual(len(sessions.find()), 0)
-        session1 = Session(cfg)
+        session1 = Session()
         session1.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session1.save()
         sessions.add(session1)
-        session2 = Session(cfg)
+        session2 = Session()
         session2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session2.save()
         sessions.add(session1)
 
-        connection1 = Connection(cfg, session1, data={"endpoint": "aaa:1234"})
-        connection2 = Connection(cfg, session2, data={"endpoint": "aaa:1235"})
-        connections = Connections(cfg)
+        connection1 = Connection(session1, data={"endpoint": "aaa:1234"})
+        connection2 = Connection(session2, data={"endpoint": "aaa:1235"})
+        connections = Connections()
         connections.add(connection1)
         connections.add(connection2)
         conn = connections.find_by_gateid("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh")
@@ -100,7 +100,7 @@ class TestSessions(unittest.TestCase):
         conn = connections.find_by_gateid("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh")
         self.assertEqual(conn, connection2.get_id())
         data = connections.get_dict()
-        connections2 = Connections(cfg, data)
+        connections2 = Connections(data)
         self.assertEqual(len(connections), len(connections2))
         pass
 

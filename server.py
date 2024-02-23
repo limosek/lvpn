@@ -8,6 +8,9 @@ import _queue
 import configargparse
 import multiprocessing
 
+from lib.registry import Registry
+from lib.wg_service import WGService
+
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 
@@ -23,6 +26,7 @@ from lib.vdp import VDP
 from server.http import Manager
 from server.stripe import StripeManager
 from server.wallet import ServerWallet
+import lib
 
 
 def loop(queue, mngr_queue, proxy_queue):
@@ -58,6 +62,8 @@ def main():
     p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
 
     cfg = p.parse_args()
+    cfg.is_client = False
+    cfg.is_server = True
     cfg.l = cfg.log_level
     if not cfg.log_file:
         cfg.log_file = cfg.var_dir + "/lvpn-server.log"
@@ -74,6 +80,7 @@ def main():
         logging.getLogger("server").error("Missing Wallet RPC password! Payments will not be processed!")
     processes = {}
 
+    Registry.init(cfg, {}, None)
     Wizard().files(cfg)
 
     if not os.path.exists(cfg.ca_dir):
@@ -97,7 +104,7 @@ def main():
         logging.error(e)
         sys.exit(1)
 
-    cfg.vdp = VDP(cfg)
+    cfg.vdp = VDP()
     if cfg.readonly_providers:
         cfg.readonly_providers = cfg.readonly_providers.split(",")
     else:
@@ -106,25 +113,42 @@ def main():
         for m in my_providers:
             cfg.readonly_providers.append(m.get_id())
 
+    if len(cfg.vdp.providers(my_only=True)) == 0:
+        logging.error("There is no local provider VDP! Exiting.")
+        sys.exit(2)
 
     ctrl = multiprocessing.Manager().dict()
+    Registry.init(cfg, ctrl, cfg.vdp)
     ctrl["cfg"] = cfg
     Messages.init_ctrl(ctrl)
     queue = Queue(multiprocessing.get_context(), "general")
     stripe_queue = Queue(multiprocessing.get_context(), "stripe")
     wallet_queue = Queue(multiprocessing.get_context(), "wallet")
     mngr_queue = Queue(multiprocessing.get_context(), "mngr")
+    wg_queue = Queue(multiprocessing.get_context(), "wg")
 
     if cfg.stripe_api_key:
         stripemngr = multiprocessing.Process(target=StripeManager.run, args=[ctrl, queue, stripe_queue], name="StripeManager")
         stripemngr.start()
         processes["stripemngr"] = stripemngr
+
     if cfg.wallet_rpc_password:
         wallet = multiprocessing.Process(target=ServerWallet.run, args=[ctrl, queue, wallet_queue], kwargs={"norun": True}, name="ServerWallet")
         wallet.start()
         processes["wallet"] = wallet
     else:
         wallet = False
+
+    if cfg.enable_wg:
+        for gate in cfg.vdp.gates():
+            if gate.get_type() == "wg":
+                wg = multiprocessing.Process(target=WGService.run, args=[ctrl, queue, wg_queue],
+                                             kwargs={"gate": gate, "space": None}, name="WGService-%s" % gate.get_id())
+                wg.start()
+                processes[gate.get_id()] = wg
+    else:
+        wg = False
+
     manager = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, mngr_queue], name="Manager")
     manager.start()
     processes["manager"] = manager
@@ -164,7 +188,7 @@ def main():
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
-        sessions = Sessions(cfg)
+        sessions = Sessions()
         logging.warning(repr(sessions))
 
     logging.getLogger("server").warning("Waiting for subprocesses to exit")

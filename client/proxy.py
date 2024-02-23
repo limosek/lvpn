@@ -10,11 +10,13 @@ import _queue
 from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
+from lib.registry import Registry
 from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
 from lib.sessions import Sessions
 from lib.messages import Messages
 from lib.util import Util
+from lib.wg_service import WGService
 
 
 class ProxyException(Exception):
@@ -28,17 +30,19 @@ class Proxy(Service):
     @classmethod
     def run(cls, ctrl, queue, myqueue, **kwargs):
         cls.ctrl = ctrl
+        if multiprocessing.parent_process():
+            Registry.cfg = ctrl["cfg"]
+            Registry.vdp = Registry.cfg.vdp
         cls.queue = queue
         cls.myqueue = myqueue
         cls.processes = []
         cls.ctrl["connections"] = []
-        logging.basicConfig(level=ctrl["cfg"].l)
-        RunCmd.init(cls.cfg)
+        logging.basicConfig(level=Registry.cfg.l)
         super().run(ctrl, queue, myqueue)
 
     @classmethod
     def run_tls_proxy(cls, port, session):
-        connection = Connection(cls.cfg, session, port=port)
+        connection = Connection(session, port=port)
         mp = multiprocessing.Process(target=TLSProxy.run, args=[cls.ctrl, cls.queue, None], kwargs={
             "endpoint": session.get_gate().get_endpoint(resolve=True),
             "ca": session.get_gate().get_ca(),
@@ -66,7 +70,7 @@ class Proxy(Service):
 
     @classmethod
     def connect(cls, connections, sessionid):
-        session = Sessions(cls.cfg, noload=True).get(sessionid)
+        session = Sessions(noload=True).get(sessionid)
         if not session:
             raise ProxyException("Unknown sessionid")
         else:
@@ -75,8 +79,8 @@ class Proxy(Service):
             if connections.is_connected(gateid, spaceid):
                 cls.log_warning("Connection to %s/%s is already active." % (gateid, spaceid))
                 return True
-            gate = cls.cfg.vdp.get_gate(gateid)
-            space = cls.cfg.vdp.get_space(spaceid)
+            gate = Registry.vdp.get_gate(gateid)
+            space = Registry.vdp.get_space(spaceid)
         if not gate.is_for_space(space.get_id()):
             raise ProxyException("proxy", "Gate %s is not allowed to connect to space %s" % (gate, space))
         if gate.get_replaces():
@@ -87,8 +91,9 @@ class Proxy(Service):
                 time.sleep(1)
         if gate.get_type() in ["http-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy", "socks-proxy"]:
             cls.run_tls_proxy(gate.get_local_port(), session)
+
         elif gate.get_type() == "ssh":
-            connection = Connection(cls.cfg, session)
+            connection = Connection(session)
             args = [cls.ctrl, cls.queue, None]
             kwargs = {
                 "gate": gate,
@@ -96,7 +101,7 @@ class Proxy(Service):
                 "sessionid": sessionid,
                 "connectionid": connection.get_id()
             }
-            if cls.cfg.ssh_engine == "ssh":
+            if Registry.cfg.ssh_engine == "ssh":
                 try:
                     SSHProxy.run(*args, **kwargs)
                 except ServiceException as s:
@@ -133,13 +138,39 @@ class Proxy(Service):
                 cls.processes.append(p)
             connections.add(connection)
             cls.update_connections(connections)
+
+        elif gate.get_type() == "wg":
+            connection = Connection(session)
+            args = [cls.ctrl, cls.queue, None]
+            kwargs = {
+                "gate": gate,
+                "space": space,
+                "sessionid": sessionid,
+                "connectionid": connection.get_id()
+            }
+            mp = Process(target=WGService.run, args=args, kwargs=kwargs)
+            mp.start()
+            connection.set_data({
+                "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
+                "pid": mp.pid,
+                "gateid": gate.get_id(),
+                "spaceid": space.get_id()
+            })
+            p = {
+                "process": mp,
+                "connection": connection
+            }
+            cls.processes.append(p)
+            connections.add(connection)
+            cls.update_connections(connections)
+
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
             cls.log_gui("proxy", "Unknown gate type %s" % gate.get_type())
 
     @classmethod
     def get_connections(cls):
-        return Connections(cls.cfg, cls.get_value("connections"))
+        return Connections(cls.get_value("connections"))
 
     @classmethod
     def update_connections(cls, connections):
@@ -192,7 +223,7 @@ class Proxy(Service):
                         connectionid = Messages.get_msg_data(msg)
                         cls.disconnect(cls.connections, connectionid)
                     elif msg.startswith(Messages.CONNECT_INFO):
-                        connection = Connection(cls.cfg, connection=Messages.get_msg_data(msg))
+                        connection = Connection(connection=Messages.get_msg_data(msg))
                         p = {
                             "process": False,
                             "connection": connection
@@ -215,7 +246,7 @@ class Proxy(Service):
     @classmethod
     def refresh_sessions(cls):
         while not cls.exit:
-            sessions = Sessions(cls.cfg)
+            sessions = Sessions()
             cls.log_gui("proxy", "Checking sessions: %s" % repr(sessions))
             sessions.refresh_status()
             cls.log_gui("proxy", "Done checking Sessions: %s" % repr(sessions))

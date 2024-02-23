@@ -51,14 +51,26 @@
           type: object
           additionalProperties: false
           properties:
-            host:
+            endpoint:
               type: string
-            port:
-              type: integer
-            tcp_port:
-              type: integer
+            tcp:
+              type: boolean
+              default: false
             public_key:
               type: string
+            ipv4_network:
+              type: string
+            ipv4_gateway:
+              type: string
+            ipv6_network:
+              type: string
+            ipv6_gateway:
+              type: string
+          required:
+            - endpoint
+            - public_key
+            - ipv4_network
+            - ipv4_gateway
         http-proxy:
           type: object
           additionalProperties: false

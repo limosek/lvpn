@@ -15,9 +15,10 @@ paths:
       operationId: getVdp
       parameters:
         - in: query
-          name: checkOnly
+          name: localOnly
           schema:
             type: boolean
+            default: false
       responses:
         '200':
           description: successful operation
@@ -31,6 +32,11 @@ paths:
       summary: Post new VDP to server
       description: Post new VDP to server
       operationId: pushVdp
+      parameters:
+        - in: query
+          name: checkOnly
+          schema:
+            type: boolean
       requestBody:
         required: true
         content:
@@ -87,6 +93,8 @@ paths:
           description: No permission to reuse session
         '464':
           description: Cannot reuse with different gate or space
+        '465':
+          description: Missing WG endpoint data
         '500':
           description: Server error
     get:

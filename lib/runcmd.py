@@ -6,6 +6,8 @@ import signal
 import subprocess
 import sys
 
+from lib.registry import Registry
+
 
 class RunCmd:
 
@@ -13,14 +15,14 @@ class RunCmd:
 
     @classmethod
     def init(cls, cfg):
-        cls.cfg = cfg
+        Registry.cfg = cfg
 
     @classmethod
     def popen(cls, args, **kwargs):
         if platform.platform().lower().startswith("windows"):
-            if cls.cfg.l == "DEBUG":
+            if Registry.cfg.l == "DEBUG":
                 info = subprocess.STARTUPINFO()
-            elif cls.cfg.l == "INFO":
+            elif Registry.cfg.l == "INFO":
                 SW_MINIMIZE = 6
                 info = subprocess.STARTUPINFO()
                 info.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -43,7 +45,7 @@ class RunCmd:
         try:
             logging.getLogger().debug("runcmd: %s" % (" ".join(args)))
             ret = subprocess.check_output(args, universal_newlines=True, stderr=subprocess.PIPE, **kwargs)
-            return True
+            return ret
         except subprocess.CalledProcessError as e:
             logging.getLogger().error(e)
             print(e.stderr, file=sys.stderr)

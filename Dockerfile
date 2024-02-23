@@ -6,7 +6,7 @@ LABEL description="LVPN"
 
 RUN apt-get update; \
     apt-get upgrade -y; \
-    apt-get install -y sudo joe less net-tools wget python3-venv pwgen;
+    apt-get install -y sudo joe less net-tools wget python3-venv pwgen wireguard-tools wireguard-go iproute2;
 
 ARG DAEMON_BIN_URL="https://github.com/letheanVPN/blockchain-iz/releases/latest/download/lethean-cli-linux.tar"
 

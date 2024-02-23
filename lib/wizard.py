@@ -54,7 +54,7 @@ class Wizard:
         except FileExistsError as e:
             pass
 
-        v = VDP(cfgc)
+        v = VDP()
         v.save(cfgc)
 
     @staticmethod
@@ -159,7 +159,7 @@ wallet-rpc-password = %s
             "%s.free" % verification_key
           ]
         }
-        vdp = VDP(cfg, vdpdata={
+        vdp = VDP(vdpdata={
             "file_type": "VPNDescriptionProtocol",
             "file_version": "1.0",
             "providers": [provider],

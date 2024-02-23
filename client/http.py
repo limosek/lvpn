@@ -14,6 +14,7 @@ import openapi_schema_validator
 import secrets
 
 from client.connection import Connections
+from lib.registry import Registry
 from lib.session import Session
 from lib.mngrrpc import ManagerRpcCall
 from lib.service import Service
@@ -33,14 +34,14 @@ def make_response(code, reason, data=None):
 
 
 def check_authentication():
-    if Manager.ctrl["cfg"].manager_bearer_auth:
+    if Registry.cfg.manager_bearer_auth:
         bearer = request.headers.get('Authorization')
         if not bearer:
             return make_response(403, "Missing Auth Bearer")
         if len(bearer.split()) != 2:
             return make_response(403, "Missing Auth Bearer")
         token = bearer.split()[1]
-        if token != Manager.ctrl["cfg"].manager_bearer_auth:
+        if token != Registry.cfg.manager_bearer_auth:
             return make_response(403, "Bad Auth Bearer")
     return False
 
@@ -56,7 +57,7 @@ def get_vdp():
     notauth = check_authentication()
     if notauth:
         return notauth
-    jsn = json.loads(Manager.ctrl["cfg"].vdp.get_json())
+    jsn = json.loads(Registry.vdp.get_json())
     spc = openapi.spec.contents()
     resolver = jsonschema.validators.RefResolver.from_schema(spc)
     validator = openapi_schema_validator.OAS31Validator(spc["components"]["schemas"]["Vdp"], resolver=resolver)
@@ -85,7 +86,7 @@ def post_vdp():
         if check:
             return make_response(200, "OK", jsn)
         else:
-            vdp = VDP(Manager.ctrl["cfg"], vdpdata=request.data)
+            vdp = VDP(Registry.cfg, vdpdata=request.data)
             try:
                 vdp.save()
             except Exception as e:
@@ -115,7 +116,7 @@ def sessions():
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(Manager.ctrl["cfg"])
+    sessions = Sessions()
     rsessions = []
     for c in sessions.find():
         rsessions.append(c.get_dict())
@@ -128,12 +129,12 @@ def create_session():
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(Manager.ctrl["cfg"])
+    sessions = Sessions()
     days = request.openapi.body["days"]
-    space = Manager.ctrl["cfg"].vdp.get_space(request.openapi.body["spaceid"])
+    space = Registry.vdp.get_space(request.openapi.body["spaceid"])
     if not space:
         return make_response(460, "Unknown space")
-    gate = Manager.ctrl["cfg"].vdp.get_gate(request.openapi.body["gateid"])
+    gate = Registry.vdp.get_gate(request.openapi.body["gateid"])
     if not gate:
         return make_response(461, "Unknown gate")
     if not gate.is_for_space(space.get_id()):
@@ -147,7 +148,7 @@ def create_session():
             return make_response(402, "Awaiting payment", fresh.get_dict())
     else:
         mngr = ManagerRpcCall(space.get_manager_url())
-        session = Session(Manager.ctrl["cfg"], mngr.create_session(gate.get_id(), space.get_id(), days))
+        session = Session(mngr.create_session(gate, space, days))
         session.save()
         sessions.add(session)
         if session.is_active():
@@ -163,7 +164,7 @@ def get_session():
     if notauth:
         return notauth
     if "sessionid" in request.args:
-        sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+        sessions = Sessions(noload=True)
         session = sessions.get(request.args["sessionid"])
         if session:
             if not session.is_active():
@@ -182,7 +183,7 @@ def connect(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+    sessions = Sessions(noload=True)
     session = sessions.get(sessionid)
     if session:
         if session.is_active():
@@ -191,7 +192,7 @@ def connect(sessionid):
             waited = 0
             found = False
             while waited < 10 and not found:
-                conn = Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get_by_sessionid(session.get_id())
+                conn = Connections(Manager.ctrl["connections"]).get_by_sessionid(session.get_id())
                 if conn:
                     return make_response(200, "OK", conn.get_dict())
                 waited += 1
@@ -213,14 +214,14 @@ def disconnect(connectionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    connection = Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get(connectionid)
+    connection = Connections(Manager.ctrl["connections"]).get(connectionid)
     if connection:
         m = Messages.disconnect(connection.get_id())
         Manager.queue.put(m)
         waited = 0
         found = False
         while waited < 10 and not found:
-            if not Connections(Manager.ctrl["cfg"], Manager.ctrl["connections"]).get(connection.get_id()):
+            if not Connections(Manager.ctrl["connections"]).get(connection.get_id()):
                 return make_response(200, "OK")
             waited += 1
             time.sleep(1)
@@ -235,7 +236,7 @@ def pay_session(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(Manager.ctrl["cfg"], noload=True)
+    sessions = Sessions(noload=True)
     session = sessions.get(sessionid)
     if session:
         if session.is_active():
@@ -282,7 +283,7 @@ class Manager(Service):
     def postinit(cls):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
-        app.run(port=cls.cfg.http_port, host=cls.cfg.manager_local_bind)
+        app.run(port=Registry.cfg.http_port, host=Registry.cfg.manager_local_bind, debug=Registry.cfg.l == "DEBUG", use_reloader=False)
         cls.exit = True
 
     @classmethod

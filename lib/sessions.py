@@ -5,20 +5,20 @@ import os
 import time
 
 from lib.mngrrpc import ManagerRpcCall
+from lib.registry import Registry
 from lib.session import Session
 
 
 class Sessions:
 
-    def __init__(self, cfg, cleanup=True, noload=False):
-        self._cfg = cfg
+    def __init__(self, cleanup=True, noload=False):
         self._sessions = {}
         if not noload:
             self.load(cleanup)
 
     def load(self, cleanup=False):
-        for f in glob.glob(self._cfg.sessions_dir + "/*.lsession"):
-            s = Session(self._cfg)
+        for f in glob.glob(Registry.cfg.sessions_dir + "/*.lsession"):
+            s = Session()
             try:
                 s.load(f)
             except FileNotFoundError:
@@ -49,7 +49,7 @@ class Sessions:
             try:
                 data = mrpc.get_session_info(s)
                 if data:
-                    s = Session(self._cfg, data)
+                    s = Session(data)
                     self.update(s)
                 else:
                     logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
@@ -62,9 +62,9 @@ class Sessions:
         if sessionid in self._sessions.keys():
             return self._sessions[sessionid]
         else:
-            f = self._cfg.sessions_dir + "/%s.lsession" % sessionid
+            f = Registry.cfg.sessions_dir + "/%s.lsession" % sessionid
             if os.path.exists(f):
-                s = Session(self._cfg)
+                s = Session()
                 s.load(f)
                 self.update(s)
                 return s

@@ -5,6 +5,7 @@ import logging
 import client
 from client.gui_connect import BrowserButton, Connect
 from lib.mngrrpc import ManagerRpcCall
+from lib.registry import Registry
 
 
 class Status(GridLayout):
@@ -28,7 +29,7 @@ class Status(GridLayout):
                     self.ids.sync_progress_info.text = "Syncing wallet (%s/%s)\nPlease wait." % (client.gui.GUI.ctrl["wallet_height"], client.gui.GUI.ctrl["daemon_height"])
                     self.ids.sync_progress_info.color = (0.7, 0, 0)
                 else:
-                    if client.gui.GUI.ctrl["cfg"].vdp.get_provider(
+                    if Registry.vdp.get_provider(
                             "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"):
                         self.ids.buy_credit.disabled = False
                     self.ids.sync_progress_info.text = "Synced (%s)" % client.gui.GUI.ctrl["wallet_height"]
@@ -38,7 +39,7 @@ class Status(GridLayout):
             pass
 
     def buy_credit(self):
-        provider = client.gui.GUI.ctrl["cfg"].vdp.get_provider(
+        provider = Registry.vdp.get_provider(
             "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091")
         if provider:
             try:

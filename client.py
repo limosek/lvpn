@@ -11,6 +11,9 @@ import logging.handlers
 import secrets
 import subprocess
 
+from lib.registry import Registry
+from lib.wg_engine import WGEngine
+
 os.environ["KIVY_NO_ARGS"] = "1"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
@@ -33,6 +36,7 @@ from client.daemon import ClientDaemon
 from lib.vdp import VDP
 from lib.vdpobject import VDPException
 from lib.wizard import Wizard
+import lib
 
 
 def test_binary(args):
@@ -123,6 +127,7 @@ def main():
     cfg.var_dir = vardir
     cfg.bin_dir = bindir
     cfg.app_dir = appdir
+    Registry.cfg = cfg
     wizard = False
     Wizard.files(cfg, vardir)
 
@@ -133,11 +138,9 @@ def main():
     os.environ['PATH'] += os.path.pathsep + os.path.dirname(sys.executable)
     os.environ["NO_KIVY"] = "1"  # Set to not load KIVY for subprocesses
     print("PATH: %s" % os.environ['PATH'], file=sys.stderr)
-    # Initialize RunCmd
-    RunCmd.init(cfg)
 
     try:
-        cfg.vdp = VDP(cfg)
+        cfg.vdp = VDP()
     except VDPException as e:
         print(e)
         sys.exit(1)
@@ -145,6 +148,7 @@ def main():
     processes = {}
     # Hack for multiprocessing to work
     ctrl = multiprocessing.Manager().dict()
+    Registry.init(cfg, ctrl, cfg.vdp)
     queue = Queue(multiprocessing.get_context(), "general")
     gui_queue = Queue(multiprocessing.get_context(), "gui")
     proxy_queue = Queue(multiprocessing.get_context(), "proxy")
@@ -152,7 +156,9 @@ def main():
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
     http_queue = Queue(multiprocessing.get_context(), "http")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
-    sessions = Sessions(cfg)
+    cfg.is_client = True
+    cfg.is_server = False
+    sessions = Sessions()
     tmpdir = cfg.tmp_dir
     Messages.init_ctrl(ctrl)
     ctrl["wizard"] = wizard
@@ -235,7 +241,9 @@ def main():
                         space = cfg.vdp.get_space(spaceid)
                         mr = ManagerRpcCall(space.get_manager_url())
                         try:
-                            session = Session(cfg, mr.create_session(gateid, spaceid, 30))
+                            gate = cfg.vdp.get_gate(gateid)
+                            space = cfg.vdp.get_space(spaceid)
+                            session = Session(mr.create_session(gate, space, 30))
                             sessions.add(session)
                             proxy_queue.put(Messages.connect(session))
                         except Exception as e:

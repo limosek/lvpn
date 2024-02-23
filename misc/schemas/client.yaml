@@ -384,14 +384,26 @@ components:
           type: object
           additionalProperties: false
           properties:
-            host:
+            endpoint:
               type: string
-            port:
-              type: integer
-            tcp_port:
-              type: integer
+            tcp:
+              type: boolean
+              default: false
             public_key:
               type: string
+            ipv4_network:
+              type: string
+            ipv4_gateway:
+              type: string
+            ipv6_network:
+              type: string
+            ipv6_gateway:
+              type: string
+          required:
+            - endpoint
+            - public_key
+            - ipv4_network
+            - ipv4_gateway
         http-proxy:
           type: object
           additionalProperties: false
@@ -544,6 +556,10 @@ components:
         - providerid
         - file_type
         - file_version
+        - ips
+        - dns_servers
+        - price
+  
 # Session definition
 ###################################
 
@@ -630,23 +646,68 @@ components:
           type: integer
         like_sessionid:
           type: string
+        wg:
+          $ref: '#/components/schemas/WgSessionRequestData'
       required:
         - spaceid
         - gateid
         - days
 
+    WgSessionRequestData:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          default: dynamic
+        public_key:
+          type: string
+        network:
+          type: object
+          additionalProperties: false
+          properties:
+            requested_ipv4_prefix:
+              type: number
+      required:
+        - public_key
+
     WgSessionData:
       type: object
       additionalProperties: false
       properties:
-        ip:
+        client_endpoint:
           type: string
-        network_bits:
+        client_public_key:
+          type: string
+        server_public_key:
+          type: string
+        psk:
+          type: string
+        client_ipv4_address:
+          type: string
+        ipv4_prefix:
           type: integer
-        gw:
+        server_ipv4_address:
           type: string
         dns:
-          type: string
+          type: array
+          items:
+            type: string
+        client_ipv4_networks:
+          type: array
+          items:
+            type: string
+        server_ipv4_networks:
+          type: array
+          items:
+            type: string
+      required:
+        - client_public_key
+        - server_public_key
+        - client_ipv4_address
+        - ipv4_prefix
+        - psk
+        - server_ipv4_address
 
     ProxySessionData:
       type: object

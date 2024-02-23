@@ -2,12 +2,11 @@ import glob
 import json
 import logging
 import sys
-import time
-
 import requests
 import urllib3
 
 from lib.gate import Gateway
+from lib.registry import Registry
 from lib.space import Space
 from lib.provider import Provider
 from lib.vdpobject import VDPException, VDPObject
@@ -15,11 +14,10 @@ from lib.vdpobject import VDPException, VDPObject
 
 class VDP:
 
-    def __init__(self, cfg, vdpfile=None, vdpdata=None, my_only: bool = False):
+    def __init__(self, vdpfile=None, vdpdata=None, my_only: bool = False):
         self._gates = {}
         self._spaces = {}
         self._providers = {}
-        self.cfg = cfg
         if vdpfile:
             data = urllib3.util.parse_url(vdpfile)
             if data.scheme:
@@ -37,11 +35,11 @@ class VDP:
             try:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = vdpdata
-                self.cfg.vdp = self
+                Registry.vdp = self
                 if "file_type" in self._data and self._data["file_type"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:
-                            prov = Provider(self.cfg, p)
+                            prov = Provider(p)
                             oldprov = self.get_provider(prov.get_id())
                             # Check if we have newer revision, otherwise do not update
                             if oldprov:
@@ -51,10 +49,10 @@ class VDP:
                                     logging.getLogger("vdp").warning("Ignoring provider %s with lower revision" % prov.get_id())
                             else:
                                 self._providers[prov.get_id()] = prov
-                    self.cfg.vdp = self
+                    Registry.vdp = self
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
-                            spc = Space(self.cfg, s)
+                            spc = Space(s)
                             if not spc.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
@@ -67,10 +65,10 @@ class VDP:
                                     logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
                             else:
                                 self._spaces[spc.get_id()] = spc
-                    self.cfg.vdp = self
+                    Registry.vdp = self
                     if "gates" in self._data:
                         for g in self._data["gates"]:
-                            gw = Gateway(self.cfg, g)
+                            gw = Gateway(g)
                             if not gw.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
@@ -97,20 +95,20 @@ class VDP:
                 raise VDPException(str(e))
 
         else:
-            self.cfg.vdp = self
+            Registry.vdp = self
             if my_only:
-                providerfiles = glob.glob(self.cfg.my_providers_dir + "/*lprovider")
+                providerfiles = glob.glob(Registry.cfg.my_providers_dir + "/*lprovider")
             else:
-                providerfiles = glob.glob(self.cfg.providers_dir + "/*lprovider")
-                providerfiles.extend(glob.glob(self.cfg.my_providers_dir + "/*lprovider"))
-                providerfiles.extend(glob.glob(self.cfg.app_dir + "/config/providers/*lprovider"))
+                providerfiles = glob.glob(Registry.cfg.providers_dir + "/*lprovider")
+                providerfiles.extend(glob.glob(Registry.cfg.app_dir + "/config/providers/*lprovider"))
+                providerfiles.extend(glob.glob(Registry.cfg.my_providers_dir + "/*lprovider"))
             for providerf in providerfiles:
                 logging.getLogger().info("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        prov = Provider(self.cfg, json.loads(jsn), providerf)
-                        if providerf.startswith(self.cfg.my_providers_dir):
+                        prov = Provider(json.loads(jsn), providerf)
+                        if providerf.startswith(Registry.cfg.my_providers_dir):
                             prov.set_as_local()
                         oldprov = self.get_provider(prov.get_id())
                         # Check if we have newer revision, otherwise do not update
@@ -125,19 +123,19 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (providerf, e))
 
-            self.cfg.vdp = self
+            Registry.vdp = self
             if my_only:
-                spacefiles = glob.glob(self.cfg.my_spaces_dir + "/*lspace")
+                spacefiles = glob.glob(Registry.cfg.my_spaces_dir + "/*lspace")
             else:
-                spacefiles = glob.glob(self.cfg.spaces_dir + "/*lspace")
-                spacefiles.extend(glob.glob(self.cfg.my_spaces_dir + "/*lspace"))
-                spacefiles.extend(glob.glob(self.cfg.app_dir + "/config/spaces/*lspace"))
+                spacefiles = glob.glob(Registry.cfg.spaces_dir + "/*lspace")
+                spacefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/spaces/*lspace"))
+                spacefiles.extend(glob.glob(Registry.cfg.my_spaces_dir + "/*lspace"))
             for spacef in spacefiles:
                 logging.getLogger().info("Loading space %s" % spacef)
                 with open(spacef, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        spc = Space(self.cfg, json.loads(jsn), spacef)
+                        spc = Space(json.loads(jsn), spacef)
                         if not spc.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
@@ -153,19 +151,19 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (spacef, e))
 
-            self.cfg.vdp = self
+            Registry.vdp = self
             if my_only:
-                gatefiles = glob.glob(self.cfg.my_gates_dir + "/*lgate")
+                gatefiles = glob.glob(Registry.cfg.my_gates_dir + "/*lgate")
             else:
-                gatefiles = glob.glob(self.cfg.gates_dir + "/*lgate")
-                gatefiles.extend(glob.glob(self.cfg.my_gates_dir + "/*lgate"))
-                gatefiles.extend(glob.glob(self.cfg.app_dir + "/config/gates/*lgate"))
+                gatefiles = glob.glob(Registry.cfg.gates_dir + "/*lgate")
+                gatefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/gates/*lgate"))
+                gatefiles.extend(glob.glob(Registry.cfg.my_gates_dir + "/*lgate"))
             for gwf in gatefiles:
                 logging.getLogger().info("Loading gate %s" % gwf)
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        gw = Gateway(self.cfg, json.loads(jsn), gwf)
+                        gw = Gateway(json.loads(jsn), gwf)
                         if not gw.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
@@ -193,7 +191,16 @@ class VDP:
             "providers": json.loads(self.providers(as_json=True))
         }
         self._json = json.dumps(self._dict, indent=2)
+        self._localdict = {
+            "file_type": "VPNDescriptionProtocol",
+            "file_version": "1.1",
+            "spaces": json.loads(self.spaces(my_only=True, as_json=True)),
+            "gates": json.loads(self.gates(my_only=True, as_json=True)),
+            "providers": json.loads(self.providers(my_only=True, as_json=True))
+        }
+        self._localjson = json.dumps(self._localdict, indent=2)
         VDPObject.validate(self._dict, "Vdp")
+        VDPObject.validate(self._localdict, "Vdp")
         logging.getLogger("vdp").warning(repr(self))
 
     def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, as_json: bool = False):
@@ -251,8 +258,11 @@ class VDP:
         else:
             return providers
 
-    def get_json(self):
-        return self._json
+    def get_json(self, my_only: bool = False):
+        if my_only:
+            return self._localjson
+        else:
+            return self._json
 
     def get_dict(self):
         return self._dict
@@ -286,7 +296,7 @@ class VDP:
 
     def save(self, cfg=None):
         if cfg:
-            self.cfg = cfg
+            Registry.cfg = cfg
         saved_gates = 0
         saved_spaces = 0
         saved_providers = 0
@@ -295,7 +305,7 @@ class VDP:
         ignored_providers = 0
         for g in self.gate_ids():
             go = self.get_gate(g)
-            if go.get_provider().get_id() in self.cfg.readonly_providers:
+            if go.get_provider().get_id() in Registry.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving gate %s (Readonly provider)" % go.get_id())
                 ignored_gates += 1
                 continue
@@ -303,14 +313,14 @@ class VDP:
             go.save(cfg=cfg)
         for s in self.space_ids():
             so = self.get_space(s)
-            if so.get_provider().get_id() in self.cfg.readonly_providers:
+            if so.get_provider().get_id() in Registry.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving space %s (Readonly provider)" % so.get_id())
                 ignored_spaces += 1
                 continue
             saved_spaces += 1
             so.save(cfg=cfg)
         for p in self.provider_ids():
-            if p in self.cfg.readonly_providers:
+            if p in Registry.cfg.readonly_providers:
                 logging.getLogger("vdp").info("Not saving provider %s (Readonly provider)" % p)
                 ignored_providers += 1
                 continue

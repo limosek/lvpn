@@ -7,6 +7,8 @@ import os
 import sys
 import ownca
 
+from lib.registry import Registry
+
 os.environ["NO_KIVY"] = "1"
 
 from client.arguments import ClientArguments
@@ -57,14 +59,16 @@ def main():
     cfg.readonly_providers = []
     cfg.l = cfg.log_level
     logging.basicConfig(level=cfg.l)
+    Registry.cfg = cfg
+    #Registry.vdp = VDP()
 
     if cfg.cmd == "show-vdp":
-        vdp = VDP(cfg)
+        vdp = VDP()
         print(vdp.get_json())
 
     elif cfg.cmd == "fetch-vdp":
         if cfg.args and len(cfg.args) == 1:
-            vdp = VDP(cfg)
+            vdp = VDP()
             if cfg.args[0].startswith("http"):
                 url = cfg.args[0]
             else:
@@ -75,7 +79,7 @@ def main():
             mgr = ManagerRpcCall(url)
             try:
                 jsn = mgr.fetch_vdp()
-                vdp = VDP(cfg, vdpdata=jsn)
+                vdp = VDP(vdpdata=jsn)
                 print(vdp.save())
             except Exception as m:
                 print("Error fetching VDP!")
@@ -87,7 +91,7 @@ def main():
 
     elif cfg.cmd == "push-vdp":
         if cfg.args and len(cfg.args) == 1:
-            vdp = VDP(cfg)
+            vdp = VDP()
             if vdp.get_provider(cfg.args[0]):
                 mgr = ManagerRpcCall(vdp.get_provider(cfg.args[0]).get_manager_url())
                 try:
@@ -105,19 +109,19 @@ def main():
             sys.exit(1)
 
     elif cfg.cmd == "list-providers":
-        vdp = VDP(cfg)
+        vdp = VDP()
         print("id,name,local")
         for p in vdp.providers():
             print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
 
     elif cfg.cmd == "list-spaces":
-        vdp = VDP(cfg)
+        vdp = VDP()
         print("id,name,local")
         for p in vdp.spaces():
             print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
 
     elif cfg.cmd == "list-gates":
-        vdp = VDP(cfg)
+        vdp = VDP()
         print("id,name,local")
         for p in vdp.gates():
             print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
@@ -209,15 +213,15 @@ def main():
         if cfg.args and len(cfg.args) == 3:
             gateid = cfg.args[0]
             spaceid = cfg.args[1]
-            cfg.vdp = VDP(cfg)
+            cfg.vdp = VDP()
             days = cfg.args[2]
             gate = cfg.vdp.get_gate(gateid)
             space = cfg.vdp.get_space(spaceid)
             if gate and space:
                 url = space.get_manager_url()
                 mngr = ManagerRpcCall(url)
-                s = mngr.create_session(gateid, spaceid, int(days))
-                session = Session(cfg, s)
+                s = mngr.create_session(gate, space, int(days))
+                session = Session(s)
                 print(json.dumps(session.get_dict(), indent=2))
                 if session.get_gate_data("ssh"):
                     print(session.get_gate_data("ssh")["key"])
@@ -232,8 +236,8 @@ def main():
             dir = cfg.args[1]
             if not os.path.exists(dir):
                 os.mkdir(dir)
-            cfg.vdp = VDP(cfg)
-            sessions = Sessions(cfg)
+            cfg.vdp = VDP()
+            sessions = Sessions()
             session = sessions.get(sessionid)
             if session:
                 if session.get_gate_data("ssh"):

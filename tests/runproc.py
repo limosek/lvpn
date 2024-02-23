@@ -35,8 +35,8 @@ class TestCmd(unittest.TestCase):
     def testSSH(self):
         cfg = self.parse_args([])
         RunCmd.init(cfg)
-        a = RunCmd.get_output(["true"])
-        self.assertEqual(a, True)
+        a = RunCmd.get_output(["ls", "/"])
+        self.assertGreater(len(a), 0)
         pass
 
 

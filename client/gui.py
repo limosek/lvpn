@@ -4,6 +4,7 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.config import Config
 
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.service import Service
 import client
@@ -23,14 +24,13 @@ class GUI(Service):
 
     @classmethod
     def postinit(cls):
-        RunCmd.init(cls.cfg)
         cls.processes = []
         b = threading.Thread(target=cls.loop)
         cls.processes.append(b)
         for p in cls.processes:
             p.start()
 
-        Builder.load_file(cls.cfg.app_dir + '/config/lvpn.kv')
+        Builder.load_file(Registry.cfg.app_dir + '/config/lvpn.kv')
         LVpn().run()
         cls.exit = True
 

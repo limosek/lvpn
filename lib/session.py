@@ -4,28 +4,34 @@ import time
 import secrets
 from copy import copy
 
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.messages import Messages
 from lib.vdpobject import VDPException
+import lib
 
 
 class Session:
 
-    def __init__(self, cfg, data=None):
-        self._cfg = cfg
+    def __init__(self, data=None):
         self._data = data
         if data:
             if "gateid" in data:
-                self._gate = self._cfg.vdp.get_gate(data["gateid"])
+                self._gate = Registry.vdp.get_gate(data["gateid"])
             if "spaceid" in data:
-                self._space = self._cfg.vdp.get_space(data["spaceid"])
+                self._space = Registry.vdp.get_space(data["spaceid"])
+            if self.is_free() \
+                    and self._gate.get_type() == "wg" \
+                    and self.get_gate_data("wg") \
+                    and not self.is_active():
+                self.activate()
 
     def generate(self, gateid, spaceid, days):
-        if not self._cfg.vdp.get_space(spaceid):
+        if not Registry.vdp.get_space(spaceid):
             raise VDPException("Unknown space %s" % spaceid)
-        if not self._cfg.vdp.get_gate(gateid):
+        if not Registry.vdp.get_gate(gateid):
             raise VDPException("Unknown gate %s" % gateid)
-        price = (self._cfg.vdp.get_space(spaceid).get_price() + self._cfg.vdp.get_gate(gateid).get_price()) * days
+        price = (Registry.vdp.get_space(spaceid).get_price() + Registry.vdp.get_gate(gateid).get_price()) * days
         self._data = {
             "sessionid": "s-" + secrets.token_hex(8),
             "spaceid": spaceid,
@@ -35,19 +41,21 @@ class Session:
             "username": "u-" + secrets.token_hex(5),
             "password": secrets.token_hex(10),
             "bearer": "b-" + secrets.token_hex(12),
-            "wallet": self._cfg.vdp.get_space(spaceid).get_wallet(),
+            "wallet": Registry.vdp.get_space(spaceid).get_wallet(),
             "days": int(days),
-            "expires": int(time.time()) + self._cfg.unpaid_expiry,
+            "expires": int(time.time()) + Registry.cfg.unpaid_expiry,
             "paid": False,
             "payments": [],
             "activated": 0,
             "price": price,
             "payment_sent": False
         }
-        self._gate = self._cfg.vdp.get_gate(gateid)
-        self._space = self._cfg.vdp.get_space(spaceid)
+        self._gate = Registry.vdp.get_gate(gateid)
+        self._space = Registry.vdp.get_space(spaceid)
         if self.is_free():
-            self.activate()
+            if self._gate.get_type() not in ["wg"]:
+                self.activate()
+            self.payment_sent("Zero-Free-payment")
 
     def reuse(self, days):
         price = (self._space.get_price() + self._gate.get_price()) * days
@@ -58,7 +66,7 @@ class Session:
         self._data["password"] = secrets.token_hex(10)
         self._data["bearer"] = "b-" + secrets.token_hex(12)
         self._data["days"] = int(days)
-        self._data["expires"] = int(time.time()) + self._cfg.unpaid_expiry
+        self._data["expires"] = int(time.time()) + Registry.cfg.unpaid_expiry
         self._data["paid"] = False
         self._data["payments"] = []
         self._data["activated"] = 0
@@ -68,10 +76,14 @@ class Session:
     def activate(self):
         try:
             now = int(time.time())
-            self._gate.activate(self)
-            self._space.activate(self)
-            if self._cfg.on_session_activation:
-                RunCmd.run("%s %s" % (self._cfg.on_session_activation, self.get_filename()))
+            if Registry.cfg.is_server:
+                self._gate.activate_server(self)
+                self._space.activate_server(self)
+            elif Registry.cfg.is_server:
+                self._gate.activate_client(self)
+                self._space.activate_client(self)
+            if Registry.cfg.on_session_activation:
+                RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
             logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
             self._data["expires"] = now + self._data["days"] * 3600 * 24
             self._data["activated"] = now
@@ -160,7 +172,7 @@ class Session:
         return self._data["paymentid"]
 
     def get_filename(self):
-        return "%s/%s.lsession" % (self._cfg.sessions_dir, self.get_id())
+        return "%s/%s.lsession" % (Registry.cfg.sessions_dir, self.get_id())
 
     def save(self, file=None):
         if not file:
@@ -172,8 +184,8 @@ class Session:
         with open(file, "r") as f:
             buf = f.read(10000)
             self._data = json.loads(buf)
-        self._gate = self._cfg.vdp.get_gate(self._data["gateid"])
-        self._space = self._cfg.vdp.get_space(self._data["spaceid"])
+        self._gate = Registry.vdp.get_gate(self._data["gateid"])
+        self._space = Registry.vdp.get_space(self._data["spaceid"])
 
     def is_for_gate(self, gateid):
         return self._gate.get_id() == gateid

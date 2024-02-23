@@ -1,0 +1,21 @@
+{
+  "file_type": "LetheanGateway",
+  "type": "wg",
+  "file_version": "1.1",
+  "gateid": "free-wg",
+  "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
+  "name": "Free Lethean Gateway Wireguard endpoint",
+  "description": "Free Lethean Gateway Wireguard endpoint",
+  "price": {
+    "per-day": 0
+  },
+  "wg": {
+    "endpoint": "vpn.lethean.space:8126",
+    "public_key": "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM=",
+    "ipv4_network": "10.168.0.0/16",
+    "ipv4_gateway": "10.168.0.1"
+  },
+  "spaces": [
+    "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
+  ]
+}
