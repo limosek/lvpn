@@ -1,0 +1,4 @@
+WALLET_PASSWORD = "<changeme>"
+WALLET_RPC_PASSWORD = "<changeme>"
+
+IPNET = "<network>/<bits>"

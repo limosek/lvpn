@@ -1,0 +1,129 @@
+version: "3.1"
+
+services:
+
+  dns-resolver:
+    image: cznic/knot-resolver
+    networks:
+      lthn:
+        ipv4_address: ${DNS_IP}
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8183:80/tcp"
+    volumes:
+      - ./kresd/:/config/
+    command: -c /config/kresd.cfg -n
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Prague
+
+  haproxy:
+    image: haproxy:2.7.11
+    ports:
+      - 8774:8774
+      - 8775:8775
+      - 8776:8776
+      - 8777:8777
+      - 8778:8778
+      - 8779:8779
+      - 8780:8780
+    volumes:
+      - ./haproxy:/etc/haproxy
+      - /dev/log:/dev/log
+    command: -f /etc/haproxy/haproxy.conf
+    restart: unless-stopped
+    networks:
+      lthn:
+        ipv4_address: ${HAPROXY_IP}
+    dns:
+      - ${DNS_IP}
+
+  daemon:
+    image: letheanio/blockchain:latest
+    volumes:
+      - /var/lib/lethean:/home/lethean/.letheand
+    entrypoint: letheand --non-interactive --confirm-external-bind --data-dir=/home/lethean/.letheand --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc
+    ports:
+      - 48772:48772
+      - 48782:48782
+    environment:
+      - SEED_NODE=${SEED_NODE}
+    networks:
+      lthn:
+        ipv4_address: ${DAEMON_IP}
+    dns:
+      - ${DNS_IP}
+
+  proxy:
+    image: ajoergensen/tinyproxy
+    volumes:
+      - ./tinyproxy:/etc/tinyproxy
+    networks:
+      lthn:
+        ipv4_address: ${PROXY_IP}
+    dns:
+      - ${DNS_IP}
+
+  socks:
+    image: z0rr0/gsocks5
+    networks:
+      lthn:
+        ipv4_address: ${SOCKS_IP}
+    dns:
+      - ${DNS_IP}
+
+  ssh:
+    build: ./ssh-server
+    volumes:
+      - ./ssh:/etc/ssh
+      - /dev/log:/dev/log
+    ports:
+      - 8789:2222
+    networks:
+      lthn:
+        ipv4_address: ${SSH_IP}
+    dns:
+      - ${DNS_IP}
+
+  lvpns:
+    image: limosek/lvpn:dev
+    volumes:
+      - ./lvpns:/home/lvpn
+    command: lvpns
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    environment:
+      - MODE=server
+    ports:
+      - 8790:8123
+    networks:
+      lthn:
+        ipv4_address: ${MANAGER_IP}
+    dns:
+      - ${DNS_IP}
+
+  wallet:
+    image: letheanio/blockchain:latest
+    restart: unless-stopped
+    ports:
+      - 48773:14660
+      - 48774:14660
+    volumes:
+      - ./wallet:/etc/lthn
+    entrypoint: bash -c "lethean-wallet-cli --daemon-host daemon --wallet-file /etc/lthn/vpn  --password ${WALLET_PASSWORD} --command refresh; lethean-wallet-rpc --daemon-host daemon --wallet-file /etc/lthn/vpn --rpc-bind-port 14660 --password ${WALLET_PASSWORD} --rpc-bind-ip 0.0.0.0 --confirm-external-bind --rpc-login vpn:${WALLET_RPC_PASSWORD}"
+    networks:
+      lthn:
+        ipv4_address: ${WALLET_IP}
+    dns:
+      - ${DNS_IP}
+
+networks:
+  lthn:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: ${IPNET}
+

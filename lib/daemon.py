@@ -6,6 +6,7 @@ import sys
 
 import requests
 
+from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.service import ServiceException, Service
 
@@ -74,7 +75,6 @@ class Daemon(Service):
         ]
         if Registry.cfg.run_daemon:
             logging.getLogger(cls.myname).warning("Running daemon subprocess: %s" % " ".join(args))
-            RunCmd.init(Registry.cfg)
             cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=cls.ctrl["tmpdir"], shell=False)
 
     @classmethod

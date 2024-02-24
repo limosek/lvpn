@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+from lib.registry import Registry
 from lib.session import Session
 from lib.wg_service import WGService
 
@@ -17,12 +18,6 @@ from server.arguments import ServerArguments
 
 
 class TestWGService(unittest.TestCase):
-
-    @classmethod
-    def init(cls, cfg, show_only=False, show_cmds=False):
-        cls.exit = False
-        cls.cfg = cfg
-        WGEngine.show_cmds = True
 
     @classmethod
     def parse_args(cls, args):
@@ -56,11 +51,11 @@ class TestWGService(unittest.TestCase):
         return cfg
 
     def testAll(self):
-        cfg = self.parse_args([])
+        Registry.cfg = self.parse_args([])
+        Registry.vdp = VDP()
         WGEngine.show_cmds = True
-        vdp = VDP(cfg)
-        gate = vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
-        space = vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
+        gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
+        space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
         session = self.PrepareSession(session)

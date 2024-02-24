@@ -8,10 +8,12 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Space(VDPObject):
 
-    def __init__(self, spaceinfo, file=None):
+    def __init__(self, spaceinfo, file=None, vdp=None):
+        if not vdp:
+            vdp = Registry.vdp
         self.validate(spaceinfo, "Space", file)
         self._data = spaceinfo
-        self._provider = Registry.vdp.get_provider(self._data["providerid"])
+        self._provider = vdp.get_provider(self._data["providerid"])
         if not self._provider:
             raise VDPException("Unknown providerid %s" % self._data["providerid"])
         self._local = self._provider.is_local()

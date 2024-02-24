@@ -82,6 +82,12 @@ class WGService(Service):
 
     @classmethod
     def get_free_ip(cls, gate: Gateway):
+        gather = WGEngine.gather_wg_data(
+            WGEngine.get_interface_name(gate.get_id())
+        )
+        found_ips = []
+        for p in gather["peers"]:
+            found_ips += p["allowed_ips"]
         return "192.168.1.100"
 
     @classmethod

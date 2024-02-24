@@ -35,7 +35,6 @@ class VDP:
             try:
                 VDPObject.validate(vdpdata, "Vdp", vdpfile)
                 self._data = vdpdata
-                Registry.vdp = self
                 if "file_type" in self._data and self._data["file_type"] == 'VPNDescriptionProtocol':
                     if "providers" in self._data:
                         for p in self._data["providers"]:
@@ -49,10 +48,9 @@ class VDP:
                                     logging.getLogger("vdp").warning("Ignoring provider %s with lower revision" % prov.get_id())
                             else:
                                 self._providers[prov.get_id()] = prov
-                    Registry.vdp = self
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
-                            spc = Space(s)
+                            spc = Space(s, vdp=self)
                             if not spc.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
@@ -65,10 +63,9 @@ class VDP:
                                     logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
                             else:
                                 self._spaces[spc.get_id()] = spc
-                    Registry.vdp = self
                     if "gates" in self._data:
                         for g in self._data["gates"]:
-                            gw = Gateway(g)
+                            gw = Gateway(g, vdp=self)
                             if not gw.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
@@ -95,7 +92,6 @@ class VDP:
                 raise VDPException(str(e))
 
         else:
-            Registry.vdp = self
             if my_only:
                 providerfiles = glob.glob(Registry.cfg.my_providers_dir + "/*lprovider")
             else:
@@ -123,7 +119,6 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (providerf, e))
 
-            Registry.vdp = self
             if my_only:
                 spacefiles = glob.glob(Registry.cfg.my_spaces_dir + "/*lspace")
             else:
@@ -135,7 +130,7 @@ class VDP:
                 with open(spacef, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        spc = Space(json.loads(jsn), spacef)
+                        spc = Space(json.loads(jsn), spacef, vdp=self)
                         if not spc.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
@@ -151,7 +146,6 @@ class VDP:
                     except Exception as e:
                         print("Error loading %s: %s" % (spacef, e))
 
-            Registry.vdp = self
             if my_only:
                 gatefiles = glob.glob(Registry.cfg.my_gates_dir + "/*lgate")
             else:
@@ -163,7 +157,7 @@ class VDP:
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        gw = Gateway(json.loads(jsn), gwf)
+                        gw = Gateway(json.loads(jsn), gwf, vdp=self)
                         if not gw.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))

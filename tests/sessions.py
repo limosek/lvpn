@@ -5,23 +5,17 @@ import secrets
 import shutil
 import time
 import unittest
-import configargparse
-
-from lib.registry import Registry
 
 os.environ["NO_KIVY"] = "1"
 
-from client.arguments import ClientArguments
-from server.arguments import ServerArguments
-from lib.arguments import SharedArguments
 from lib.queue import Queue
 from client.connection import Connection
 from client.tlsproxy import TLSProxy
 from client.sshproxy import SSHProxy
 from lib.session import Session
 from lib.sessions import Sessions
-from lib.vdp import VDP
-from lib.wizard import Wizard
+from lib.registry import Registry
+from tests.util import Util
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
@@ -43,43 +37,12 @@ class SSHProxy2(SSHProxy):
 
 class TestSessions(unittest.TestCase):
 
-    def parse_args(self, args):
-        p = configargparse.ArgParser(
-            default_config_files=[])
-        vardir = os.path.abspath("./var/")
-        if os.path.exists(os.path.abspath(vardir + "/../config")):
-            appdir = os.path.abspath(vardir + "/../")
-        elif os.path.exists(os.path.dirname(__file__) + "/../config"):
-            appdir = os.path.abspath(os.path.dirname(__file__) + "/../")
-        else:
-            appdir = os.path.abspath(os.environ["PYTHONPATH"])
-        os.environ["WLS_CFG_DIR"] = os.path.abspath("./var/")
-        p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir, "WLS_", "server")
-        p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
-        p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
-        args.extend(["--wallet-rpc-password=1234", "--log-file=%s/sessions.log" % vardir])
-        cfg = p.parse_args(args)
-        cfg.l = cfg.log_level
-        if os.path.exists("./var"):
-            shutil.rmtree("./var")
-        os.mkdir("./var")
-        os.mkdir("./var/sessions")
-        os.mkdir("./var/ssh")
-        os.mkdir("./var/tmp")
-        os.mkdir("./var/ca")
-        Wizard().ssh_ca(cfg)
-        Wizard().ca(cfg)
-        cfg.is_server = True
-        Registry.init(cfg, {}, None)
-        return cfg
-
     def cleanup_sessions(self):
         shutil.rmtree("./var/sessions")
         os.mkdir("./var/sessions")
 
     def testAll(self):
-        Registry.cfg = self.parse_args([])
-        Registry.vdp = VDP()
+        Util.parse_args()
         self.cleanup_sessions()
         sessions = Sessions()
         self.assertEqual(len(sessions.find()), 0)
@@ -194,6 +157,7 @@ class TestSessions(unittest.TestCase):
         sessions_init = Sessions()
         ctrl = multiprocessing.Manager().dict()
         ctrl["cfg"] = Registry.cfg
+        ctrl["vdp"] = Registry.vdp
         p1 = multiprocessing.Process(target=self.generate_unpaid_http, args=[ctrl])
         p1.start()
         p2 = multiprocessing.Process(target=self.generate_paid_free_socks, args=[ctrl])
@@ -250,7 +214,7 @@ class TestSessions(unittest.TestCase):
         self.cleanup_sessions()
         sessions_init = Sessions()
 
-        ctrl = {"cfg": Registry.cfg}
+        ctrl = {"cfg": Registry.cfg, "vdp": Registry.vdp}
         self.generate_unpaid_http(ctrl)
         self.generate_paid_free_socks(ctrl)
         self.generate_paid_free_ssh(ctrl)
@@ -295,6 +259,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_unpaid_http(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
+        Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
         for i in range(2, 20):
             session = Session()
@@ -307,6 +272,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_paid_free_socks(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
+        Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
         for i in range(2, 20):
             session = Session()
@@ -319,6 +285,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_paid_free_ssh(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
+        Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
         for i in range(2, 20):
             session = Session()
@@ -331,6 +298,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def generate_unpaid_ssh(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
+        Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
         for i in range(2, 20):
             session = Session()
@@ -343,6 +311,7 @@ class TestSessions(unittest.TestCase):
     @classmethod
     def pay_unpaid(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
+        Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
         paid = 0
         activated_ssh = 0

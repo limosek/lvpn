@@ -14,10 +14,12 @@ from lib.wg_engine import WGEngine
 
 class Gateway(VDPObject):
 
-    def __init__(self, gwinfo, file=None):
+    def __init__(self, gwinfo, file=None, vdp=None):
+        if not vdp:
+            vdp = Registry.vdp
         self.validate(gwinfo, "Gate", file)
         self._data = gwinfo
-        self._provider = Registry.vdp.get_provider(self._data["providerid"])
+        self._provider = vdp.get_provider(self._data["providerid"])
         if not self._provider:
             raise VDPException("Unknown providerid %s" % self._data["providerid"])
         self._local = self._provider.is_local()
@@ -135,7 +137,7 @@ class Gateway(VDPObject):
                 "-t", "ecdsa",
                 "-N", ""
             ]
-            logging.getLogger().info("Running command: %s" % (" ".join(cmd)))
+
             if RunCmd.get_output(cmd):
                 pass
             else:

@@ -63,8 +63,8 @@ class WGEngine(Service):
 
     @classmethod
     def generate_keys(cls):
-        private = cls.wg_run_cmd("wg", "genkey")
-        public = cls.wg_run_cmd("wg", "pubkey", input=private)
+        private = cls.wg_run_cmd("wg", "genkey").strip()
+        public = cls.wg_run_cmd("wg", "pubkey", input=private).strip()
         if cls.show_only or not Registry.cfg.enable_wg:
             return ["Wg-not-enabled-Private", "Wg-not-enabled-Public"]
         else:

@@ -8,13 +8,13 @@ RUN mkdir /run/sshd
 RUN python3 -m venv /usr/local/lvpn
 RUN . /usr/local/lvpn/bin/activate; pip3 install sshkey-tools
 
-COPY ./sshlogin /bin/sshlogin
+COPY sshlogin /bin/sshlogin
 RUN chmod +x /bin/sshlogin
 
-COPY ./authorized_principals.sh /bin/
+COPY authorized_principals.sh /bin/
 RUN chmod +x /bin/authorized_principals.sh
 
-COPY ./ssh_server_helper.py /bin/ssh_server_helper.py
+COPY ssh_server_helper.py /bin/ssh_server_helper.py
 RUN chmod +x /bin/
 
 VOLUME /etc/ssh

@@ -9,13 +9,12 @@ import configargparse
 import multiprocessing
 
 from lib.registry import Registry
-from lib.wg_service import WGService
+from server.wg_service import WGServerService
 
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 
 from lib.sessions import Sessions
-from lib.util import Util
 from lib.arguments import SharedArguments
 from server.arguments import ServerArguments
 from lib.signverify import Sign, Verify
@@ -142,7 +141,7 @@ def main():
     if cfg.enable_wg:
         for gate in cfg.vdp.gates():
             if gate.get_type() == "wg":
-                wg = multiprocessing.Process(target=WGService.run, args=[ctrl, queue, wg_queue],
+                wg = multiprocessing.Process(target=WGServerService.run, args=[ctrl, queue, wg_queue],
                                              kwargs={"gate": gate, "space": None}, name="WGService-%s" % gate.get_id())
                 wg.start()
                 processes[gate.get_id()] = wg

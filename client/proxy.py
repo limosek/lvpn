@@ -10,13 +10,12 @@ import _queue
 from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
+from client.wg_service import WGClientService
 from lib.registry import Registry
 from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
 from lib.sessions import Sessions
 from lib.messages import Messages
-from lib.util import Util
-from lib.wg_service import WGService
 
 
 class ProxyException(Exception):
@@ -148,7 +147,7 @@ class Proxy(Service):
                 "sessionid": sessionid,
                 "connectionid": connection.get_id()
             }
-            mp = Process(target=WGService.run, args=args, kwargs=kwargs)
+            mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
             mp.start()
             connection.set_data({
                 "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],

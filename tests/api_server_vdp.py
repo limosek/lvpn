@@ -1,10 +1,11 @@
-import json
+
 import unittest
 import os
 import requests
 
-from lib.vdp import VDP
-from tests.vdp import TestVDP
+from lib.registry import Registry
+from tests.util import Util
+
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
@@ -20,14 +21,14 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
 
     def testCheckVdp(self):
-        vdp = VDP(TestVDP().parse_args([]))
+        Util.parse_args()
         r = requests.post(
             os.environ["MANAGER_URL"] + "/api/vdp?checkOnly=True",
             headers={"Content-Type": "application/json"},
-            data=vdp.get_json()
+            data=Registry.vdp.get_json()
         )
         self.assertEqual(r.status_code, 200)
-        bad = vdp.get_dict()
+        bad = Registry.vdp.get_dict()
         bad["spaces"][0]["version"] = "bad_version_value"
         r = requests.post(
             os.environ["MANAGER_URL"] + "/api/vdp?checkOnly=True",

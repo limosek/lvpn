@@ -222,7 +222,6 @@ class Wallet(Service):
                 "--trusted-daemon"
             ]
             logging.getLogger("wallet").warning("Running wallet subprocess: %s" % " ".join(args))
-            RunCmd.init(Registry.cfg)
             cls.p = RunCmd.popen(args, stdout=sys.stdout, stdin=sys.stdin, cwd=Registry.cfg.tmp_dir, shell=False)
             cls.pc = None
 

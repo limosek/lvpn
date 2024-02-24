@@ -1,0 +1,10 @@
+WALLET_PASSWORD = "<changeme>"
+WALLET_RPC_PASSWORD = "<changeme>"
+
+IPNET = "<network>/<bits>"
+WALLET_IP = "<changeme>"
+MANAGER_IP = "<changeme>"
+DAEMON_IP = "<changeme>"
+HAPROXY_IP = "<changeme>"
+DNS_IP = "<changeme>"
+SSH_IP = "<changeme>"

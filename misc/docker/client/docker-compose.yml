@@ -1,0 +1,37 @@
+version: "3.1"
+
+services:
+
+  lvpnc:
+    image: limosek/lvpn:dev
+    volumes:
+      - ./lvpns:/home/lvpn
+    command: lvpnc --wallet-rpc-url=http://wallet:48773/json_rpc --wallet-rpc-password=${WALLET_RPC_PASSWORD} --run-wallet=0 --run-gui=0
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    environment:
+      - MODE=server
+    ports:
+      - 8790:8123
+    networks:
+      - lthn
+
+  wallet:
+    image: letheanio/blockchain:latest
+    restart: unless-stopped
+    ports:
+      - 48773:14660
+      - 48774:14660
+    volumes:
+      - ./wallet:/etc/lthn
+    entrypoint: bash -c "lethean-wallet-cli --daemon-host daemon --wallet-file /etc/lthn/vpn  --password ${WALLET_PASSWORD} --command refresh; lethean-wallet-rpc --daemon-host daemon --wallet-file /etc/lthn/vpn --rpc-bind-port 14660 --password ${WALLET_PASSWORD} --rpc-bind-ip 0.0.0.0 --confirm-external-bind --rpc-login vpn:${WALLET_RPC_PASSWORD}"
+
+networks:
+  lthn:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: ${IPNET}
+

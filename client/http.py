@@ -16,7 +16,7 @@ import secrets
 from client.connection import Connections
 from lib.registry import Registry
 from lib.session import Session
-from lib.mngrrpc import ManagerRpcCall
+from lib.mngrrpc import ManagerRpcCall, ManagerException
 from lib.service import Service
 from lib.sessions import Sessions
 from lib.messages import Messages
@@ -147,10 +147,13 @@ def create_session():
         else:
             return make_response(402, "Awaiting payment", fresh.get_dict())
     else:
-        mngr = ManagerRpcCall(space.get_manager_url())
-        session = Session(mngr.create_session(gate, space, days))
-        session.save()
-        sessions.add(session)
+        try:
+            mngr = ManagerRpcCall(space.get_manager_url())
+            session = Session(mngr.create_session(gate, space, days))
+            session.save()
+            sessions.add(session)
+        except ManagerException as e:
+            return make_response(501, "Manager RPC error", str(e))
         if session.is_active():
             return make_response(200, "OK", session.get_dict())
         else:

@@ -153,7 +153,7 @@ def post_vdp():
     jsn = request.data.decode("utf-8")
     try:
         try:
-            new_vdp = VDP(Registry.cfg, vdpdata=jsn)
+            new_vdp = VDP(vdpdata=jsn)
         except VDPException as e:
             return make_response(443, "Bad Request data", {"error": str(e)})
         if not check:
