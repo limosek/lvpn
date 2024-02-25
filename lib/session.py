@@ -74,22 +74,26 @@ class Session:
         self._data["payment_sent"] = False
 
     def activate(self):
-        try:
-            now = int(time.time())
-            if Registry.cfg.is_server:
-                self._gate.activate_server(self)
-                self._space.activate_server(self)
-            elif Registry.cfg.is_server:
-                self._gate.activate_client(self)
-                self._space.activate_client(self)
-            if Registry.cfg.on_session_activation:
-                RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
-            logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
-            self._data["expires"] = now + self._data["days"] * 3600 * 24
-            self._data["activated"] = now
-        except Exception as e:
-            logging.getLogger().warning("Error activating session %s:%s" % (self.get_id(), e))
-            raise
+        if self.get_payment() >= self._data["price"] and not self.is_active():
+            try:
+                now = int(time.time())
+                if Registry.cfg.is_server:
+                    self._gate.activate_server(self)
+                    self._space.activate_server(self)
+                elif Registry.cfg.is_server:
+                    self._gate.activate_client(self)
+                    self._space.activate_client(self)
+                if Registry.cfg.on_session_activation:
+                    RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
+                logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
+                self._data["expires"] = now + self._data["days"] * 3600 * 24
+                self._data["activated"] = now
+                return True
+            except Exception as e:
+                logging.getLogger().warning("Error activating session %s:%s" % (self.get_id(), e))
+                raise
+        else:
+            return False
 
     def get_spaceid(self):
         return self._space.get_id()

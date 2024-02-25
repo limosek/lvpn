@@ -126,11 +126,13 @@ class Gateway(VDPObject):
 
     def activate_client(self, session):
         if self.get_type() == "wg":
-            if Registry.cfg.enable_wg:
+            if not Registry.cfg.enable_wg:
                 WGEngine.show_only = True
                 WGEngine.show_cmds = True
                 logging.error("Wireguard support disabled in config. Ignoring activation")
-            WGEngine.remove_peer(self.get_id(), session.get_gate_data("wg")["server_public_key"])
+                return True
+            else:
+                WGEngine.remove_peer(self.get_id(), session.get_gate_data("wg")["server_public_key"])
 
     def activate_server(self, session):
         if self.get_type() == "ssh":
@@ -199,16 +201,21 @@ class Gateway(VDPObject):
             os.unlink(lckfile)
 
         elif self.get_type() == "wg":
-            if Registry.cfg.enable_wg:
+            if not Registry.cfg.enable_wg:
                 WGEngine.show_only = True
                 WGEngine.show_cmds = True
                 logging.error("Wireguard support disabled in config. Ignoring activation")
-            WGEngine.add_peer(self.get_id(),
-                              session.get_gate_data("wg")["client_public_key"],
-                              session.get_gate_data("wg")["client_ipv4_address"],
-                              session.get_gate_data("wg")["client_endpoint"],
-                              session.get_gate_data("wg")["psk"]
-                              )
+                return True
+            else:
+                if "client_ipv4_address" in session.get_gate_data("wg"):
+                    WGEngine.add_peer(WGEngine.get_interface_name(self.get_id()),
+                                      session.get_gate_data("wg")["client_public_key"],
+                                      [session.get_gate_data("wg")["client_ipv4_address"]],
+                                      session.get_gate_data("wg")["client_endpoint"],
+                                      session.get_gate_data("wg")["psk"]
+                                      )
+                else:
+                    return False
         return True
 
     def __repr__(self):

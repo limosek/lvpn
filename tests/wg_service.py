@@ -5,6 +5,7 @@ import unittest
 from client.wg_service import WGClientService
 from lib.registry import Registry
 from lib.session import Session
+from lib.sessions import Sessions
 from lib.wg_service import WGService
 from server.wg_service import WGServerService
 
@@ -99,3 +100,38 @@ class TestWGService(unittest.TestCase):
         self.assertRegex(
             WGClientService.deactivate_on_client(session, show_only=True),
             session.get_gate_data("wg")["server_public_key"])
+
+    def testPeersMatch(self):
+        Registry.cfg = self.parse_args([])
+        Registry.vdp = VDP()
+        WGEngine.show_cmds = True
+        gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg")
+        space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free")
+        sessions = Sessions()
+        session1 = Session()
+        session1.generate(gate.get_id(), space.get_id(), 1)
+        WGServerService.prepare_server_session(session1, {
+            "endpoint": "dynamic",
+            "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
+        })
+        session2 = Session()
+        session2.generate(gate.get_id(), space.get_id(), 1)
+        WGServerService.prepare_server_session(session2, {
+            "endpoint": "dynamic",
+            "public_key": "public2"
+        })
+        sessions.add(session1)
+        sessions.add(session2)
+        self.assertEqual(session1.activate(), True)
+        self.assertEqual(session2.activate(), True)
+        WGServerService.gate = gate
+        peers1 = WGServerService.find_peers_from_sessions(sessions)
+        peers2 = WGServerService.find_peers_from_gathered(
+            WGEngine.gather_wg_data("ignored"),
+            sessions
+        )
+        self.assertEqual(len(peers1), 2)
+        self.assertEqual(len(peers2), 1)
+
+
+

@@ -1,8 +1,11 @@
 import ipaddress
+import time
 
+from lib.messages import Messages
 from lib.registry import Registry
 from lib.service import ServiceException
 from lib.session import Session
+from lib.sessions import Sessions
 from lib.util import Util
 from lib.wg_engine import WGEngine
 import lib
@@ -21,8 +24,49 @@ class WGServerService(lib.wg_service.WGService):
         cls.setup_interface_server(cls.gate)
 
     @classmethod
-    def loop1(cls):
-        pass
+    def loop(cls):
+        cls.sactive = False
+        while not cls.exit:
+            sessions = Sessions()
+            cls.log_debug("Loop")
+            cls.gathered = WGEngine.gather_wg_data(cls.iface)
+            cls.found = cls.find_peers_from_gathered(cls.gathered, sessions)
+            cls.needed = cls.find_peers_from_sessions(sessions)
+            for peer in cls.found.keys():
+                if peer in cls.needed.keys():
+                    continue
+                else:
+                    cls.deactivate_on_server(cls.found[peer])
+            for peer in cls.needed.keys():
+                if peer in cls.found.keys():
+                    continue
+                else:
+                    cls.activate_on_server(cls.needed[peer])
+            for i in range(1, 20):
+                time.sleep(1)
+                if cls.myqueue and not cls.myqueue.empty():
+                    msg = cls.myqueue.get(block=False, timeout=0.01)
+                    if msg == Messages.EXIT:
+                        return
+
+    @classmethod
+    def find_peers_from_gathered(cls, gathered, sessions):
+        peers = {}
+        for g in gathered["peers"].values():
+            found = sessions.find(active=True, wg_public=g["public"])
+            if len(found) > 0:
+                peers[g["public"]] = found[0]
+        return peers
+
+    @classmethod
+    def find_peers_from_sessions(cls, sessions: Sessions):
+        peers = {}
+        my_sessions = sessions.find(active=True, gateid=cls.gate.get_id())
+        for s in my_sessions:
+            if s.get_gate_data("wg"):
+                public = s.get_gate_data("wg")["client_public_key"]
+                peers[public] = s
+        return peers
 
     @classmethod
     def prepare_server_session(cls, session: Session, wg_data: dict):
@@ -71,7 +115,7 @@ class WGServerService(lib.wg_service.WGService):
         found_ips = []
         gwnet = ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"])
         gw = ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"])
-        for p in gather["peers"]:
+        for p in gather["peers"].values():
             for ip in p["allowed_ips"].split(","):
                 ipa = ipaddress.ip_network(ip)
                 if ipa.prefixlen == 32:

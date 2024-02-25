@@ -1,5 +1,7 @@
 import ipaddress
+import time
 
+from lib.messages import Messages
 from lib.registry import Registry
 from lib.service import ServiceException
 from lib.session import Session
@@ -15,10 +17,14 @@ class WGClientService(WGService):
     myname = "wg_client"
 
     @classmethod
-    def loop1(cls):
-        if not cls.sactive and cls.session.is_active():
-            cls.activate_on_client(cls.session)
-            cls.sactive = True
+    def loop(cls):
+        cls.sactive = False
+        while not cls.exit:
+            if not cls.sactive and cls.session.is_active():
+                cls.activate_on_client(cls.session)
+                cls.sactive = True
+            time.sleep(1)
+        cls.deactivate_on_client(cls.session)
 
     @classmethod
     def postinit(cls):

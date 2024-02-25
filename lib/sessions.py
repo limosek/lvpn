@@ -44,19 +44,24 @@ class Sessions:
         self.load(cleanup=True)
 
     def refresh_status(self):
-        for s in self.find(notpaid=True):
-            mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
-            try:
-                data = mrpc.get_session_info(s)
-                if data:
-                    s = Session(data)
-                    self.update(s)
-                else:
-                    logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
-                    self.remove(s)
-            except Exception as e:
-                pass
-            time.sleep(10)
+        if Registry.cfg.is_client:
+            for s in self.find(notpaid=True):
+                mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
+                try:
+                    data = mrpc.get_session_info(s)
+                    if data:
+                        s = Session(data)
+                        self.update(s)
+                    else:
+                        logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
+                        self.remove(s)
+                except Exception as e:
+                    pass
+                time.sleep(5)
+        else:
+            for s in self.find(inactive=True, fresh=True):
+                if s.activate():
+                    s.save()
 
     def get(self, sessionid: str):
         if sessionid in self._sessions.keys():
@@ -74,7 +79,7 @@ class Sessions:
             else:
                 return False
 
-    def find(self, notpaid=None, active=None, spaceid=None, gateid=None, fresh=None, paymentid=None, noparent=None, notfree=None, paid=None, free=None, needpay=None):
+    def find(self, notpaid=None, active=None, inactive=None, spaceid=None, gateid=None, fresh=None, paymentid=None, noparent=None, notfree=None, paid=None, free=None, needpay=None, wg_public=None):
         res = []
         for a in self._sessions.values():
             if notpaid and a.is_paid():
@@ -82,6 +87,8 @@ class Sessions:
             if fresh and not a.is_fresh():
                 continue
             if active and not a.is_active():
+                continue
+            if inactive and a.is_active():
                 continue
             if spaceid and a.get_spaceid() != spaceid:
                 continue
@@ -100,6 +107,12 @@ class Sessions:
             if needpay:
                 if a.is_free() or a.is_paid():
                     continue
+            if wg_public:
+                if not a.get_gate_data("wg"):
+                    continue
+                else:
+                    if a.get_gate_data("wg")["client_public_key"] != wg_public:
+                        continue
             res.append(a)
 
         return sorted(res, key=lambda d: d.days_left())

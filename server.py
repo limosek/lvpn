@@ -2,6 +2,7 @@
 import atexit
 import os
 import sys
+import threading
 import time
 import logging
 import _queue
@@ -152,6 +153,9 @@ def main():
     manager.start()
     processes["manager"] = manager
 
+    refresh = threading.Thread(target=refresh_sessions)
+    refresh.start()
+
     should_exit = False
     while not should_exit:
         logging.getLogger("server").debug("Main loop")
@@ -190,11 +194,17 @@ def main():
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
-        if Util.every_x_seconds(60):
-            sessions = Sessions()
-            logging.warning(repr(sessions))
 
+    refresh.join()
     cleanup(queues, processes)
+
+
+def refresh_sessions():
+    while True:
+        sessions = Sessions()
+        sessions.refresh_status()
+        logging.warning(repr(sessions))
+        time.sleep(10)
 
 
 # Run the Flask application

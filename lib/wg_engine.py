@@ -187,7 +187,7 @@ ListenPort = {port}
             else:
                 return txt
         lines = dump.split("\n")
-        peers = []
+        peers = {}
         iface = None
         if len(lines) > 0:
             fields = lines[0].split("\t")
@@ -203,7 +203,7 @@ ListenPort = {port}
                 fields = l.split("\t")
                 if len(fields) == 8:
                     """public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive."""
-                    peer = {
+                    peers[fields[0]] = {
                         "public": fields[0],
                         "preshared": replace_none(fields[1]),
                         "endpoint": replace_none(fields[2]),
@@ -213,7 +213,6 @@ ListenPort = {port}
                         "transfer_tx": replace_none(fields[6]),
                         "keepalive": replace_none(fields[7])
                     }
-                    peers.append(peer)
                 elif len(fields) == 1:
                     pass
                 else:
