@@ -11,7 +11,6 @@ from jsonschema.exceptions import ValidationError
 from openapi_core import OpenAPI
 from openapi_core.contrib.flask.decorators import FlaskOpenAPIViewDecorator
 import openapi_schema_validator
-import secrets
 
 from client.connection import Connections
 from lib.registry import Registry

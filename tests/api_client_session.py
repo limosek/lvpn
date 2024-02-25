@@ -38,6 +38,7 @@ class TestClientAPI(unittest.TestCase):
             }),
             headers={"Content-Type": "application/json"}
         )
+        print(r.text)
         self.assertEqual(r.status_code, 402)
         j = json.loads(r.text)
         self.assertGreater(j["price"], 1)

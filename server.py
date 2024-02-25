@@ -8,6 +8,8 @@ import _queue
 import configargparse
 import multiprocessing
 
+from lib.util import Util
+
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 
@@ -188,8 +190,9 @@ def main():
                 logging.getLogger("server").warning("Unknown msg %s requested, exiting" % msg)
                 should_exit = True
                 break
-        sessions = Sessions()
-        logging.warning(repr(sessions))
+        if Util.every_x_seconds(60):
+            sessions = Sessions()
+            logging.warning(repr(sessions))
 
     cleanup(queues, processes)
 

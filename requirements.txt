@@ -1,5 +1,5 @@
-flask
-configargparse
+flask~=3.0.0
+configargparse~=1.7
 python_dateutil == 2.6.0
 setuptools >= 21.0.0
 pynacl
@@ -8,15 +8,17 @@ psutil
 configargparse
 pynacl
 pysocks
-requests
-kivy[base]
+requests~=2.31.0
+kivy[base]~=2.3.0rc3
 kivy-garden.qrcode
 kivy-garden
-paramiko
+paramiko~=3.4.0
 pyinstaller
-setproctitle
-sshtunnel
-ownca
-stripe
-icmplib
-
+setproctitle~=1.3.3
+sshtunnel~=0.4.0
+ownca~=0.4.0
+stripe~=8.0.0
+icmplib~=3.0.4
+urllib3~=2.1.0
+jsonschema~=4.20.0
+ptw~=1.0.1

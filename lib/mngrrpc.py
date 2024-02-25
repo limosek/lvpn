@@ -36,8 +36,9 @@ class ManagerRpcCall:
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 1)
         # Create fake session just for initializing data
-        data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": days,
-                gate.get_type(): gate.get_prepare_data(session)}
+        data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": days}
+        if gate.get_type() == "wg":
+                data[gate.get_type()] = gate.get_prepare_data(session)
         r = requests.post(
             self._baseurl + "/api/session",
             headers={"Content-Type": "application/json"},

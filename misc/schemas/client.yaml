@@ -176,6 +176,9 @@ paths:
           description: Cannot use this space/gate combination
         '500':
           description: Server error
+        '501':
+          description: Manager RPC error
+
     get:
       summary: Get session info
       description: Get session info
@@ -559,7 +562,7 @@ components:
         - ips
         - dns_servers
         - price
-  
+
 # Session definition
 ###################################
 

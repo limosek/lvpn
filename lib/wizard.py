@@ -138,7 +138,9 @@ wallet-rpc-password = %s
           "description": spacename,
           "price": {
             "per-day": 0
-          }
+          },
+          "ips": ["192.168.1.0/24"],
+          "dns_servers": ["192.168.1.1"],
         }
         httpgate = {
           "file_type": "LetheanGateway",
@@ -161,7 +163,7 @@ wallet-rpc-password = %s
         }
         vdp = VDP(vdpdata={
             "file_type": "VPNDescriptionProtocol",
-            "file_version": "1.0",
+            "file_version": "1.1",
             "providers": [provider],
             "gates": [httpgate],
             "spaces": [space]

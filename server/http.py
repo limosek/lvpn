@@ -19,7 +19,7 @@ from lib.sessions import Sessions
 from lib.util import Util
 from lib.vdp import VDP
 from lib.vdpobject import VDPException
-from lib.wg_service import WGService
+from server.wg_service import WGServerService
 
 app = Flask(__name__)
 openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/server.yaml")
@@ -196,7 +196,7 @@ def post_session():
         session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
         if gate.get_type() == "wg":
             if "wg" in request.openapi.body:
-                WGService.prepare_server_session(session, request.openapi.body["wg"])
+                WGServerService.prepare_server_session(session, request.openapi.body["wg"])
             else:
                 return make_response(465, "Missing WG endpoint data")
         sessions.add(session)

@@ -7,6 +7,7 @@ from lib.wg_engine import WGEngine
 
 
 class WGService(Service):
+    session = None
     myname = "wg_service"
 
     @classmethod
@@ -20,8 +21,7 @@ class WGService(Service):
         while not cls.exit:
             cls.log_debug("Loop")
             cls.gathered = WGEngine.gather_wg_data(cls.iface)
-            if cls.session.is_active() and not cls.sactive:
-                cls.loop1()
+            cls.loop1()
             for peer in cls.gathered["peers"]:
                 print(peer)
             for i in range(1, 20):

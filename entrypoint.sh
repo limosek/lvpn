@@ -51,6 +51,10 @@ tests)
   cp -R /usr/src/lvpn/tests/ /tmp/tests
   cd /tmp/tests
   sudo ./tests.sh /usr/src/lvpn
+  $0 easy-provider
+  echo "========================================================"
+  echo "Easy provider test passed"
+  echo "========================================================"
   ;;
 
 set-perms)

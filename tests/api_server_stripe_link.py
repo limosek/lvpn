@@ -9,7 +9,7 @@ if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
 
 
-class TestAPI(unittest.TestCase):
+class TestStripeAPI(unittest.TestCase):
 
     def testGetPaymentLink(self):
         r = requests.get(

@@ -22,9 +22,7 @@ class WGServerService(lib.wg_service.WGService):
 
     @classmethod
     def loop1(cls):
-        if not cls.sactive and cls.session.is_active():
-            cls.activate_on_server(cls.session)
-            cls.sactive = True
+        pass
 
     @classmethod
     def prepare_server_session(cls, session: Session, wg_data: dict):

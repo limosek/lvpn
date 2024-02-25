@@ -87,7 +87,7 @@ class SSHProxy(Service):
                 local_addresses.append((Registry.cfg.local_bind, lport))
                 remote_addresses.append((rhost, int(rport)))
                 redirects.append("-L%s:%s:%s:%s" % (Registry.cfg.local_bind, lport, rhost, rport))
-                cls.log_info("Create port forward request %s:%s -> %s:%s" % (Registry.cfg.local_bind, lport, rhost, rport))
+                cls.log_debug("Create port forward request %s:%s -> %s:%s" % (Registry.cfg.local_bind, lport, rhost, rport))
             else:
                 cls.log_error("Non-existent SSH gateway %s" % g)
                 messages.append(
