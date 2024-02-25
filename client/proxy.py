@@ -16,6 +16,7 @@ from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
 from lib.sessions import Sessions
 from lib.messages import Messages
+from lib.wg_engine import WGEngine
 
 
 class ProxyException(Exception):
@@ -153,7 +154,10 @@ class Proxy(Service):
                 "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
                 "pid": mp.pid,
                 "gateid": gate.get_id(),
-                "spaceid": space.get_id()
+                "spaceid": space.get_id(),
+                "interface": WGEngine.get_interface_name(gate.get_id()),
+                "ip": session.get_gate_data("wg")["client_ipv4_address"],
+                "gw": session.get_gate_data("wg")["server_ipv4_address"]
             })
             p = {
                 "process": mp,
@@ -185,6 +189,8 @@ class Proxy(Service):
             if p["connection"].get_id() == connectionid:
                 c = connections.get(connectionid)
                 if c:
+                    if c.get_gate().get_type() == "wg":
+                        WGClientService.deactivate_on_client(c.get_session())
                     for sub in c.get_children():
                         cls.disconnect(connections, sub)
                 cls.log_gui("proxy", "Disconnecting connectionid %s" % connectionid)

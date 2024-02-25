@@ -7,6 +7,7 @@ import requests
 import icmplib
 
 from lib.gate import Gateway
+from lib.messages import Messages
 from lib.registry import Registry
 from lib.session import Session
 from lib.sessions import Sessions
@@ -167,6 +168,11 @@ class Connection:
                     return False
         return True
 
+    def disconnect(self, queue):
+        queue.put(
+            Messages.disconnect(self.get_id())
+        )
+
     def __repr__(self):
         if "port" in self._data:
             txt = "Connection/%s[port=%s,cid=%s,space=%s,%s]" % (
@@ -216,6 +222,10 @@ class Connections:
                 removed = True
         if not removed:
             logging.getLogger().error("Removing non-existent connection %s" % connectionid)
+
+    def disconnect(self, queue):
+        for c in self._data:
+            c.disconnect(queue)
 
     def find_by_gateid(self, gateid: str):
         for conn in self._data:

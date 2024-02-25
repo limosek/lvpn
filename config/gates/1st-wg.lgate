@@ -10,10 +10,10 @@
     "per-day": 100
   },
   "wg": {
-    "endpoint": "vpn.lethean.space:8127",
+    "endpoint": "vpn.lethean.space:8773",
     "public_key": "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM=",
-    "ipv4_network": "192.168.0.0/16",
-    "ipv4_gateway": "192.168.1.1"
+    "ipv4_network": "10.169.0.0/16",
+    "ipv4_gateway": "10.169.0.1"
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"

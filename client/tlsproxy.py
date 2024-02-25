@@ -178,7 +178,7 @@ class TLSProxy(Service):
     @classmethod
     def postinit(cls):
         cls.exit = False
-        setproctitle.setproctitle("lvpn-tlsproxy %s:%s -> %s" % (Registry.cfg.local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
+        setproctitle.setproctitle("lvpnc-tlsproxy %s:%s -> %s" % (Registry.cfg.local_bind, cls.kwargs["port"], cls.kwargs["endpoint"]))
         sessionid = cls.kwargs["sessionid"]
         sessions = Sessions()
         session = sessions.get(sessionid)

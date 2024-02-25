@@ -94,7 +94,7 @@ class WGEngine(Service):
         tmpfile = tempfile.mktemp("key", "wg", Registry.cfg.tmp_dir)
         with open(tmpfile, "w") as f:
             f.write(key)
-        Util.set_key_permissions(tmpfile)
+        #Util.set_key_permissions(tmpfile)
         return os.path.realpath(tmpfile)
 
     @classmethod
@@ -109,14 +109,14 @@ class WGEngine(Service):
             raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_create_interface")
 
     @classmethod
-    def create_wg_interface(cls, name: str, private, port, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
+    def create_wg_interface(cls, name: str, private, port):
         if platform.system() == "Windows":
             tunnelcfg="""
 [Interface]
 PrivateKey = {key}
 ListenPort = {port}
-Address = {ip}/{bits}
-            """.format(key=private, port=port, ip=str(ip), bits=ipnet.prefixlen)
+#Address = none
+            """.format(key=private, port=port)
             fname = os.path.realpath(Registry.cfg.tmp_dir + "/%s.conf" % name)
             with open(fname, "w") as f:
                 f.write(tunnelcfg)
@@ -145,16 +145,23 @@ Address = {ip}/{bits}
                         "private-key", cls.save_key(private)
                     ]
                     cls.wg_run_cmd(*setargs)
-                    ipargs = shlex.split(
-                        cls.replace_macros(
-                            Registry.cfg.wg_cmd_set_ip, iface=name, ip=str(ip), mask=str(ipnet.netmask)
-                        ))
-                    cls.wg_run_cmd(*ipargs)
+
                 except Exception as e:
                     raise ServiceException(2, str(e))
             else:
                 cls.log_error("Cannot create WG interface - missing wg_cmd_create_interface")
                 raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_create_interface")
+
+    @classmethod
+    def set_wg_interface_ip(cls, name, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
+        try:
+            ipargs = shlex.split(
+                cls.replace_macros(
+                    Registry.cfg.wg_cmd_set_ip, iface=name, ip=str(ip), mask=str(ipnet.netmask)
+                ))
+            cls.wg_run_cmd(*ipargs)
+        except Exception as e:
+            raise ServiceException(2, str(e))
 
     @classmethod
     def delete_wg_interface(cls, name: str):
@@ -173,61 +180,63 @@ Address = {ip}/{bits}
             raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_delete_interface")
 
     @classmethod
-    def gather_wg_data(cls, iname: str):
+    def parse_show_dump(cls, dump):
         def replace_none(txt):
             if txt == "(none)":
                 return None
             else:
                 return txt
+        lines = dump.split("\n")
+        peers = []
+        iface = None
+        if len(lines) > 0:
+            fields = lines[0].split("\t")
+            if len(fields) == 4:
+                """ private-key, public-key, listen-port, fwmark"""
+                iface = {
+                    "public": fields[1],
+                    "private": fields[0],
+                    "port": fields[2],
+                    "fwmark": fields[3]
+                }
+            for l in lines[1:]:
+                fields = l.split("\t")
+                if len(fields) == 8:
+                    """public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive."""
+                    peer = {
+                        "public": fields[0],
+                        "preshared": replace_none(fields[1]),
+                        "endpoint": replace_none(fields[2]),
+                        "allowed_ips": replace_none(fields[3]),
+                        "latest_handshake": replace_none(fields[4]),
+                        "transfer_rx": replace_none(fields[5]),
+                        "transfer_tx": replace_none(fields[6]),
+                        "keepalive": replace_none(fields[7])
+                    }
+                    peers.append(peer)
+                elif len(fields) == 1:
+                    pass
+                else:
+                    raise ServiceException(4, "Bad wg command output: %s" % dump)
+            return {
+                "iface": iface,
+                "peers": peers
+            }
 
+    @classmethod
+    def gather_wg_data(cls, iname: str):
         if Registry.cfg.enable_wg:
             output = cls.wg_run_cmd("wg", "show", iname, "dump")
-            lines = output.split("\n")
-            peers = []
-            iface = None
-            if len(lines) > 0:
-                fields = lines[0].split("\t")
-                if len(fields) == 4:
-                    """ private-key, public-key, listen-port, fwmark"""
-                    iface = {
-                        "public": fields[1],
-                        "private": fields[0],
-                        "port": fields[2],
-                        "fwmark": fields[3]
-                    }
-                for l in lines[1:]:
-                    fields = l.split("\t")
-                    if len(fields) == 8:
-                        """public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive."""
-                        peer = {
-                            "public": fields[0],
-                            "preshared": replace_none(fields[1]),
-                            "endpoint": replace_none(fields[2]),
-                            "allowed_ips": replace_none(fields[3]),
-                            "latest_handshake": replace_none(fields[4]),
-                            "transfer_rx": replace_none(fields[5]),
-                            "transfer_tx": replace_none(fields[6]),
-                            "keepalive": replace_none(fields[7])
-                        }
-                        peers.append(peer)
-                    elif len(fields) == 1:
-                        pass
-                    else:
-                        raise ServiceException(4, "Bad wg command output: %s" % output)
-                return {
-                    "iface": iface,
-                    "peers": peers
-                }
-            else:
-                raise ServiceException(4, "Bad wg command output: %s" % output)
+            data = cls.parse_show_dump(output)
+            return data
         else:
-            (private, public) = cls.generate_keys()
-            return {
-                "iface": {"public": public,
-                          "private": private,
-                          "port": 0},
-                "peers": []
-            }
+            data = """{private}\t{public}\t52820\toff\n{public2}\t{psk}\t1.2.3.4:52820\t172.16.0.0/12,192.168.0.2/32,192.168.0.3/32,192.168.0.4/32\t1708848641\t20899715969\t14596754656\t300""".format(
+                private="private1",
+                public="public1",
+                public2="public2",
+                psk="psk"
+            )
+            return cls.parse_show_dump(data)
 
     @classmethod
     def add_peer(cls, iname: str, public: str, allowed_ips: list, endpoint: str = None, preshared: str = None, keepalive: int = 120, show_only: bool = False):

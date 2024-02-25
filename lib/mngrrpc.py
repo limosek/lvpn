@@ -3,9 +3,11 @@ import requests
 import json
 
 from lib.gate import Gateway
+from lib.service import ServiceException
+from lib.session import Session
 from lib.space import Space
 from lib.vdp import VDP
-import lib
+import client
 
 
 class ManagerException(Exception):
@@ -31,13 +33,11 @@ class ManagerRpcCall:
             return False
 
     def create_session(self, gate: Gateway, space: Space, days: int):
-        data = {
-                "gateid": gate.get_id(),
-                "spaceid": space.get_id(),
-                "days": days
-            }
-        if gate.get_type() == "wg":
-            data["wg"] = lib.wg_service.WGService.prepare_session_request(gate)
+        session = Session()
+        session.generate(gate.get_id(), space.get_id(), 1)
+        # Create fake session just for initializing data
+        data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": days,
+                gate.get_type(): gate.get_prepare_data(session)}
         r = requests.post(
             self._baseurl + "/api/session",
             headers={"Content-Type": "application/json"},
@@ -46,7 +46,7 @@ class ManagerRpcCall:
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
         else:
-            raise ManagerException(r.text)
+            raise ManagerException("%s -- %s" % (self._baseurl, r.text))
 
     def get_session_info(self, session):
         r = requests.get(
@@ -57,7 +57,7 @@ class ManagerRpcCall:
         elif r.status_code == 404:
             return None
         else:
-            raise ManagerException(r.text)
+            raise ManagerException("%s -- %s" % (self._baseurl, r.text))
 
     def push_vdp(self, vdp: VDP):
         vdp_jsn = vdp.get_json()
@@ -71,7 +71,7 @@ class ManagerRpcCall:
             else:
                 raise ManagerException(r.text)
         except requests.RequestException as r:
-            raise ManagerException(str(r))
+            raise ManagerException("%s -- %s" % (self._baseurl, str(r)))
 
     def fetch_vdp(self):
         try:
@@ -83,4 +83,5 @@ class ManagerRpcCall:
             else:
                 raise ManagerException(r.text)
         except requests.RequestException as r:
-            raise ManagerException(str(r))
+            raise ManagerException("%s -- %s" % (self._baseurl, str(r)))
+

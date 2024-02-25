@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import atexit
 import os
 import sys
 import time
@@ -7,9 +7,6 @@ import logging
 import _queue
 import configargparse
 import multiprocessing
-
-from lib.registry import Registry
-from server.wg_service import WGServerService
 
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
@@ -25,28 +22,26 @@ from lib.vdp import VDP
 from server.http import Manager
 from server.stripe import StripeManager
 from server.wallet import ServerWallet
+from lib.registry import Registry
+from server.wg_service import WGServerService
 import lib
 
 
-def loop(queue, mngr_queue, proxy_queue):
-    should_exit = False
-    while not should_exit:
-        if not queue.empty():
-            msg = queue.get()
-            if Messages.is_for_main(msg):
-                if msg == Messages.EXIT:
-                    should_exit = True
-                    logging.getLogger("client").warning("Exit requested, exiting")
-                    break
-            elif Messages.is_for_all(msg):
-                proxy_queue.put(msg)
-                mngr_queue.put(msg)
-            elif Messages.is_for_proxy(msg):
-                proxy_queue.put(msg)
-            else:
-                logging.getLogger("client").warning("Unknown msg %s requested, exiting" % msg)
-                should_exit = True
-                break
+def cleanup(queues, processes):
+    for q in queues:
+        try:
+            q.put(Messages.EXIT)
+        except Exception as e:
+            continue
+
+    logging.getLogger("server").warning("Waiting for subprocesses to exit")
+    for p in processes.values():
+        p.join(timeout=1)
+    for p in processes.values():
+        p.kill()
+        while p.is_alive():
+            time.sleep(0.1)
+    time.sleep(3)
 
 
 def main():
@@ -124,7 +119,8 @@ def main():
     stripe_queue = Queue(multiprocessing.get_context(), "stripe")
     wallet_queue = Queue(multiprocessing.get_context(), "wallet")
     mngr_queue = Queue(multiprocessing.get_context(), "mngr")
-    wg_queue = Queue(multiprocessing.get_context(), "wg")
+    queues = [queue, stripe_queue, wallet_queue, mngr_queue]
+    atexit.register(cleanup, queues, processes)
 
     if cfg.stripe_api_key:
         stripemngr = multiprocessing.Process(target=StripeManager.run, args=[ctrl, queue, stripe_queue], name="StripeManager")
@@ -141,10 +137,12 @@ def main():
     if cfg.enable_wg:
         for gate in cfg.vdp.gates():
             if gate.get_type() == "wg":
+                wg_queue = Queue(multiprocessing.get_context(), gate.get_id())
                 wg = multiprocessing.Process(target=WGServerService.run, args=[ctrl, queue, wg_queue],
                                              kwargs={"gate": gate, "space": None}, name="WGService-%s" % gate.get_id())
                 wg.start()
                 processes[gate.get_id()] = wg
+                queues.append(wg_queue)
     else:
         wg = False
 
@@ -161,7 +159,10 @@ def main():
                 logging.getLogger("server").error(
                     "One of child process (%s,pid=%s) exited. Exiting too" % (p, processes[p].pid))
                 break
-            time.sleep(1)
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                should_exit = True
         if not queue.empty():
             try:
                 msg = queue.get()
@@ -190,14 +191,7 @@ def main():
         sessions = Sessions()
         logging.warning(repr(sessions))
 
-    logging.getLogger("server").warning("Waiting for subprocesses to exit")
-    for p in processes.values():
-        p.join(timeout=1)
-    for p in processes.values():
-        p.kill()
-        while p.is_alive():
-            time.sleep(0.1)
-    time.sleep(3)
+    cleanup(queues, processes)
 
 
 # Run the Flask application

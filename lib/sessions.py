@@ -4,9 +4,9 @@ import logging
 import os
 import time
 
-from lib.mngrrpc import ManagerRpcCall
 from lib.registry import Registry
 from lib.session import Session
+import lib
 
 
 class Sessions:
@@ -45,7 +45,7 @@ class Sessions:
 
     def refresh_status(self):
         for s in self.find(notpaid=True):
-            mrpc = ManagerRpcCall(s.get_manager_url())
+            mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
             try:
                 data = mrpc.get_session_info(s)
                 if data:
@@ -65,9 +65,12 @@ class Sessions:
             f = Registry.cfg.sessions_dir + "/%s.lsession" % sessionid
             if os.path.exists(f):
                 s = Session()
-                s.load(f)
-                self.update(s)
-                return s
+                try:
+                    s.load(f)
+                    self.update(s)
+                    return s
+                except Exception as e:
+                    return False
             else:
                 return False
 

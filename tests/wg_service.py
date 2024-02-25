@@ -2,9 +2,11 @@ import os
 import shutil
 import unittest
 
+from client.wg_service import WGClientService
 from lib.registry import Registry
 from lib.session import Session
 from lib.wg_service import WGService
+from server.wg_service import WGServerService
 
 os.environ["NO_KIVY"] = "1"
 
@@ -65,12 +67,13 @@ class TestWGService(unittest.TestCase):
         self.DeActivateServer(session)
 
     def PrepareSession(self, session):
-        WGService.prepare_server_session(session, {
+        WGServerService.prepare_server_session(session, {
             "endpoint": "dynamic",
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
         })
         self.assertEqual(session.get_gate_data("wg")["dns"], ["172.31.129.16"])
-        WGService.prepare_server_session(session, {
+        self.assertEqual(session.get_gate_data("wg")["client_ipv4_address"], "10.169.0.2")
+        WGServerService.prepare_server_session(session, {
             "endpoint": "abcd:123",
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
         })
@@ -79,20 +82,20 @@ class TestWGService(unittest.TestCase):
 
     def ActivateServer(self, session):
         self.assertRegex(
-            WGService.activate_on_server(session, show_only=True),
-            "192.168.1.100")
+            WGServerService.activate_on_server(session, show_only=True),
+            "10.169.0.2")
 
     def ActivateClient(self, session):
         self.assertRegex(
-            WGService.activate_on_client(session, show_only=True),
-            "192.168.0.0/16")
+            WGClientService.activate_on_client(session, show_only=True),
+            "10.169.0.0/16")
 
     def DeActivateServer(self, session):
         self.assertRegex(
-            WGService.deactivate_on_server(session, show_only=True),
+            WGServerService.deactivate_on_server(session, show_only=True),
             "84.*remove")
 
     def DeActivateClient(self, session):
         self.assertRegex(
-            WGService.deactivate_on_client(session, show_only=True),
+            WGClientService.deactivate_on_client(session, show_only=True),
             session.get_gate_data("wg")["server_public_key"])

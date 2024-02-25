@@ -59,6 +59,8 @@ class StripeManager(Service):
                         if orig_msg in cls._messages:
                             cls.set_as_paid(cls._messages[orig_msg]["id"], cls._messages[orig_msg]["metadata"])
                             del cls._messages[orig_msg]
+                    elif msg == Messages.EXIT:
+                        return
                 time.sleep(1)
             skew = 300
 

@@ -5,6 +5,7 @@ import time
 
 from ownca import CertificateAuthority
 
+import client.wg_service
 from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.util import Util
@@ -115,6 +116,13 @@ class Gateway(VDPObject):
             return self._data[gate]
         else:
             return False
+
+    def get_prepare_data(self, session):
+        if self.get_type() == "wg":
+            data = client.wg_service.WGClientService.prepare_session_request(session)
+        else:
+            data = {}
+        return data
 
     def activate_client(self, session):
         if self.get_type() == "wg":

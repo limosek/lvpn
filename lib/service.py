@@ -40,7 +40,10 @@ class Service:
                         break
                 except _queue.Empty:
                     pass
-            time.sleep(1)
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                return
 
     @classmethod
     def run(cls, ctrl, queue, myqueue, *args, **kwargs):
@@ -72,7 +75,10 @@ class Service:
         logging.getLogger(cls.myname).addHandler(sh)
         logging.getLogger(cls.myname).debug("Starting Service %s" % cls.myname)
         try:
-            setproctitle.setproctitle("lvpn-%s" % cls.myname)
+            if Registry.cfg.is_client:
+                setproctitle.setproctitle("lvpnc-%s" % cls.myname)
+            else:
+                setproctitle.setproctitle("lvpns-%s" % cls.myname)
             cls.postinit()
             cls.loop()
 

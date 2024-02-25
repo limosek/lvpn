@@ -50,4 +50,8 @@ python3 -m unittest ./api_client_session.py
 # Test that autoconnect works
 curl -q -x http://localhost:8080/ http://www.lthn >/dev/null
 
+killall python3
+sleep 7
+
+EASY_FQDN=a.b.c.d WLS_CFG_DIR=/home/lvpn/easy LMGMT="/usr/src/lvpn/venv/bin/python3 /usr/src/lvpn/mgmt.py" easy-provider.sh "$@"
 

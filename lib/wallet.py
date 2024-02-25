@@ -150,7 +150,10 @@ class Wallet(Service):
                     logging.getLogger(cls.myname).error(cls.pc.communicate(input=b"\n\r\n\r", timeout=1))
                 except Exception as e:
                     logging.getLogger(cls.myname).error(e)
-            time.sleep(1)
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                return
             if Util.every_x_seconds(10):
                 sessions = Sessions()
                 in_transfers = []

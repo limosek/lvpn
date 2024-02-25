@@ -56,8 +56,7 @@ class TestWG(unittest.TestCase):
         Util.parse_args(["--wg-map-device",
                                "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"), "--enable-wg=1"])
         private = WGEngine.generate_keys()[0]
-        WGEngine.create_wg_interface(os.getenv("WG_DEV"), private=private, port=33333,
-                                     ip=ipaddress.ip_address("1.2.3.4"), ipnet=ipaddress.ip_network("1.2.3.4/24", strict=False))
+        WGEngine.create_wg_interface(os.getenv("WG_DEV"), private=private, port=33333)
 
     def InterfaceIP(self):
         Util.parse_args(["--wg-map-device",

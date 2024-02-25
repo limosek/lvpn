@@ -11,9 +11,6 @@ import logging.handlers
 import secrets
 import subprocess
 
-from lib.registry import Registry
-from lib.wg_engine import WGEngine
-
 os.environ["KIVY_NO_ARGS"] = "1"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
 # os.environ['KIVY_NO_CONSOLELOG'] = '1'  # eliminate console log
@@ -23,10 +20,8 @@ from lib.arguments import SharedArguments
 from client.http import Manager
 from lib.mngrrpc import ManagerRpcCall
 from lib.session import Session
-from lib.util import Util
 from lib.sessions import Sessions
 from lib.queue import Queue
-from lib.runcmd import RunCmd
 from lib.messages import Messages
 if "NO_KIVY" not in os.environ:
     from client.gui import GUI
@@ -36,6 +31,9 @@ from client.daemon import ClientDaemon
 from lib.vdp import VDP
 from lib.vdpobject import VDPException
 from lib.wizard import Wizard
+from client.connection import Connections
+from lib.registry import Registry
+from lib.wg_engine import WGEngine
 import lib
 
 
@@ -263,7 +261,6 @@ def main():
                 logging.getLogger("client").error(
                     "One of child process (%s,pid=%s) exited. Exiting too" % (p, processes[p].pid))
                 gui_queue.put(Messages.EXIT)
-                proxy_queue.put(Messages.EXIT)
                 wallet_queue.put(Messages.EXIT)
                 cd_queue.put(Messages.EXIT)
                 break
@@ -297,6 +294,14 @@ def main():
                 wallet_queue.put(msg)
             else:
                 logging.getLogger("client").warning("Unknown msg %s requested" % msg)
+
+    logging.getLogger().warning("Stopping all connections")
+    connections = Connections(ctrl["connections"])
+    connections.disconnect(proxy_queue)
+    proxy_queue.put(Messages.EXIT)
+
+    for iface in ctrl["wg_interfaces"]:
+        WGEngine.delete_wg_interface(iface)
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():

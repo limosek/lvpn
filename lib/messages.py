@@ -117,3 +117,4 @@ class Messages:
         ctrl["unlocked_balance"] = -1
         ctrl["wallet_height"] = -1
         ctrl["wallet_address"] = ""
+        ctrl["wg_interfaces"] = []
