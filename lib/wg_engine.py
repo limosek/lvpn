@@ -86,15 +86,29 @@ class WGEngine(Service):
                 if gateid == gid:
                     return name
             except Exception as e:
-                raise ServiceException(3, "Bad mapping for --wg-device-map")
-        return hashlib.sha1(gateid.encode("utf-8")).hexdigest()[:8]
+                raise ServiceException(3, "Bad mapping for --wg-map-name")
+        if Registry.cfg.is_client:
+            return "lvpnc_" + hashlib.sha1(gateid.encode("utf-8")).hexdigest()[:8]
+        else:
+            return "lvpns_" + hashlib.sha1(gateid.encode("utf-8")).hexdigest()[:8]
+
+    @classmethod
+    def get_private_key(cls, gateid: str):
+        for i in Registry.cfg.wg_map_privkey:
+            try:
+                (gid, key) = i.split(",")
+                if gateid == gid:
+                    return key
+            except Exception as e:
+                raise ServiceException(3, "Bad mapping for --wg-map-privkey")
+        # No predefined keys - generating
+        return cls.generate_keys()[0]
 
     @classmethod
     def save_key(cls, key: str):
         tmpfile = tempfile.mktemp("key", "wg", Registry.cfg.tmp_dir)
         with open(tmpfile, "w") as f:
             f.write(key)
-        #Util.set_key_permissions(tmpfile)
         return os.path.realpath(tmpfile)
 
     @classmethod

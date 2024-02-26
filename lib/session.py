@@ -80,7 +80,7 @@ class Session:
                 if Registry.cfg.is_server:
                     self._gate.activate_server(self)
                     self._space.activate_server(self)
-                elif Registry.cfg.is_server:
+                elif Registry.cfg.is_client:
                     self._gate.activate_client(self)
                     self._space.activate_client(self)
                 if Registry.cfg.on_session_activation:
@@ -91,6 +91,25 @@ class Session:
                 return True
             except Exception as e:
                 logging.getLogger().warning("Error activating session %s:%s" % (self.get_id(), e))
+                raise
+        else:
+            return False
+
+    def deactivate(self):
+        if self.is_active():
+            try:
+                if Registry.cfg.is_server:
+                    self._gate.deactivate_server(self)
+                    self._space.deactivate_server(self)
+                elif Registry.cfg.is_client:
+                    self._gate.deactivate_client(self)
+                    self._space.deactivate_client(self)
+                if Registry.cfg.on_session_deactivation:
+                    RunCmd.run("%s %s" % (Registry.cfg.on_session_deactivation, self.get_filename()))
+                logging.getLogger().warning("Deactivated session %s[free=%s]" % (self.get_id(), self.is_free()))
+                return True
+            except Exception as e:
+                logging.getLogger().warning("Error deactivating session %s:%s" % (self.get_id(), e))
                 raise
         else:
             return False

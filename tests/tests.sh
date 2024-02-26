@@ -19,7 +19,14 @@ fi
 
 unittest(){
   echo python3 -m unittest $1 >&2
-  python3 -m unittest $1 >$1.log 2>&1
+  if python3 -m unittest $1 >$1.log 2>&1
+  then
+    echo "OK"
+  else
+    cat $1.log
+    echo "ERROR"
+    exit 1
+  fi
 }
 
 unittest ./vdp.py
@@ -56,7 +63,7 @@ unittest ./api_server_session.py
 unittest ./api_server_vdp.py
 unittest ./api_client_session.py
 
-kill $CPID $SPID
+kill $CPID $SPID || true
 sleep 10
 
 

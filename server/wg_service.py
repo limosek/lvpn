@@ -144,7 +144,7 @@ class WGServerService(lib.wg_service.WGService):
         try:
             WGEngine.create_wg_interface(
                 cls.iface,
-                WGEngine.generate_keys()[0],
+                WGEngine.get_private_key(cls.iface),
                 port)
             WGEngine.set_wg_interface_ip(cls.iface,
                 ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),
@@ -155,3 +155,6 @@ class WGServerService(lib.wg_service.WGService):
             except ServiceException as s2:
                 raise ServiceException(4, "Cannot create WG tunnel interface: %s" % s)
             pass
+        gather = WGEngine.gather_wg_data(cls.iface)
+        if gather["iface"]["public"] != gate.get_gate_data("wg")["public_key"]:
+            raise ServiceException(10, "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (gate.get_id(), gather["iface"]["public"]))

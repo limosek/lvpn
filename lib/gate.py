@@ -2,10 +2,10 @@ import logging
 import os.path
 import socket
 import time
-
 from ownca import CertificateAuthority
 
 import client.wg_service
+import server.wg_service
 from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.util import Util
@@ -126,13 +126,7 @@ class Gateway(VDPObject):
 
     def activate_client(self, session):
         if self.get_type() == "wg":
-            if not Registry.cfg.enable_wg:
-                WGEngine.show_only = True
-                WGEngine.show_cmds = True
-                logging.error("Wireguard support disabled in config. Ignoring activation")
-                return True
-            else:
-                WGEngine.remove_peer(self.get_id(), session.get_gate_data("wg")["server_public_key"])
+            client.wg_service.WGClientService.activate_on_client(session)
 
     def activate_server(self, session):
         if self.get_type() == "ssh":
@@ -201,22 +195,16 @@ class Gateway(VDPObject):
             os.unlink(lckfile)
 
         elif self.get_type() == "wg":
-            if not Registry.cfg.enable_wg:
-                WGEngine.show_only = True
-                WGEngine.show_cmds = True
-                logging.error("Wireguard support disabled in config. Ignoring activation")
-                return True
-            else:
-                if "client_ipv4_address" in session.get_gate_data("wg"):
-                    WGEngine.add_peer(WGEngine.get_interface_name(self.get_id()),
-                                      session.get_gate_data("wg")["client_public_key"],
-                                      [session.get_gate_data("wg")["client_ipv4_address"]],
-                                      session.get_gate_data("wg")["client_endpoint"],
-                                      session.get_gate_data("wg")["psk"]
-                                      )
-                else:
-                    return False
+            server.wg_service.WGServerService.activate_on_server(session)
         return True
+
+    def deactivate_client(self, session):
+        if self.get_type() == "wg":
+            client.wg_service.WGClientService.deactivate_on_client(session)
+
+    def deactivate_server(self, session):
+        if self.get_type() == "wg":
+            server.wg_service.WGServerService.deactivate_on_server(session)
 
     def __repr__(self):
         return "Gateway %s/%s[local=%s]" % (self._data["gateid"], self._data["name"], self.is_local())

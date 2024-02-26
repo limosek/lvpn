@@ -53,7 +53,7 @@ class WGClientService(WGService):
                 try:
                     WGEngine.create_wg_interface(
                         cls.iface,
-                        WGEngine.generate_keys()[0],
+                        WGEngine.get_private_key(cls.iface),
                         port)
                     if session.get_gate_data("wg") and "client_ipv4_address" in session.get_gate_data("wg"):
                         WGEngine.set_wg_interface_ip(cls.iface,
@@ -90,6 +90,7 @@ class WGClientService(WGService):
     @classmethod
     def activate_on_client(cls, session, show_only=False):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
+        WGEngine.set_interface_ip(ifname, ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]), ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["server_public_key"],
                                 [session.get_gate()["wg"]["ipv4_network"]],

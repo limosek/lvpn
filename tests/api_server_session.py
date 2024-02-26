@@ -68,7 +68,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(j["activated"], 0)
         self.assertLess(j["created"], time.time())
         self.assertEqual(j["wg"]["client_public_key"], "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=")
-        self.assertEqual(j["wg"]["server_public_key"],  "sTqGOwJ02Mlk5zusAx3SpxrOIKdW9e/pRKfWIB0w6zM=")
+        self.assertEqual(j["wg"]["server_public_key"],  "oV6BmapVVfnFL0oKm4Ub0B7vaXwPlUZ0Y4mI+2VJxj8=")
         self.assertEqual(j["wg"]["ipv4_prefix"], 16)
         self.GetUnpaidSession(j["sessionid"])
 

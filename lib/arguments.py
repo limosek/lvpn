@@ -80,12 +80,16 @@ class SharedArguments:
                        help='Manually override wallet address url for all spaces. Used just for tests')
         p.add_argument('--on-session-activation',
                        help='External script to be run on session activation. Session file is passed as argument.')
+        p.add_argument('--on-session-deactivation',
+                       help='External script to be run on session deactivation. Session file is passed as argument.')
         p.add_argument('--unpaid-expiry', type=int, default=3600,
                        help='How long time in seconds before unpaid session is deleted')
         p.add_argument('--use-tx-pool', type=bool, default=False,
                        help='Use payments from pool (not confirmed by network) to accept payments.')
         p.add_argument('--wg-map-device', type=str, action='append', default=[],
                        help="Wireguard device map mapping gateid to device name. Use gateid,name")
+        p.add_argument('--wg-map-privkey', type=str, action='append', default=[],
+                       help="Wireguard private key mapping gateid key. Use gateid,key")
         p.add_argument('--wg-cmd-prefix', type=str, default="",
                        help="Wireguard prefix to run wg command. Can be 'sudo' or 'ssh root@server' or anything else what will be prepended before wg command.")
         if platform.system() == "Windows":

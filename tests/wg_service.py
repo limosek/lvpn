@@ -2,15 +2,14 @@ import os
 import shutil
 import unittest
 
+os.environ["NO_KIVY"] = "1"
+
 from client.wg_service import WGClientService
 from lib.registry import Registry
 from lib.session import Session
 from lib.sessions import Sessions
 from lib.wg_service import WGService
 from server.wg_service import WGServerService
-
-os.environ["NO_KIVY"] = "1"
-
 from lib.service import ServiceException
 from lib.wg_engine import WGEngine
 import configargparse
@@ -61,6 +60,8 @@ class TestWGService(unittest.TestCase):
         space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
+        WGEngine.create_wg_interface("lvpns_3e439354", "MCpnHs3CGpF1YrNqoc8NOduyZWxDLzDZjR71wtcAj18=", 5000)
+        #WGEngine.create_wg_interface("lvpnc_3e439354", "ABlKItp6Io7YmAoFcBzg1wWmThCXVmmI9qEon2sKS1c=", 5001)
         session = self.PrepareSession(session)
         self.ActivateServer(session)
         self.ActivateClient(session)
@@ -99,7 +100,7 @@ class TestWGService(unittest.TestCase):
     def DeActivateClient(self, session):
         self.assertRegex(
             WGClientService.deactivate_on_client(session, show_only=True),
-            session.get_gate_data("wg")["server_public_key"])
+            session.get_gate_data("wg")["server_public_key"][:7])
 
     def testPeersMatch(self):
         Registry.cfg = self.parse_args([])

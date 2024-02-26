@@ -123,6 +123,7 @@ class Sessions:
 
     def remove(self, session):
         if session.get_id() in self._sessions:
+            session.deactivate()
             del self._sessions[session.get_id()]
         if os.path.exists(session.get_filename()):
             os.unlink(session.get_filename())

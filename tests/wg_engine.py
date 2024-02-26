@@ -17,6 +17,7 @@ class TestWG(unittest.TestCase):
 
     def testAll(self):
         Util.parse_args(["--enable-wg=1"])
+        Registry.cfg.is_server = True
         WGEngine.show_cmds = True
         try:
             self.DestroyInterface()
@@ -50,32 +51,47 @@ class TestWG(unittest.TestCase):
         Util.parse_args(["--wg-map-device", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,test"])
         self.assertEqual(WGEngine.get_interface_name(gate.get_id()), "test")
         gate2 = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy")
-        self.assertEqual(WGEngine.get_interface_name(gate2.get_id()), hashlib.sha1(gate2.get_id().encode("utf-8")).hexdigest()[:8])
+        self.assertEqual(WGEngine.get_interface_name(gate2.get_id()),
+                         "lvpns_" + hashlib.sha1(gate2.get_id().encode("utf-8")).hexdigest()[:8])
 
     def CreateInterface(self):
+        keys = WGEngine.generate_keys()
         Util.parse_args(["--wg-map-device",
-                               "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"), "--enable-wg=1"])
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"),
+                         "--wg-map-privkey", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % keys[0],
+                         "--enable-wg=1"])
+        self.assertEqual(
+            WGEngine.get_private_key("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg"),
+            keys[0]
+        )
         private = WGEngine.generate_keys()[0]
         WGEngine.create_wg_interface(os.getenv("WG_DEV"), private=private, port=33333)
 
     def InterfaceIP(self):
         Util.parse_args(["--wg-map-device",
-                               "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"), "--enable-wg=1"])
-        WGEngine.set_interface_ip(os.getenv("WG_DEV"), ip=ipaddress.ip_address("2.2.3.4"), ipnet=ipaddress.ip_network("2.2.3.0/24"))
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"),
+                         "--enable-wg=1"])
+        WGEngine.set_interface_ip(os.getenv("WG_DEV"), ip=ipaddress.ip_address("2.2.3.4"),
+                                  ipnet=ipaddress.ip_network("2.2.3.0/24"))
 
     def AddPeer(self):
         Util.parse_args(["--wg-map-device",
-                               "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
-                                   "WG_DEV"), "--enable-wg=1"])
-        WGEngine.add_peer(os.getenv("WG_DEV"), "82/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.4"], "10.10.10.10:1111",
-                           "a8zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
-        WGEngine.add_peer(os.getenv("WG_DEV"), "83/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.5"], "10.10.10.11:1111",
-                           "a7zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
-        WGEngine.add_peer(os.getenv("WG_DEV"), "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.6"], "10.10.10.12:1111",
-                           "a5zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
+                             "WG_DEV"), "--enable-wg=1"])
+        WGEngine.add_peer(os.getenv("WG_DEV"), "82/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.4"],
+                          "10.10.10.10:1111",
+                          "a8zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
+        WGEngine.add_peer(os.getenv("WG_DEV"), "83/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.5"],
+                          "10.10.10.11:1111",
+                          "a7zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
+        WGEngine.add_peer(os.getenv("WG_DEV"), "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=", ["1.2.3.6"],
+                          "10.10.10.12:1111",
+                          "a5zIhpHsqUfawuo+x7EagPL21yzmjkrKMxPfLS5r72A=")
 
     def GatherInfo(self):
-        Util.parse_args(["--wg-map-device", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"), "--enable-wg=1"])
+        Util.parse_args(["--wg-map-device",
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv("WG_DEV"),
+                         "--enable-wg=1"])
         with self.assertRaises(ServiceException):
             WGEngine.gather_wg_data("abcd")
         info = WGEngine.gather_wg_data(os.getenv("WG_DEV"))
@@ -85,8 +101,8 @@ class TestWG(unittest.TestCase):
 
     def RemovePeer(self):
         Util.parse_args(["--wg-map-device",
-                               "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
-                                   "WG_DEV"), "--enable-wg=1"])
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
+                             "WG_DEV"), "--enable-wg=1"])
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
         WGEngine.remove_peer(gate.get_id(), "82/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk=")
         info = WGEngine.gather_wg_data(gate.get_id())
@@ -96,8 +112,8 @@ class TestWG(unittest.TestCase):
 
     def DestroyInterface(self):
         Util.parse_args(["--wg-map-device",
-                               "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
-                                   "WG_DEV"), "--enable-wg=1"])
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,%s" % os.getenv(
+                             "WG_DEV"), "--enable-wg=1"])
         WGEngine.delete_wg_interface(os.getenv("WG_DEV"))
 
 

@@ -48,6 +48,13 @@ def cleanup(queues, processes):
 
 
 def main():
+    def refresh_sessions():
+        while not should_exit:
+            sessions = Sessions()
+            sessions.refresh_status()
+            logging.warning(repr(sessions))
+            time.sleep(10)
+
     if not os.getenv("WLS_CFG_DIR"):
         os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
     if not os.getenv("WLS_VAR_DIR"):
@@ -153,10 +160,10 @@ def main():
     manager.start()
     processes["manager"] = manager
 
+    should_exit = False
     refresh = threading.Thread(target=refresh_sessions)
     refresh.start()
 
-    should_exit = False
     while not should_exit:
         logging.getLogger("server").debug("Main loop")
         for p in processes.keys():
@@ -197,14 +204,6 @@ def main():
 
     refresh.join()
     cleanup(queues, processes)
-
-
-def refresh_sessions():
-    while True:
-        sessions = Sessions()
-        sessions.refresh_status()
-        logging.warning(repr(sessions))
-        time.sleep(10)
 
 
 # Run the Flask application

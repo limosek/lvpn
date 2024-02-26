@@ -44,5 +44,11 @@ class Space(VDPObject):
     def activate_server(self, session):
         return True
 
+    def deactivate_client(self, session):
+        pass
+
+    def deactivate_server(self, session):
+        return True
+
     def __repr__(self):
         return "Space %s/%s[local=%s]" % (self._data["spaceid"], self._data["name"], self.is_local())
