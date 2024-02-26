@@ -84,6 +84,7 @@ class WGEngine(Service):
             try:
                 (gid, name) = i.split(",")
                 if gateid == gid:
+                    cls.log_warning("Using manually configured wg interface name: %s -> %s" % (gateid, name))
                     return name
             except Exception as e:
                 raise ServiceException(3, "Bad mapping for --wg-map-name")
@@ -98,10 +99,12 @@ class WGEngine(Service):
             try:
                 (gid, key) = i.split(",")
                 if gateid == gid:
+                    cls.log_warning("Using manually configured wg private key: %s -> %s..." % (gateid, key[:3]))
                     return key
             except Exception as e:
                 raise ServiceException(3, "Bad mapping for --wg-map-privkey")
         # No predefined keys - generating
+        cls.log_warning("Generating new WG interface key for %s" % gateid)
         return cls.generate_keys()[0]
 
     @classmethod

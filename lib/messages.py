@@ -72,9 +72,12 @@ class Messages:
 
     @classmethod
     def get_msg_data(cls, msg):
-        tdata = msg.split(":")[1].encode("utf-8")
-        data = codecs.decode(tdata, "base64")
-        data = pickle.loads(data)
+        if len(msg.split(":")) > 1:
+            tdata = msg.split(":")[1].encode("utf-8")
+            data = codecs.decode(tdata, "base64")
+            data = pickle.loads(data)
+        else:
+            data = None
         return data
 
     @classmethod

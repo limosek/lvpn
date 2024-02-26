@@ -144,7 +144,7 @@ class WGServerService(lib.wg_service.WGService):
         try:
             WGEngine.create_wg_interface(
                 cls.iface,
-                WGEngine.get_private_key(cls.iface),
+                WGEngine.get_private_key(gate.get_id()),
                 port)
             WGEngine.set_wg_interface_ip(cls.iface,
                 ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),

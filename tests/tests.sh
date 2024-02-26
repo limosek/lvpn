@@ -46,6 +46,7 @@ cp -R $PYTHONPATH/config/* ./scfg/
 echo $PYTHONPATH/server.py >&2
 python3 $PYTHONPATH/server.py --manager-local-bind=0.0.0.0 --enable-wg=1 -l INFO --my-providers-dir=$PYTHONPATH/config/providers --my-spaces-dir=$PYTHONPATH/config/spaces --my-gates-dir=$PYTHONPATH/config/gates >server.log 2>&1 &
 SPID=$!
+echo "Server PID: $SPID"
 while ! curl -q http://127.0.0.1:8123
 do
   sleep 1
@@ -54,6 +55,7 @@ done
 echo $PYTHONPATH/client.py >&2
 python3 $PYTHONPATH/client.py -l INFO --manager-local-bind=0.0.0.0 --enable-wg=1 --force-manager-url=http://127.0.0.1:8123/ --run-wallet=0 --run-gui=0 --auto-connect="" >client.log 2>&1  &
 CPID=$!
+echo "Client PID: $CPID"
 while ! curl -q http://127.0.0.1:8124
 do
   sleep 1
@@ -63,7 +65,17 @@ unittest ./api_server_session.py
 unittest ./api_server_vdp.py
 unittest ./api_client_session.py
 
-kill $CPID $SPID || true
+if ! kill $CPID
+then
+  cat client.log
+  exit 2
+fi
+if ! kill $SPID
+then
+  cat server.log
+  exit 2
+fi
+
 sleep 10
 
 

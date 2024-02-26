@@ -53,7 +53,7 @@ class WGClientService(WGService):
                 try:
                     WGEngine.create_wg_interface(
                         cls.iface,
-                        WGEngine.get_private_key(cls.iface),
+                        WGEngine.get_private_key(session.get_gate().get_id()),
                         port)
                     if session.get_gate_data("wg") and "client_ipv4_address" in session.get_gate_data("wg"):
                         WGEngine.set_wg_interface_ip(cls.iface,

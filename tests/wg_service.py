@@ -53,14 +53,14 @@ class TestWGService(unittest.TestCase):
         return cfg
 
     def testAll(self):
-        Registry.cfg = self.parse_args([])
+        Registry.cfg = self.parse_args(["--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY="])
         Registry.vdp = VDP()
         WGEngine.show_cmds = True
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
         space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
-        WGEngine.create_wg_interface("lvpns_3e439354", "MCpnHs3CGpF1YrNqoc8NOduyZWxDLzDZjR71wtcAj18=", 5000)
+        WGEngine.create_wg_interface("lvpns_3e439354", WGEngine.get_private_key(gate.get_id()), 5000)
         #WGEngine.create_wg_interface("lvpnc_3e439354", "ABlKItp6Io7YmAoFcBzg1wWmThCXVmmI9qEon2sKS1c=", 5001)
         session = self.PrepareSession(session)
         self.ActivateServer(session)
