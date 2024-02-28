@@ -46,7 +46,7 @@ class WGEngine(Service):
             raise ServiceException(2, str(e))
 
     @classmethod
-    def replace_macros(cls, txt, iface="", af="", ip="", mask="", prefixlen="", fname=""):
+    def replace_macros(cls, txt, iface="", af="", ip="", mask="", prefixlen="", fname="", network="", gw=""):
         return txt.replace(
             "{iface}", iface
         ).replace(
@@ -59,6 +59,10 @@ class WGEngine(Service):
             "{prefixlen}", prefixlen
         ).replace(
             "{fname}", fname
+        ).replace(
+            "{network}", network
+        ).replace(
+            "{gw}", gw
         )
 
     @classmethod
@@ -144,8 +148,8 @@ ListenPort = {port}
                     )))
                 time.sleep(4)
             else:
-                cls.log_error("Cannot create WG interface - missing wg_cmd_create_interface")
-                raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_create_interface")
+                cls.log_error("Not creating WG interface - missing wg_cmd_create_interface")
+
         else:
             if Registry.cfg.wg_cmd_create_interface:
                 wgargs = shlex.split(
@@ -162,12 +166,19 @@ ListenPort = {port}
                         "private-key", cls.save_key(private)
                     ]
                     cls.wg_run_cmd(*setargs)
-
+                    cls.set_interface_up(name)
                 except Exception as e:
                     raise ServiceException(2, str(e))
             else:
-                cls.log_error("Cannot create WG interface - missing wg_cmd_create_interface")
-                raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_create_interface")
+                cls.log_error("Not creating WG interface - missing wg_cmd_create_interface")
+
+    @classmethod
+    def set_interface_up(cls, name):
+        if Registry.cfg.wg_cmd_set_interface_up:
+            cls.wg_run_cmd(
+                *shlex.split(cls.replace_macros(
+                    Registry.cfg.wg_cmd_set_interface_up, iface=name
+                )))
 
     @classmethod
     def set_wg_interface_ip(cls, name, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
@@ -195,6 +206,24 @@ ListenPort = {port}
         else:
             cls.log_error("Cannot create WG interface - missing wg_cmd_delete_interface")
             raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_delete_interface")
+
+    @classmethod
+    def add_route(cls, iface, ipnet, gw):
+        ipn = ipaddress.ip_network(ipnet)
+        if Registry.cfg.wg_cmd_route:
+            wgargs = shlex.split(
+                cls.replace_macros(
+                    Registry.cfg.wg_cmd_route, iface=iface, network=str(ipnet), gw=gw, mask=str(ipn.netmask)
+                ))
+            try:
+                ret = cls.wg_run_cmd(*wgargs)
+                return ret
+            except Exception as e:
+                raise ServiceException(2, str(e))
+        else:
+            cls.log_error("Cannot add route - missing wg_cmd_route")
+            #raise ServiceException(3, "Cannot add route - missing wg_cmd_route")
+
 
     @classmethod
     def parse_show_dump(cls, dump):

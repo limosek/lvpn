@@ -11,7 +11,7 @@
     "per-day": 0
   },
   "http-proxy": {
-    "host": "freeproxy.lthn",
+    "host": "172.31.111.24",
     "port": 8888,
     "tls": false
   },

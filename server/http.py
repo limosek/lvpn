@@ -194,6 +194,8 @@ def post_session():
     else:
         session = Session()
         session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
+        if session.is_free() and session.days_left() > Registry.cfg.max_free_session_days:
+            return make_response(463, "No permission for free service and %s days", "too-many-days-for-free-service: %s" % request.openapi.body["days"])
         if gate.get_type() == "wg":
             if "wg" in request.openapi.body:
                 WGServerService.prepare_server_session(session, request.openapi.body["wg"])

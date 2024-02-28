@@ -16,10 +16,11 @@ class TestClientAPI(unittest.TestCase):
             data=json.dumps({
                 "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
                 "spaceid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free",
-                "days": 30
+                "days": 1
             }),
             headers={"Content-Type": "application/json"}
         )
+        print(r.text)
         self.assertEqual(r.status_code, 200)
         j = json.loads(r.text)
         self.assertEqual(j["price"], 0)

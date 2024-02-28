@@ -18,7 +18,7 @@ class TestAPI(unittest.TestCase):
             data=json.dumps({
                 "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
                 "spaceid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free",
-                "days": 30
+                "days": 1
             }),
             headers={"Content-Type": "application/json"}
         )
@@ -28,6 +28,18 @@ class TestAPI(unittest.TestCase):
         self.assertGreater(j["activated"], 0)
         self.assertLess(j["created"], time.time())
         self.GetPaidSession(j["sessionid"])
+
+    def testCreateLongerFreeSession(self):
+        r = requests.post(
+            os.environ["MANAGER_URL"] + "/api/session",
+            data=json.dumps({
+                "gateid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
+                "spaceid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free",
+                "days": 30
+            }),
+            headers={"Content-Type": "application/json"}
+        )
+        self.assertEqual(r.status_code, 463)
 
     def testCreatePaidSession(self):
         r = requests.post(

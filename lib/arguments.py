@@ -95,17 +95,25 @@ class SharedArguments:
         if platform.system() == "Windows":
             p.add_argument('--wg-cmd-set-ip', type=str, default="netsh interface ipv4 set address name={iface} static {ip} {mask}",
                            help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-set-interface-up', type=str, default=None,
+                           help="Wireguard command to set interface up")
             p.add_argument('--wg-cmd-create-interface', type=str, default='"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "{fname}"',
                            help="Wireguard command to create interface. Default to not manage interfaces")
             p.add_argument('--wg-cmd-delete-interface', type=str, default='"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice "{iface}"',
                            help="Wireguard command to delete interface. Default to not manage interfaces")
+            p.add_argument('--wg-cmd-route', type=str, default="route add {network} MASK {mask} {gw}",
+                           help="Wireguard command to route network.")
         else:
             p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{mask}",
                        help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-set-interface-up', type=str, default="ip link set up dev {iface}",
+                           help="Wireguard command to set interface up")
             p.add_argument('--wg-cmd-create-interface', type=str, default="ip link add dev {iface} type wireguard",
-                       help="Wireguard command to create interface. Default to not manage interfaces")
+                       help="Wireguard command to create interface.")
             p.add_argument('--wg-cmd-delete-interface', type=str, default="ip link del dev {iface}",
-                       help="Wireguard command to delete interface. Default to not manage interfaces")
+                       help="Wireguard command to delete interface.")
+            p.add_argument('--wg-cmd-route', type=str, default="ip route add {network} via {gw}",
+                           help="Wireguard command to route network.")
 
         p.add_argument("--enable-wg", type=int, choices=[0, 1], help="Enable wireguard support", default=0)
 

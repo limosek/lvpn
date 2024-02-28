@@ -11,7 +11,7 @@
     "per-day": 0
   },
   "daemon-rpc-proxy": {
-    "host": "daemon.lthn",
+    "host": "172.31.129.19",
     "port": 48782,
     "tls": false
   },

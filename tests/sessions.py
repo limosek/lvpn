@@ -104,17 +104,17 @@ class TestSessions(unittest.TestCase):
         sessions = Sessions()
         parent = Session()
         parent.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
-                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
         parent.save()
         self.assertTrue(bool(parent.get_gate_data("ssh")))
         child = Session()
         child.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
-                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
         child.set_parent(parent.get_id())
         child.save()
         child2 = Session()
         child2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls",
-                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
         child2.set_parent(parent.get_id())
         child2.save()
         self.assertFalse(bool(child.get_gate_data("proxy")))
@@ -277,7 +277,7 @@ class TestSessions(unittest.TestCase):
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
-                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
             sessions.add(session)
             time.sleep(0.1)
         ctrl["generate_paid_free_socks"] = sessions
@@ -290,7 +290,7 @@ class TestSessions(unittest.TestCase):
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
-                             "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", i)
+                             "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
             sessions.add(session)
             time.sleep(0.1)
         ctrl["generate_paid_free_ssh"] = sessions

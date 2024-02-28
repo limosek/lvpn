@@ -27,5 +27,9 @@ class ServerArguments:
                        default=cfgdir + "/ssh-host-ca.pub")
         p.add_argument("--ssh-user-key", help="SSH User key",
                        default=cfgdir + "/ssh-user")
+        p.add_argument("--ignore-wg-key-mismatch", type=int, help="Ignore bad public/private keys. Mostly for testing",
+                       default=0, choices=[0, 1])
+        p.add_argument("--max-free-session-days", type=int, help="Maximum length of free session in days",
+                       default=1)
 
         return p

@@ -241,7 +241,7 @@ def main():
                         try:
                             gate = cfg.vdp.get_gate(gateid)
                             space = cfg.vdp.get_space(spaceid)
-                            session = Session(mr.create_session(gate, space, 30))
+                            session = Session(mr.create_session(gate, space))
                             sessions.add(session)
                             proxy_queue.put(Messages.connect(session))
                         except Exception as e:

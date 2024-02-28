@@ -69,7 +69,7 @@ class TestConnections(unittest.TestCase):
         sessions.add(session1)
         session2 = Session()
         session2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
-                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
+                         "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 1)
         session2.save()
         sessions.add(session1)
 

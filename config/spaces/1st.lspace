@@ -5,7 +5,7 @@
   "providerid": "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091",
   "name": "1st Lethean Space",
   "description": "First Lethean Space used for testing and Proof of concept",
-  "ips": ["172.31.129.0/24"],
+  "ips": ["172.31.129.0/24", "172.31.111.0/24", "172.31.129.0/24"],
   "dns_servers": ["172.31.129.16"],
   "price": {
     "per-day": 100

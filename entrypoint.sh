@@ -17,7 +17,7 @@ client|lvpnc)
   mkdir -p "$WLC_CFG_DIR"
   shift
   echo "Starting client:" lvpnc $LVPNC_ARGS $CARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
-  lvpnc $LVPNC_ARGS $ARGS $CARGS --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
+  lvpnc $LVPNC_ARGS $ARGS $CARGS --enable-wg=1 --wg-cmd-prefix=sudo --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 "$@"
   ;;
 
 server|lvpns)

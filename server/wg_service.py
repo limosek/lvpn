@@ -156,5 +156,6 @@ class WGServerService(lib.wg_service.WGService):
                 raise ServiceException(4, "Cannot create WG tunnel interface: %s" % s)
             pass
         gather = WGEngine.gather_wg_data(cls.iface)
-        if gather["iface"]["public"] != gate.get_gate_data("wg")["public_key"]:
-            raise ServiceException(10, "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (gate.get_id(), gather["iface"]["public"]))
+        if not Registry.cfg.ignore_wg_key_mismatch:
+            if gather["iface"]["public"] != gate.get_gate_data("wg")["public_key"]:
+                raise ServiceException(10, "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (gate.get_id(), gather["iface"]["public"]))

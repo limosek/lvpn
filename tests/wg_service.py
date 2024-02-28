@@ -53,7 +53,10 @@ class TestWGService(unittest.TestCase):
         return cfg
 
     def testAll(self):
-        Registry.cfg = self.parse_args(["--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY="])
+        Registry.cfg = self.parse_args(
+            ["--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY=",
+             "--wg-cmd-route", ""
+             ])
         Registry.vdp = VDP()
         WGEngine.show_cmds = True
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")

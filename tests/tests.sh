@@ -24,6 +24,8 @@ unittest(){
     echo "OK"
   else
     cat $1.log
+    cat server.log || true
+    cat client.log || true
     echo "ERROR"
     exit 1
   fi
@@ -44,7 +46,7 @@ mkdir -p ./scfg ./ccfg ./svar ./cvar
 cp -R $PYTHONPATH/config/* ./scfg/
 
 echo $PYTHONPATH/server.py >&2
-python3 $PYTHONPATH/server.py --manager-local-bind=0.0.0.0 --enable-wg=1 -l INFO --my-providers-dir=$PYTHONPATH/config/providers --my-spaces-dir=$PYTHONPATH/config/spaces --my-gates-dir=$PYTHONPATH/config/gates >server.log 2>&1 &
+python3 $PYTHONPATH/server.py --ignore-wg-key-mismatch=1 --manager-local-bind=0.0.0.0 --enable-wg=1 -l INFO --my-providers-dir=$PYTHONPATH/config/providers --my-spaces-dir=$PYTHONPATH/config/spaces --my-gates-dir=$PYTHONPATH/config/gates >server.log 2>&1 &
 SPID=$!
 echo "Server PID: $SPID"
 while ! curl -q http://127.0.0.1:8123

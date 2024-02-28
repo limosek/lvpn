@@ -15,6 +15,7 @@ class Session:
 
     def __init__(self, data=None):
         self._data = data
+        self._auto_pay = False
         if data:
             if "gateid" in data:
                 self._gate = Registry.vdp.get_gate(data["gateid"])
@@ -26,12 +27,13 @@ class Session:
                     and not self.is_active():
                 self.activate()
 
-    def generate(self, gateid, spaceid, days):
+    def generate(self, gateid: str, spaceid: str, days: int = None):
         if not Registry.vdp.get_space(spaceid):
             raise VDPException("Unknown space %s" % spaceid)
         if not Registry.vdp.get_gate(gateid):
             raise VDPException("Unknown gate %s" % gateid)
-        price = (Registry.vdp.get_space(spaceid).get_price() + Registry.vdp.get_gate(gateid).get_price()) * days
+        self._gate = Registry.vdp.get_gate(gateid)
+        self._space = Registry.vdp.get_space(spaceid)
         self._data = {
             "sessionid": "s-" + secrets.token_hex(8),
             "spaceid": spaceid,
@@ -42,20 +44,34 @@ class Session:
             "password": secrets.token_hex(10),
             "bearer": "b-" + secrets.token_hex(12),
             "wallet": Registry.vdp.get_space(spaceid).get_wallet(),
-            "days": int(days),
             "expires": int(time.time()) + Registry.cfg.unpaid_expiry,
             "paid": False,
             "payments": [],
             "activated": 0,
-            "price": price,
             "payment_sent": False
         }
-        self._gate = Registry.vdp.get_gate(gateid)
-        self._space = Registry.vdp.get_space(spaceid)
+
         if self.is_free():
+            if not days:
+                self._data["days"] = Registry.cfg.free_session_days
+            else:
+                self._data["days"] = days
+            self._data["price"] = 0
             if self._gate.get_type() not in ["wg"]:
                 self.activate()
             self.payment_sent("Zero-Free-payment")
+        else:
+            if not days:
+                if Registry.cfg.auto_pay_days:
+                    self._data["days"] = Registry.cfg.auto_pay_days
+                    self._auto_pay = True
+                else:
+                    raise Exception("This service needs to be paid and auto_pay_days is not set.")
+            else:
+                self._data["days"] = int(days)
+            self._data["price"] = (
+                                    Registry.vdp.get_space(spaceid).get_price()
+                                    + Registry.vdp.get_gate(gateid).get_price()) * self._data["days"]
 
     def reuse(self, days):
         price = (self._space.get_price() + self._gate.get_price()) * days
@@ -147,6 +163,9 @@ class Session:
     def get_activation(self):
         return self._data["activated"]
 
+    def should_auto_pay(self):
+        return self._auto_pay
+
     def add_payment(self, amount, height, txid):
         payment = {"amount": amount, "height": height, "txid": txid}
         for p in self._data["payments"]:
@@ -177,7 +196,7 @@ class Session:
         return self._data["paid"]
 
     def is_free(self):
-        return self.get_price() == 0
+        return (self._space.get_price() + self._gate.get_price()) == 0
 
     def is_active(self):
         return self._data["activated"] != 0
@@ -215,6 +234,9 @@ class Session:
 
     def is_for_space(self, spaceid):
         return self._space.get_id() == spaceid
+
+    def days(self):
+        return self._data["days"]
 
     def days_left(self):
         seconds = (self._data["expires"] - time.time())

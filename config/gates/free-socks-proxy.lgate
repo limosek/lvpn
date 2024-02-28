@@ -11,7 +11,7 @@
     "per-day": 0.0
   },
   "socks-proxy": {
-    "host": "freesocks.lthn",
+    "host": "172.31.111.22",
     "port": 1080,
     "tls": false
   },

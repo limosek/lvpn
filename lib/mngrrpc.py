@@ -3,6 +3,7 @@ import requests
 import json
 
 from lib.gate import Gateway
+from lib.registry import Registry
 from lib.service import ServiceException
 from lib.session import Session
 from lib.space import Space
@@ -32,12 +33,12 @@ class ManagerRpcCall:
             logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
             return False
 
-    def create_session(self, gate: Gateway, space: Space, days: int):
+    def create_session(self, gate: Gateway, space: Space, days: int = None):
         session = Session()
-        session.generate(gate.get_id(), space.get_id(), 1)
+        session.generate(gate.get_id(), space.get_id(), days)
         # Create fake session just for initializing data
-        data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": days}
-        if gate.get_type() == "wg":
+        data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": session.days()}
+        if gate.get_type() == "wg" and Registry.cfg.enable_wg:
                 data[gate.get_type()] = gate.get_prepare_data(session)
         r = requests.post(
             self._baseurl + "/api/session",

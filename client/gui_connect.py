@@ -82,7 +82,7 @@ class Connect(GridLayout):
             try:
                 gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
                 space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-                session = Session(mr.create_session(gate, space, 30))
+                session = Session(mr.create_session(gate, space))
                 session.save()
                 client.gui.GUI.queue.put(Messages.connect(session))
             except requests.exceptions.RequestException as e:
