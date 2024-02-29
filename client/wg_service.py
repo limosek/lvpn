@@ -39,16 +39,18 @@ class WGClientService(WGService):
         except ServiceException as e:
             pass
         cls.setup_interface_client(cls.session)
-        print("aaaaaaaaaaaaaaa")
         cls.gathered = WGEngine.gather_wg_data(cls.iface)
-        print("bbbbbbbbbbbbbbb")
         mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
-        print("ccccccccccccccc")
         cls.session = Session(mr.create_session(cls.gate, cls.space,
                               prepare_data={"wg": cls.gate.get_prepare_data()}))
-        print("dddddddddddddddddd")
         cls.session.save()
         cls.queue.put(Messages.connect(cls.session))
+        for g in cls.gate["gates"]:
+            gobj = Registry.vdp.get_gate(g)
+            session = Session()
+            session.generate(g, cls.space.get_id(), 1)
+            session.save()
+            cls.queue.put(Messages.connect(session))
 
     @classmethod
     def setup_interface_client(cls, session):
@@ -109,14 +111,16 @@ class WGClientService(WGService):
         except ServiceException as e:
             cls.log_error("Error assigning IP: %s" % str(e))
         WGEngine.set_interface_up(ifname)
+        nets = [session.get_gate()["wg"]["ipv4_network"]]
         for ipnet in session.get_space()["ips"]:
             try:
+                nets.append(ipnet)
                 WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
             except ServiceException as e:
                 cls.log_error("Error adding route: %s" % str(e))
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["server_public_key"],
-                                [session.get_gate()["wg"]["ipv4_network"]],
+                                 nets,
                                  session.get_gate()["wg"]["endpoint"],
                                  session.get_gate_data("wg")["psk"], show_only=show_only)
 

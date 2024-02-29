@@ -29,7 +29,12 @@ class Gateway(VDPObject):
         return self.get_provider_id() + "." + self._data["gateid"]
 
     def get_ca(self):
-        return self.get_provider().get_ca()
+        if self.get_gate_data(self.get_type()) \
+                and "tls" in self.get_gate_data(self.get_type()) \
+                and not self.get_gate_data(self.get_type())["tls"]:
+            return None
+        else:
+            return self.get_provider().get_ca()
 
     def set_provider(self, provider):
         self._provider = provider

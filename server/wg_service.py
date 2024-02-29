@@ -90,7 +90,7 @@ class WGServerService(lib.wg_service.WGService):
                                  session.get_gate_data("wg")["client_public_key"],
                                 [session.get_gate_data("wg")["client_ipv4_address"]],
                                  session.get_gate_data("wg")["client_endpoint"],
-                                 session.get_gate_data("wg")["psk"], show_only=show_only)
+                                 session.get_gate_data("wg")["psk"], keepalive=0, show_only=show_only)
 
     @classmethod
     def deactivate_on_server(cls, session, show_only=False):

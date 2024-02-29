@@ -53,7 +53,7 @@ class Sessions:
                         s = Session(data)
                         self.update(s)
                     else:
-                        logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
+                        logging.getLogger().warning("Session %s is not anymore on server." % (s.get_id()))
                         #self.remove(s)
                 except Exception as e:
                     pass

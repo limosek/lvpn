@@ -146,34 +146,41 @@ class TLSProxy(Service):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
             s.connect(endpoint)
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.load_cert_chain(cls.crtfile, cls.keyfile)
-        ctx.load_verify_locations(cadata=ca)
-        ctx.set_ciphers("HIGH")
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_REQUIRED
-        client = ctx.wrap_socket(s)
+        if ca:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.load_cert_chain(cls.crtfile, cls.keyfile)
+            ctx.load_verify_locations(cadata=ca)
+            ctx.set_ciphers("HIGH")
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_REQUIRED
+            client = ctx.wrap_socket(s)
+        else:
+            client = s
         return client
 
     @classmethod
-    def prepare(cls, session: Session, directory: str):
-        proxydata = session.get_gate_data("proxy")
-        if proxydata:
-            keyfile = "%s/rsa_%s.pem" % (directory, session.get_id())
-            crtfile = "%s/rsa_%s.crt" % (directory, session.get_id())
-            if os.path.exists(keyfile):
-                os.unlink(keyfile)
-            with open(keyfile, "w") as f:
-                f.write(proxydata["key"])
-            Util.set_key_permissions(keyfile)
-            with open(crtfile, "w") as f:
-                f.write(proxydata["crt"])
-            cls.keyfile = keyfile
-            cls.crtfile = crtfile
+    def prepare(cls, session: Session, directory: str, ca: str):
+        if ca:
+            proxydata = session.get_gate_data("proxy")
+            if proxydata:
+                keyfile = "%s/rsa_%s.pem" % (directory, session.get_id())
+                crtfile = "%s/rsa_%s.crt" % (directory, session.get_id())
+                if os.path.exists(keyfile):
+                    os.unlink(keyfile)
+                with open(keyfile, "w") as f:
+                    f.write(proxydata["key"])
+                Util.set_key_permissions(keyfile)
+                with open(crtfile, "w") as f:
+                    f.write(proxydata["crt"])
+                cls.keyfile = keyfile
+                cls.crtfile = crtfile
+                return True
+            else:
+                cls.log_error("Missing Proxy data for session %s" % session.get_id())
+                cls.queue.put(Messages.gui_popup("Missing Proxy data for session %s" % session.get_id()))
+                raise ServiceException(2, "Missing Proxy data for session %s" % session.get_id())
         else:
-            cls.log_error("Missing Proxy data for session %s" % session.get_id())
-            cls.queue.put(Messages.gui_popup("Missing Proxy data for session %s" % session.get_id()))
-            raise ServiceException(2, "Missing Proxy data for session %s" % session.get_id())
+            return True
 
     @classmethod
     def postinit(cls):
@@ -182,7 +189,7 @@ class TLSProxy(Service):
         sessionid = cls.kwargs["sessionid"]
         sessions = Sessions()
         session = sessions.get(sessionid)
-        cls.prepare(session, Registry.cfg.tmp_dir)
+        cls.prepare(session, Registry.cfg.tmp_dir, cls.kwargs["ca"])
         cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
 
     @classmethod

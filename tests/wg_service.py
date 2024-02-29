@@ -77,7 +77,7 @@ class TestWGService(unittest.TestCase):
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
         })
         self.assertEqual(session.get_gate_data("wg")["dns"], ["172.31.129.16"])
-        self.assertEqual(session.get_gate_data("wg")["client_ipv4_address"], "10.169.0.2")
+        self.assertEqual(session.get_gate_data("wg")["client_ipv4_address"], "250.1.0.2")
         WGServerService.prepare_server_session(session, {
             "endpoint": "abcd:123",
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
@@ -88,12 +88,12 @@ class TestWGService(unittest.TestCase):
     def ActivateServer(self, session):
         self.assertRegex(
             WGServerService.activate_on_server(session, show_only=True),
-            "10.169.0.2")
+            "250.1.0.2")
 
     def ActivateClient(self, session):
         self.assertRegex(
             WGClientService.activate_on_client(session, show_only=True),
-            "10.169.0.0/16")
+            "250.1.0.0/16")
 
     def DeActivateServer(self, session):
         self.assertRegex(

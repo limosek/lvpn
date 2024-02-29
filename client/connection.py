@@ -138,22 +138,6 @@ class Connection:
                 except requests.RequestException as e:
                     logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
                     return False
-            elif self.get_gate().get_type() == "wg":
-                if Registry.enable_wg:
-                    try:
-                        result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2)
-                        print(result)
-                        if result.is_alive:
-                            return True
-                        else:
-                            logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), result))
-                            return False
-                    except Exception as e:
-                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
-                        return False
-                else:
-                    logging.getLogger("proxy").error("Connection %s is not alive: Wireguard support disabled" % (self.get_id()))
-                    return False
             else:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(5)
@@ -166,6 +150,23 @@ class Connection:
                 except Exception as e:
                     logging.getLogger().error("Connection %s is dead: %s" % (self.get_id(), e))
                     return False
+
+        elif self.get_gate().get_type() == "wg":
+            if Registry.enable_wg:
+                try:
+                    result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2)
+                    if result.is_alive:
+                        return True
+                    else:
+                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), result))
+                        return False
+                except Exception as e:
+                    logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                    return False
+            else:
+                logging.getLogger("proxy").error("Connection %s is not alive: Wireguard support disabled" % (self.get_id()))
+                return False
+
         return True
 
     def disconnect(self, queue):
