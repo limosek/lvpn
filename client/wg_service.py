@@ -29,14 +29,26 @@ class WGClientService(WGService):
     @classmethod
     def postinit(cls):
         if not Registry.cfg.enable_wg:
-            WGEngine.show_cmds = True
-            WGEngine.show_only = True
-        sessions = Sessions(noload=True)
-        cls.session = sessions.get(cls.kwargs["sessionid"])
-        if cls.session:
-            cls.setup_interface_client(cls.session)
-        else:
-            raise ServiceException(5, "Missing session!")
+            return False
+        cls.session = cls.kwargs["session"]
+        cls.gate = cls.kwargs["gate"]
+        cls.space = cls.kwargs["space"]
+        cls.iface = WGEngine.get_interface_name(cls.gate.get_id())
+        try:
+            cls.deactivate_interface_client()
+        except ServiceException as e:
+            pass
+        cls.setup_interface_client(cls.session)
+        print("aaaaaaaaaaaaaaa")
+        cls.gathered = WGEngine.gather_wg_data(cls.iface)
+        print("bbbbbbbbbbbbbbb")
+        mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
+        print("ccccccccccccccc")
+        cls.session = Session(mr.create_session(cls.gate, cls.space,
+                              prepare_data={"wg": cls.gate.get_prepare_data()}))
+        print("dddddddddddddddddd")
+        cls.session.save()
+        cls.queue.put(Messages.connect(cls.session))
 
     @classmethod
     def setup_interface_client(cls, session):
@@ -44,7 +56,6 @@ class WGClientService(WGService):
             cls.log_error("Wireguard not enabled. Ignoring activation")
             return False
         gate = session.get_gate()
-        cls.iface = WGEngine.get_interface_name(gate.get_id())
         port = Util.find_free_port(af="udp")
         if not Registry.cfg.enable_wg:
             cls.log_error("Wireguard disabled! Returning fake connection")
@@ -74,13 +85,11 @@ class WGClientService(WGService):
         WGEngine.delete_wg_interface(cls.iface)
 
     @classmethod
-    def prepare_session_request(cls, session: Session):
+    def prepare_session_request(cls):
         if not Registry.cfg.enable_wg:
             cls.log_error("Wireguard not enabled. Ignoring activation")
             return False
-        iname = WGEngine.get_interface_name(session.get_gate().get_id())
-        cls.setup_interface_client(session)
-        gathered = WGEngine.gather_wg_data(iname)
+        gathered = WGEngine.gather_wg_data(cls.iface)
         if gathered:
             data = {
                 "endpoint": "dynamic",
@@ -95,10 +104,16 @@ class WGClientService(WGService):
         if not Registry.cfg.enable_wg:
             cls.log_error("Wireguard not enabled. Ignoring activation")
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
-        WGEngine.set_interface_ip(ifname, ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]), ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+        try:
+            WGEngine.set_interface_ip(ifname, ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]), ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+        except ServiceException as e:
+            cls.log_error("Error assigning IP: %s" % str(e))
         WGEngine.set_interface_up(ifname)
         for ipnet in session.get_space()["ips"]:
-            WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
+            try:
+                WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
+            except ServiceException as e:
+                cls.log_error("Error adding route: %s" % str(e))
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["server_public_key"],
                                 [session.get_gate()["wg"]["ipv4_network"]],

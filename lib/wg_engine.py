@@ -157,7 +157,11 @@ ListenPort = {port}
                         Registry.cfg.wg_cmd_create_interface, iface=name
                     ))
                 try:
-                    cls.wg_run_cmd(*wgargs)
+                    try:
+                        cls.wg_run_cmd(*wgargs)
+                    except ServiceException as e:
+                        """Assuming that interface already exists"""
+                        pass
                     setargs = [
                         "wg",
                         "set",
@@ -223,7 +227,6 @@ ListenPort = {port}
         else:
             cls.log_error("Cannot add route - missing wg_cmd_route")
             #raise ServiceException(3, "Cannot add route - missing wg_cmd_route")
-
 
     @classmethod
     def parse_show_dump(cls, dump):
@@ -301,6 +304,7 @@ ListenPort = {port}
             args.extend(["endpoint", endpoint])
         if preshared:
             args.extend(["preshared-key", cls.save_key(preshared)])
+        logging.getLogger("audit").debug("Adding peer %s/%s" % (iname, public))
         return cls.wg_run_cmd(*args, show_only=show_only)
 
     @classmethod
@@ -313,6 +317,7 @@ ListenPort = {port}
             public,
             "remove"
         ]
+        logging.getLogger("audit").debug("Removing peer %s/%s" % (iname, public))
         return cls.wg_run_cmd(*args, show_only=show_only)
 
     @classmethod

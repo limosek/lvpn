@@ -14,6 +14,7 @@ class SharedArguments:
                        default='INFO',
                        env_var=env_prefix + '_LOGLEVEL')
         p.add_argument("--log-file", help="Log file")
+        p.add_argument("--audit-file", help="Audit file for storing all payments and transactions")
 
         if mode == "client":
             p.add_argument("--http-port", help="HTTP port to use for manager", default=8124)

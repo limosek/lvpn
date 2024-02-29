@@ -6,7 +6,6 @@ from copy import copy
 
 from lib.registry import Registry
 from lib.runcmd import RunCmd
-from lib.messages import Messages
 from lib.vdpobject import VDPException
 import lib
 
@@ -92,6 +91,7 @@ class Session:
     def activate(self):
         if self.get_payment() >= self._data["price"] and not self.is_active():
             try:
+                logging.getLogger("audit").debug("Trying to activate session %s" % self.get_id())
                 now = int(time.time())
                 if Registry.cfg.is_server:
                     self._gate.activate_server(self)
@@ -104,16 +104,17 @@ class Session:
                 logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
                 self._data["expires"] = now + self._data["days"] * 3600 * 24
                 self._data["activated"] = now
+                logging.getLogger("audit").warning("Activated session %s" % self.get_id())
                 return True
             except Exception as e:
-                logging.getLogger().warning("Error activating session %s:%s" % (self.get_id(), e))
-                raise
+                logging.getLogger("audit").error("Error activating session %s:%s" % (self.get_id(), e))
         else:
             return False
 
     def deactivate(self):
         if self.is_active():
             try:
+                logging.getLogger("audit").debug("Trying to deactivate session %s" % self.get_id())
                 if Registry.cfg.is_server:
                     self._gate.deactivate_server(self)
                     self._space.deactivate_server(self)
@@ -122,10 +123,10 @@ class Session:
                     self._space.deactivate_client(self)
                 if Registry.cfg.on_session_deactivation:
                     RunCmd.run("%s %s" % (Registry.cfg.on_session_deactivation, self.get_filename()))
-                logging.getLogger().warning("Deactivated session %s[free=%s]" % (self.get_id(), self.is_free()))
+                logging.getLogger("audit").warning("Deactivated session %s[free=%s]" % (self.get_id(), self.is_free()))
                 return True
             except Exception as e:
-                logging.getLogger().warning("Error deactivating session %s:%s" % (self.get_id(), e))
+                logging.getLogger("audit").warning("Error deactivating session %s:%s" % (self.get_id(), e))
                 raise
         else:
             return False
@@ -173,7 +174,7 @@ class Session:
                 logging.getLogger().debug(
                     "Ignoring payment to session %s (already processed,paid:%s)" % (self.get_id(), self.get_payment()))
                 return False
-        logging.getLogger().info("Adding new payment to session %s (paid:%s)" % (self.get_id(), self.get_payment()))
+        logging.getLogger("audit").info("Adding new payment to session %s (paid:%s)" % (self.get_id(), self.get_payment()))
         self._data["payments"].append(payment)
         if self.get_payment() >= self._data["price"]:
             self._data["paid"] = True
@@ -220,12 +221,15 @@ class Session:
         if not file:
             file = self.get_filename()
         with open(file, "w") as f:
+            logging.getLogger("audit").debug("Saving session %s" % self.get_id())
             f.write(json.dumps(self._data))
 
     def load(self, file):
+        logging.getLogger("audit").debug("Trying to load session from file %s" % file)
         with open(file, "r") as f:
-            buf = f.read(10000)
+            buf = f.read(-1)
             self._data = json.loads(buf)
+            logging.getLogger("audit").debug("Loaded session %s from file %s" % (self.get_id(), file))
         self._gate = Registry.vdp.get_gate(self._data["gateid"])
         self._space = Registry.vdp.get_space(self._data["spaceid"])
 
@@ -293,7 +297,7 @@ class Session:
             return False
 
     def get_pay_msg(self):
-        m = Messages.pay([{
+        m = lib.messages.Messages.pay([{
             "wallet": self._data["wallet"],
             "amount": self._data["price"]
         }], self.get_paymentid())

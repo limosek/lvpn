@@ -54,7 +54,7 @@ class Sessions:
                         self.update(s)
                     else:
                         logging.getLogger().error("Session %s is not anymore on server. Deleting." % (s.get_id()))
-                        self.remove(s)
+                        #self.remove(s)
                 except Exception as e:
                     pass
                 time.sleep(5)
@@ -127,6 +127,7 @@ class Sessions:
             del self._sessions[session.get_id()]
         if os.path.exists(session.get_filename()):
             os.unlink(session.get_filename())
+            logging.getLogger("audit").info("Removed session %s from disk: %s" % (session.get_id(), session.get_filename()))
         self.load()
 
     def update(self, session):
@@ -140,7 +141,7 @@ class Sessions:
             if s.add_payment(amount, height, txid):
                 updated.append(s)
         if len(updated) == 0:
-            logging.getLogger().debug("Paymentid %s did not match any session" % paymentid)
+            logging.getLogger("audit").debug("Paymentid %s did not match any session" % paymentid)
         else:
             self.load()
         return updated

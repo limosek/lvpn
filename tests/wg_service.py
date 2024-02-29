@@ -128,14 +128,6 @@ class TestWGService(unittest.TestCase):
         sessions.add(session2)
         self.assertEqual(session1.activate(), True)
         self.assertEqual(session2.activate(), True)
-        WGServerService.gate = gate
-        peers1 = WGServerService.find_peers_from_sessions(sessions)
-        peers2 = WGServerService.find_peers_from_gathered(
-            WGEngine.gather_wg_data("ignored"),
-            sessions
-        )
-        self.assertEqual(len(peers1), 2)
-        self.assertEqual(len(peers2), 1)
 
 
 

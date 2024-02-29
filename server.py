@@ -71,6 +71,8 @@ def main():
     cfg.l = cfg.log_level
     if not cfg.log_file:
         cfg.log_file = cfg.var_dir + "/lvpn-server.log"
+    if not cfg.audit_file:
+        cfg.audit_file = cfg.var_dir + "/lvpn-audit.log"
     fh = logging.FileHandler(cfg.log_file)
     fh.setLevel(cfg.l)
     sh = logging.StreamHandler()
@@ -80,6 +82,15 @@ def main():
     sh.setFormatter(formatter)
     logging.root.setLevel(logging.NOTSET)
     logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
+    fh = logging.FileHandler(cfg.audit_file)
+    fh.setLevel("DEBUG")
+    sh = logging.StreamHandler()
+    sh.setLevel("DEBUG")
+    formatter = logging.Formatter('AUDIT:%(name)s[%(process)d]:%(levelname)s:%(message)s')
+    fh.setFormatter(formatter)
+    sh.setFormatter(formatter)
+    logging.getLogger("audit").addHandler(fh)
+    logging.getLogger("audit").addHandler(sh)
     if not cfg.wallet_rpc_password:
         logging.getLogger("server").error("Missing Wallet RPC password! Payments will not be processed!")
     processes = {}

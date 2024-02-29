@@ -33,13 +33,13 @@ class ManagerRpcCall:
             logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
             return False
 
-    def create_session(self, gate: Gateway, space: Space, days: int = None):
+    def create_session(self, gate: Gateway, space: Space, days: int = None, prepare_data=None):
         session = Session()
         session.generate(gate.get_id(), space.get_id(), days)
         # Create fake session just for initializing data
         data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": session.days()}
-        if gate.get_type() == "wg" and Registry.cfg.enable_wg:
-                data[gate.get_type()] = gate.get_prepare_data(session)
+        if prepare_data:
+            data.update(prepare_data)
         r = requests.post(
             self._baseurl + "/api/session",
             headers={"Content-Type": "application/json"},
@@ -47,6 +47,8 @@ class ManagerRpcCall:
         )
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
+        elif r.status_code == 465:
+            return session.get_dict()
         else:
             raise ManagerException("%s -- %s" % (self._baseurl, r.text))
 

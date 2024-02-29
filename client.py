@@ -104,6 +104,8 @@ def main():
         cfg.run_gui = 0
     if not cfg.log_file:
         cfg.log_file = vardir + "/lvpn-client.log"
+    if not cfg.audit_file:
+        cfg.audit_file = vardir + "/lvpn-audit.log"
     fh = logging.FileHandler(cfg.log_file)
     fh.setLevel(cfg.l)
     sh = logging.StreamHandler()
@@ -113,6 +115,15 @@ def main():
     sh.setFormatter(formatter)
     logging.root.setLevel(logging.NOTSET)
     logging.basicConfig(level=logging.NOTSET, handlers=[fh, sh])
+    fh = logging.FileHandler(cfg.audit_file)
+    fh.setLevel("DEBUG")
+    sh = logging.StreamHandler()
+    sh.setLevel("DEBUG")
+    formatter = logging.Formatter('AUDIT:%(name)s[%(process)d]:%(levelname)s:%(message)s')
+    fh.setFormatter(formatter)
+    sh.setFormatter(formatter)
+    logging.getLogger("audit").addHandler(fh)
+    logging.getLogger("audit").addHandler(sh)
     print("Logging into: %s" % vardir + "/lvpn-client.log", file=sys.stderr)
     print("Appdir: %s" % appdir, file=sys.stderr)
     print("Vardir: %s" % vardir, file=sys.stderr)
@@ -242,6 +253,7 @@ def main():
                             gate = cfg.vdp.get_gate(gateid)
                             space = cfg.vdp.get_space(spaceid)
                             session = Session(mr.create_session(gate, space))
+                            session.save()
                             sessions.add(session)
                             proxy_queue.put(Messages.connect(session))
                         except Exception as e:

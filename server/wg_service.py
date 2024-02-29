@@ -27,18 +27,19 @@ class WGServerService(lib.wg_service.WGService):
     def loop(cls):
         cls.sactive = False
         while not cls.exit:
+            cls.log_debug("WG-loop-%s" % cls.gate.get_id())
             sessions = Sessions()
             cls.log_debug("Loop")
             cls.gathered = WGEngine.gather_wg_data(cls.iface)
-            cls.found = cls.find_peers_from_gathered(cls.gathered, sessions)
             cls.needed = cls.find_peers_from_sessions(sessions)
-            for peer in cls.found.keys():
+            cls.log_info("Found %s peers, %s is needed from sessions" % (len(cls.gathered["peers"]), len(cls.needed)))
+            for peer in cls.gathered["peers"].keys():
                 if peer in cls.needed.keys():
                     continue
                 else:
-                    cls.deactivate_on_server(cls.found[peer])
+                    WGEngine.remove_peer(cls.iface, peer)
             for peer in cls.needed.keys():
-                if peer in cls.found.keys():
+                if peer in cls.gathered["peers"].keys():
                     continue
                 else:
                     cls.activate_on_server(cls.needed[peer])
@@ -48,15 +49,6 @@ class WGServerService(lib.wg_service.WGService):
                     msg = cls.myqueue.get(block=False, timeout=0.01)
                     if msg == Messages.EXIT:
                         return
-
-    @classmethod
-    def find_peers_from_gathered(cls, gathered, sessions):
-        peers = {}
-        for g in gathered["peers"].values():
-            found = sessions.find(active=True, wg_public=g["public"])
-            if len(found) > 0:
-                peers[g["public"]] = found[0]
-        return peers
 
     @classmethod
     def find_peers_from_sessions(cls, sessions: Sessions):

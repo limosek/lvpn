@@ -117,9 +117,9 @@ class Gateway(VDPObject):
         else:
             return False
 
-    def get_prepare_data(self, session):
+    def get_prepare_data(self):
         if self.get_type() == "wg":
-            data = client.wg_service.WGClientService.prepare_session_request(session)
+            data = client.wg_service.WGClientService.prepare_session_request()
         else:
             data = {}
         return data

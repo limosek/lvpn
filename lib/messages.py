@@ -1,6 +1,8 @@
 import codecs
 import pickle
 
+import lib.session
+
 
 class Messages:
 
@@ -22,8 +24,8 @@ class Messages:
     GUI_POPUP = "GUI/Popup"
 
     @classmethod
-    def connect(cls, sessionid):
-        data = pickle.dumps(sessionid)
+    def connect(cls, session: lib.session.Session):
+        data = pickle.dumps(session)
         tdata = codecs.encode(data, "base64").decode("utf-8")
         msg = "%s:%s" % (cls.CONNECT, tdata)
         return msg.strip()

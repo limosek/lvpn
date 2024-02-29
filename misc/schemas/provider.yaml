@@ -21,6 +21,8 @@
           default: 0
         providerid:
           type: string
+        owner:
+          type: string
         name:
           type: string
         description:

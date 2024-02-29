@@ -72,7 +72,8 @@ class Proxy(Service):
     def connect(cls, connections, sessionid):
         session = Sessions(noload=True).get(sessionid)
         if not session:
-            raise ProxyException("Unknown sessionid")
+            cls.log_error(ProxyException("Unknown sessionid %s" % sessionid))
+            return False
         else:
             gateid = session.get_gateid()
             spaceid = session.get_spaceid()
@@ -146,6 +147,7 @@ class Proxy(Service):
                 "gate": gate,
                 "space": space,
                 "sessionid": sessionid,
+                "session": session,
                 "connectionid": connection.get_id()
             }
             mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
