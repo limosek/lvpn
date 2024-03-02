@@ -96,6 +96,9 @@ class SharedArguments:
         if platform.system() == "Windows":
             p.add_argument('--wg-cmd-set-ip', type=str, default="netsh interface ipv4 set address name={iface} static {ip} {mask}",
                            help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-unset-ips', type=str,
+                           default="",
+                           help="Wireguard command to unset IP addresses from interface")
             p.add_argument('--wg-cmd-set-interface-up', type=str, default=None,
                            help="Wireguard command to set interface up")
             p.add_argument('--wg-cmd-create-interface', type=str, default='"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "{fname}"',
@@ -107,6 +110,10 @@ class SharedArguments:
         else:
             p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{mask}",
                        help="Wireguard command to assign IP address to interface")
+            p.add_argument('--wg-cmd-unset-ips', type=str,
+                           default="ip addr flush dev {iface}",
+                           help="Wireguard command to unset IP addresses from interface")
+
             p.add_argument('--wg-cmd-set-interface-up', type=str, default="ip link set up dev {iface}",
                            help="Wireguard command to set interface up")
             p.add_argument('--wg-cmd-create-interface', type=str, default="ip link add dev {iface} type wireguard",

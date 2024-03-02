@@ -21,8 +21,8 @@ class VDP:
         if vdpfile:
             data = urllib3.util.parse_url(vdpfile)
             if data.scheme:
-                r = requests.Request(vdpfile)
-                vdpdata = r.data
+                r = requests.request("GET", vdpfile)
+                vdpdata = r.text
             else:
                 with open(vdpfile, "r") as f:
                     vdpdata = f.read(1000000000)
@@ -182,7 +182,8 @@ class VDP:
             "file_version": "1.1",
             "spaces": json.loads(self.spaces(as_json=True)),
             "gates": json.loads(self.gates(as_json=True)),
-            "providers": json.loads(self.providers(as_json=True))
+            "providers": json.loads(self.providers(as_json=True)),
+            "signatures": []
         }
         self._json = json.dumps(self._dict, indent=2)
         self._localdict = {
@@ -190,7 +191,8 @@ class VDP:
             "file_version": "1.1",
             "spaces": json.loads(self.spaces(my_only=True, as_json=True)),
             "gates": json.loads(self.gates(my_only=True, as_json=True)),
-            "providers": json.loads(self.providers(my_only=True, as_json=True))
+            "providers": json.loads(self.providers(my_only=True, as_json=True)),
+            "signatures": []
         }
         self._localjson = json.dumps(self._localdict, indent=2)
         VDPObject.validate(self._dict, "Vdp")

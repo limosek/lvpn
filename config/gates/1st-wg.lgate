@@ -12,8 +12,10 @@
   "wg": {
     "endpoint": "vpn2.lethean.space:8773",
     "public_key": "oV6BmapVVfnFL0oKm4Ub0B7vaXwPlUZ0Y4mI+2VJxj8=",
-    "ipv4_network": "250.1.0.0/16",
-    "ipv4_gateway": "250.1.0.1"
+    "ipv4_network": "100.65.0.0/16",
+    "ipv4_gateway": "100.65.0.1",
+    "ipv6_network": "fc00:0:0:65::/64",
+    "ipv6_gateway": "fc00:0:0:65::1"
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"

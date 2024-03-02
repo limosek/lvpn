@@ -187,9 +187,15 @@ ListenPort = {port}
     @classmethod
     def set_wg_interface_ip(cls, name, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
         try:
+            if Registry.cfg.wg_cmd_unset_ips:
+                ipargs = shlex.split(
+                    cls.replace_macros(
+                        Registry.cfg.wg_cmd_unset_ips, iface=name, ip=str(ip), mask=str(ipnet.netmask)
+                    ))
+                cls.wg_run_cmd(*ipargs)
             ipargs = shlex.split(
                 cls.replace_macros(
-                    Registry.cfg.wg_cmd_set_ip, iface=name, ip=str(ip), mask=str(ipnet.netmask)
+                    Registry.cfg.wg_cmd_set_ip, iface=name, ip=str(ip), mask=str(ipnet.netmask), prefixlen=ipnet.prefixlen
                 ))
             cls.wg_run_cmd(*ipargs)
         except Exception as e:
@@ -212,12 +218,12 @@ ListenPort = {port}
             raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_delete_interface")
 
     @classmethod
-    def add_route(cls, iface, ipnet, gw):
+    def add_route(cls, iface: str, ipnet: ipaddress.ip_network, gw: ipaddress.ip_address):
         ipn = ipaddress.ip_network(ipnet)
         if Registry.cfg.wg_cmd_route:
             wgargs = shlex.split(
                 cls.replace_macros(
-                    Registry.cfg.wg_cmd_route, iface=iface, network=str(ipnet), gw=gw, mask=str(ipn.netmask)
+                    Registry.cfg.wg_cmd_route, iface=iface, network=str(ipnet), gw=str(gw), mask=str(ipn.netmask), prefixlen=str(ipn.prefixlen)
                 ))
             try:
                 ret = cls.wg_run_cmd(*wgargs)

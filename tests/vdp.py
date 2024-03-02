@@ -24,6 +24,11 @@ class TestVDP(unittest.TestCase):
         self.assertEqual(len(Registry.vdp.spaces()), 2)
         self.assertEqual(len(Registry.vdp.providers()), 1)
 
+    def test_vdp_from_url(self):
+        Util.parse_args()
+        vdp = VDP("http://127.0.0.1:8123/api/vdp")
+        pass
+
     def test_get_ca(self):
         Util.parse_args()
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")

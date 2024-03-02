@@ -1,4 +1,5 @@
 import ipaddress
+import random
 import time
 
 from lib.messages import Messages
@@ -12,7 +13,6 @@ import lib
 
 
 class WGServerService(lib.wg_service.WGService):
-
     myname = "wg_server"
 
     @classmethod
@@ -76,8 +76,10 @@ class WGServerService(lib.wg_service.WGService):
             "server_public_key": session.get_gate().get_gate_data("wg")["public_key"],
             "psk": WGEngine.generate_psk(),
             "client_ipv4_address": cls.find_free_ip(session.get_gate()),
+            "client_ipv6_address": cls.find_free_ipv6(session.get_gate()),
             "server_ipv4_address": session.get_gate().get_gate_data("wg")["ipv4_gateway"],
-            "server_ipv4_networks": session.get_space()["ips"],
+            "server_ipv4_networks": session.get_space()["ipv4_networks"],
+            "server_ipv6_networks": session.get_space()["ipv6_networks"],
             "ipv4_prefix": ipnet.prefixlen,
             "dns": session.get_space()["dns_servers"]
         }
@@ -88,7 +90,7 @@ class WGServerService(lib.wg_service.WGService):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["client_public_key"],
-                                [session.get_gate_data("wg")["client_ipv4_address"]],
+                                 [session.get_gate_data("wg")["client_ipv4_address"]],
                                  session.get_gate_data("wg")["client_endpoint"],
                                  session.get_gate_data("wg")["psk"], keepalive=0, show_only=show_only)
 
@@ -125,6 +127,13 @@ class WGServerService(lib.wg_service.WGService):
                 return str(ip)
 
     @classmethod
+    def find_free_ipv6(cls, gate):
+        host = random.randint(100, pow(2, 32) - 100)
+        ip = ipaddress.IPv6Network(gate.get_gate_data("wg")["ipv6_network"])
+        ip = ipaddress.IPv6Address(int(ip.network_address) + host)
+        return str(ip)
+
+    @classmethod
     def setup_interface_server(cls, gate):
         cls.iface = WGEngine.get_interface_name(gate.get_id())
         try:
@@ -139,8 +148,8 @@ class WGServerService(lib.wg_service.WGService):
                 WGEngine.get_private_key(gate.get_id()),
                 port)
             WGEngine.set_wg_interface_ip(cls.iface,
-                ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),
-                ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"]))
+                                         ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),
+                                         ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"]))
         except ServiceException as s:
             try:
                 WGEngine.gather_wg_data(cls.iface)
@@ -150,4 +159,6 @@ class WGServerService(lib.wg_service.WGService):
         gather = WGEngine.gather_wg_data(cls.iface)
         if not Registry.cfg.ignore_wg_key_mismatch:
             if gather["iface"]["public"] != gate.get_gate_data("wg")["public_key"]:
-                raise ServiceException(10, "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (gate.get_id(), gather["iface"]["public"]))
+                raise ServiceException(10,
+                                       "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (
+                                       gate.get_id(), gather["iface"]["public"]))

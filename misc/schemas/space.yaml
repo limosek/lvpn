@@ -33,7 +33,11 @@
           properties:
             per-day:
               type: number
-        ips:
+        ipv4_networks:
+          type: array
+          items:
+            type: string
+        ipv6_networks:
           type: array
           items:
             type: string
@@ -46,7 +50,8 @@
         - providerid
         - file_type
         - file_version
-        - ips
         - dns_servers
         - price
+        - ipv4_networks
+        - ipv6_networks
 

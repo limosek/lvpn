@@ -305,6 +305,8 @@ components:
           default: 0
         providerid:
           type: string
+        owner:
+          type: string
         name:
           type: string
         description:
@@ -546,7 +548,11 @@ components:
           properties:
             per-day:
               type: number
-        ips:
+        ipv4_networks:
+          type: array
+          items:
+            type: string
+        ipv6_networks:
           type: array
           items:
             type: string
@@ -559,9 +565,10 @@ components:
         - providerid
         - file_type
         - file_version
-        - ips
         - dns_servers
         - price
+        - ipv4_networks
+        - ipv6_networks
 
 # Session definition
 ###################################
@@ -767,19 +774,6 @@ components:
             $ref: '#/components/schemas/Provider'
         signatures:
           type: array
-          items:
-            type: object
-            properties:
-              signing_providerid:
-                type: string
-              signing_time:
-                type: number
-              signed_objectid:
-                type: string
-              object_hash:
-                type: string
-              signed_hash:
-                type: string
       required:
         - file_type
         - file_version

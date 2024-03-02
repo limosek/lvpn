@@ -27,5 +27,8 @@ class Wizard(GridLayout):
         self.main()
 
     def import_vdp(self, instance=None, value=None):
-        vdp = VDP(self.ids.vdp_url.text)
-        vdp.save(Registry.cfg.gates_dir, Registry.cfg.spaces_dir)
+        try:
+            vdp = VDP(self.ids.vdp_url.text)
+            client.gui.GUI.log_gui("vdp", vdp.save())
+        except Exception as e:
+            client.gui.GUI.queue.put(Messages.gui_popup("Cannot import VDP: %s" % e))

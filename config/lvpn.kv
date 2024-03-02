@@ -51,9 +51,9 @@
         id: wallet_seed
         write_tab: False
         multiline: True
-        size_hint_y: 0.3
+        size_hint_y: 0.2
       Button:
-        size_hint_y: 0.3
+        size_hint_y: 0.2
         id: wallet_seed_restore
         text: "Restore from seed"
         on_press: root.restore_wallet()
@@ -62,16 +62,18 @@
       text: "Create wallet"
       on_press: root.create_wallet()
     GridLayout:
-      size_hint_y: 0.1
+      size_hint_y: 0.05
       #orientation: "horizontal"
-      cols: 2
+      cols: 3
+      Label:
+        text: "VDP URL"
       TextInput:
         id: vdp_url
         write_tab: False
         multiline: False
       Button:
         id: import_vdp
-        text: "Import VDP"
+        text: "Import"
         on_press: root.import_vdp()
     Button:
       text: "Main"

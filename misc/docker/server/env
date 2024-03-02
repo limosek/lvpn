@@ -8,3 +8,11 @@ DAEMON_IP = "<changeme>"
 HAPROXY_IP = "<changeme>"
 DNS_IP = "<changeme>"
 SSH_IP = "<changeme>"
+TOR_IP = "<changeme>"
+LVPNC_IP = "<changeme>"
+
+# TOR
+PASSWORD = "<changeme>"
+# Force tor to use specific exit nodes
+#EXIT_NODES = "{us}"
+

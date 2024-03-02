@@ -30,6 +30,7 @@ class WGClientService(WGService):
     def postinit(cls):
         if not Registry.cfg.enable_wg:
             return False
+        sessions = Sessions()
         cls.session = cls.kwargs["session"]
         cls.gate = cls.kwargs["gate"]
         cls.space = cls.kwargs["space"]
@@ -41,12 +42,15 @@ class WGClientService(WGService):
         cls.setup_interface_client(cls.session)
         cls.gathered = WGEngine.gather_wg_data(cls.iface)
         mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
-        cls.session = Session(mr.create_session(cls.gate, cls.space,
+        nsession = Session(mr.create_session(cls.gate, cls.space,
                               prepare_data={"wg": cls.gate.get_prepare_data()}))
-        cls.session.save()
-        cls.queue.put(Messages.connect(cls.session))
+        nsession.save()
+        # Let us remove presession and enable session
+        sessions.remove(cls.session)
+        sessions.add(nsession)
+        cls.session = nsession
+        cls.queue.put(Messages.connect(nsession))
         for g in cls.gate["gates"]:
-            gobj = Registry.vdp.get_gate(g)
             session = Session()
             session.generate(g, cls.space.get_id(), 1)
             session.save()
@@ -68,10 +72,20 @@ class WGClientService(WGService):
                     cls.iface,
                     WGEngine.get_private_key(session.get_gate().get_id()),
                     port)
-                if session.get_gate_data("wg") and "client_ipv4_address" in session.get_gate_data("wg"):
-                    WGEngine.set_wg_interface_ip(cls.iface,
-                                        ip=ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]),
-                                        ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"]))
+                if session.get_gate_data("wg"):
+                    if "client_ipv4_address" in session.get_gate_data("wg"):
+                        WGEngine.set_wg_interface_ip(cls.iface,
+                                                     ip=ipaddress.ip_address(
+                                                         session.get_gate_data("wg")["client_ipv4_address"]),
+                                                     ipnet=ipaddress.ip_network(
+                                                         gate.get_gate_data("wg")["ipv4_network"]))
+                    if "client_ipv6_address" in session.get_gate_data("wg"):
+                        WGEngine.set_wg_interface_ip(cls.iface,
+                                                     ip=ipaddress.ip_address(
+                                                         session.get_gate_data("wg")["client_ipv6_address"]),
+                                                     ipnet=ipaddress.ip_network(
+                                                         gate.get_gate_data("wg")["ipv6_network"]))
+
             except ServiceException as s:
                 try:
                     WGEngine.gather_wg_data(cls.iface)
@@ -107,15 +121,30 @@ class WGClientService(WGService):
             cls.log_error("Wireguard not enabled. Ignoring activation")
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         try:
-            WGEngine.set_interface_ip(ifname, ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]), ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+            if "client_ipv4_address" in ipaddress.ip_address(session.get_gate_data("wg")):
+                WGEngine.set_interface_ip(ifname,
+                                          ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]),
+                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+            if "client_ipv6_address" in ipaddress.ip_address(session.get_gate_data("wg")):
+                WGEngine.set_interface_ip(ifname,
+                                          ipaddress.ip_address(session.get_gate_data("wg")["client_ipv6_address"]),
+                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]))
+
         except ServiceException as e:
             cls.log_error("Error assigning IP: %s" % str(e))
         WGEngine.set_interface_up(ifname)
-        nets = [session.get_gate()["wg"]["ipv4_network"]]
+        nets = []
+        if "ipv4_network" in session.get_gate()["wg"]:
+            nets.append(ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+        if "ipv6_network" in session.get_gate()["wg"]:
+            nets.append(ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]))
         for ipnet in session.get_space()["ips"]:
             try:
                 nets.append(ipnet)
-                WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
+                if type(ipnet) is ipaddress.IPv4Network:
+                    WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
+                else:
+                    WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv6_gateway"])
             except ServiceException as e:
                 cls.log_error("Error adding route: %s" % str(e))
         return WGEngine.add_peer(ifname,

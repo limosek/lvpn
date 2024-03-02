@@ -1,7 +1,11 @@
 version: "3.1"
 
+# Please review this file carefully. This is just an example!
+# All ports must match your VDP definition and definition of containers!
+
 services:
 
+# For clients to resolve DNS names.
   dns-resolver:
     image: cznic/knot-resolver
     networks:
@@ -18,6 +22,7 @@ services:
     environment:
       - TZ=Europe/Prague
 
+# Frontend engine for connections. Ports must match your VDP and local ports defined within docker-compose
   haproxy:
     image: haproxy:2.7.11
     ports:
@@ -39,6 +44,7 @@ services:
     dns:
       - ${DNS_IP}
 
+# Local daemon with blockchain
   daemon:
     image: letheanio/blockchain:latest
     volumes:
@@ -49,47 +55,63 @@ services:
       - 48782:48782
     environment:
       - SEED_NODE=${SEED_NODE}
+    restart: unless-stopped
     networks:
       lthn:
         ipv4_address: ${DAEMON_IP}
     dns:
       - ${DNS_IP}
 
+# HTTP proxy used for cliens. See that there is no port exposed! It is hidden behind haproxy
   proxy:
     image: ajoergensen/tinyproxy
     volumes:
       - ./tinyproxy:/etc/tinyproxy
+    restart: unless-stopped
     networks:
       lthn:
         ipv4_address: ${PROXY_IP}
     dns:
       - ${DNS_IP}
 
+# Socks proxy used for clients. See that there is no port exposed! It is hidden behind haproxy
   socks:
     image: z0rr0/gsocks5
+    restart: unless-stopped
     networks:
       lthn:
         ipv4_address: ${SOCKS_IP}
     dns:
       - ${DNS_IP}
 
+# TOR proxy used for clients. See that there is no port exposed! It is hidden behind haproxy
+  tor:
+    image: andreas4all/tor-client:latest
+    restart: unless-stopped
+    networks:
+      lthn:
+        ipv4_address: ${TOR_IP}
+
+# SSH proxy for clients. It is exposed directly to Internet
   ssh:
-    build: ./ssh-server
+    build: ./ssh-docker
     volumes:
       - ./ssh:/etc/ssh
       - /dev/log:/dev/log
     ports:
       - 8789:2222
+    restart: unless-stopped
     networks:
       lthn:
         ipv4_address: ${SSH_IP}
     dns:
       - ${DNS_IP}
 
+# LVPN server. It needs to expose manager HTTP server and Wireguard UDP ports
   lvpns:
     image: limosek/lvpn:dev
     volumes:
-      - ./lvpns:/home/lvpn
+      - ./lvpn:/home/lvpn
     command: lvpns
     cap_add:
       - NET_ADMIN
@@ -98,12 +120,33 @@ services:
       - MODE=server
     ports:
       - 8790:8123
+      - 8774:8774/udp
     networks:
       lthn:
         ipv4_address: ${MANAGER_IP}
     dns:
       - ${DNS_IP}
 
+# LVPN client. Used if you want to automatically connect your node to some other space.
+  lvpnc:
+    image: limosek/lvpn:dev
+    volumes:
+      - ./lvpn:/home/lvpn
+    command: lvpns
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    environment:
+      - MODE=client
+    ports:
+      - 8124:8124
+    networks:
+      lthn:
+        ipv4_address: ${LVPNC_IP}
+    dns:
+      - ${DNS_IP}
+
+# Your VPN wallet process
   wallet:
     image: letheanio/blockchain:latest
     restart: unless-stopped

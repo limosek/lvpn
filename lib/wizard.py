@@ -139,7 +139,8 @@ wallet-rpc-password = %s
           "price": {
             "per-day": 0
           },
-          "ips": ["192.168.1.0/24"],
+          "ipv4_networks": ["192.168.1.0/24"],
+          "ipv6_networks": [],
           "dns_servers": ["192.168.1.1"],
         }
         httpgate = {

@@ -61,6 +61,7 @@ class TestWGService(unittest.TestCase):
         WGEngine.show_cmds = True
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
         space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
+        self.FindIP()
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
         WGEngine.create_wg_interface("lvpns_3e439354", WGEngine.get_private_key(gate.get_id()), 5000)
@@ -70,6 +71,12 @@ class TestWGService(unittest.TestCase):
         self.ActivateClient(session)
         self.DeActivateClient(session)
         self.DeActivateServer(session)
+
+    def FindIP(self):
+        gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
+        ip = WGServerService.find_free_ip(gate)
+        ipv6 = WGServerService.find_free_ipv6(gate)
+        pass
 
     def PrepareSession(self, session):
         WGServerService.prepare_server_session(session, {

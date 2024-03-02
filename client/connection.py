@@ -152,7 +152,7 @@ class Connection:
                     return False
 
         elif self.get_gate().get_type() == "wg":
-            if Registry.enable_wg:
+            if Registry.cfg.enable_wg:
                 try:
                     result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2)
                     if result.is_alive:

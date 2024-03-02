@@ -1,0 +1,3 @@
+# Username which is in VDP file for SSH  gateway
+# Must match username from ssh-docker/Dockerfile
+lvpn
