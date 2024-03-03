@@ -6,21 +6,17 @@ from copy import copy
 import requests
 import icmplib
 
-from lib.gate import Gateway
-from lib.messages import Messages
 from lib.registry import Registry
-from lib.session import Session
-from lib.sessions import Sessions
-from lib.space import Space
+import lib.sessions
 
 
 class Connection:
 
-    def __init__(self, session: Session = None, data: dict = None, parent: Session = None, connection: dict = None,
+    def __init__(self, session=None, data: dict = None, parent=None, connection: dict = None,
                  port: int = None):
         if connection:
             self._data = connection
-            sessions = Sessions(noload=True)
+            sessions = lib.Sessions(noload=True)
             session = sessions.get(connection["sessionid"])
             if not session:
                 raise Exception(
@@ -54,7 +50,7 @@ class Connection:
     def get_sessionid(self) -> str:
         return self._data["sessionid"]
 
-    def get_session(self) -> Session:
+    def get_session(self):
         return self._session
 
     def get_dict(self) -> dict:
@@ -66,10 +62,10 @@ class Connection:
         else:
             return None
 
-    def get_space(self) -> Space:
+    def get_space(self):
         return self._space
 
-    def get_gate(self) -> Gateway:
+    def get_gate(self):
         return self._gate
 
     def get_parent(self) -> str:
@@ -164,14 +160,15 @@ class Connection:
                     logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
                     return False
             else:
-                logging.getLogger("proxy").error("Connection %s is not alive: Wireguard support disabled" % (self.get_id()))
+                logging.getLogger("proxy").error(
+                    "Connection %s is not alive: Wireguard support disabled" % (self.get_id()))
                 return False
 
         return True
 
     def disconnect(self, queue):
         queue.put(
-            Messages.disconnect(self.get_id())
+            lib.messages.Messages.disconnect(self.get_id())
         )
 
     def __repr__(self):
@@ -181,7 +178,8 @@ class Connection:
                 self.get_session().get_title())
         else:
             txt = "Connection/%s[gate=%s,space=%s,%s]" % (
-                self.get_id(), self.get_gate().get_title(), self.get_space().get_title(), self.get_session().get_title())
+                self.get_id(), self.get_gate().get_title(), self.get_space().get_title(),
+                self.get_session().get_title())
         return txt
 
 

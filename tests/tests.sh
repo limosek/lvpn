@@ -89,7 +89,7 @@ do
 done
 sleep 15
 
-curl -q -x http://localhost:8080/ http://www.lthn >/dev/null
+curl -q -x http://localhost:8080/ http://www.lthn >/dev/null || cat client.log
 
 echo "========================================================"
 echo "Unit tests passed"

@@ -1,5 +1,4 @@
 import os
-import sys
 import platform
 
 if "NO_KIVY" not in os.environ:
@@ -21,15 +20,5 @@ if "NO_KIVY" not in os.environ:
     from kivy.uix.image import Image
     from kivy.animation import Animation
 
-
-    class SplashScreen(App):
-
-        def build(self):
-            my_splash_screen = Image(source=os.path.dirname(__file__) + '/../config/lvpn.gif', pos=(800, 800))
-            animation = Animation(x=0, y=0, d=2, t='out_bounce')
-            animation.start(my_splash_screen)
-
-            return my_splash_screen
-
-    def splash_screen():
-        SplashScreen().run()
+from client.arguments import ClientArguments
+from client.proxy import Proxy

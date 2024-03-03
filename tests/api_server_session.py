@@ -4,7 +4,7 @@ import time
 import unittest
 import requests
 
-from lib.wg_service import WGService
+import lib.vdp
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
@@ -102,6 +102,10 @@ class TestAPI(unittest.TestCase):
         j = json.loads(r.text)
         self.assertGreater(j["activated"], 0)
         self.assertLess(j["created"], time.time())
+
+    def test_vdp_from_url(self):
+        vdp = lib.VDP("http://127.0.0.1:8123/api/vdp")
+        pass
 
 
 if __name__ == "main":

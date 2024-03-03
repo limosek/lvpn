@@ -5,11 +5,11 @@ import sys
 import requests
 import urllib3
 
-from lib.gate import Gateway
 from lib.registry import Registry
 from lib.space import Space
 from lib.provider import Provider
 from lib.vdpobject import VDPException, VDPObject
+import lib.gate
 
 
 class VDP:
@@ -65,7 +65,7 @@ class VDP:
                                 self._spaces[spc.get_id()] = spc
                     if "gates" in self._data:
                         for g in self._data["gates"]:
-                            gw = Gateway(g, vdp=self)
+                            gw = lib.Gateway(g, vdp=self)
                             if not gw.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
@@ -157,7 +157,7 @@ class VDP:
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
                     try:
-                        gw = Gateway(json.loads(jsn), gwf, vdp=self)
+                        gw = lib.Gateway(json.loads(jsn), gwf, vdp=self)
                         if not gw.get_provider_id() in self.provider_ids():
                             raise VDPException(
                                 "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))

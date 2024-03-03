@@ -121,11 +121,11 @@ class WGClientService(WGService):
             cls.log_error("Wireguard not enabled. Ignoring activation")
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         try:
-            if "client_ipv4_address" in ipaddress.ip_address(session.get_gate_data("wg")):
+            if "client_ipv4_address" in session.get_gate_data("wg"):
                 WGEngine.set_interface_ip(ifname,
                                           ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]),
                                           ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
-            if "client_ipv6_address" in ipaddress.ip_address(session.get_gate_data("wg")):
+            if "client_ipv6_address" in session.get_gate_data("wg"):
                 WGEngine.set_interface_ip(ifname,
                                           ipaddress.ip_address(session.get_gate_data("wg")["client_ipv6_address"]),
                                           ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]))
@@ -138,13 +138,16 @@ class WGClientService(WGService):
             nets.append(ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
         if "ipv6_network" in session.get_gate()["wg"]:
             nets.append(ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]))
-        for ipnet in session.get_space()["ips"]:
+        for ipnet in session.get_space()["ipv4_networks"]:
+            nets.append(ipnet)
             try:
-                nets.append(ipnet)
-                if type(ipnet) is ipaddress.IPv4Network:
-                    WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
-                else:
-                    WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv6_gateway"])
+                WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv4_gateway"])
+            except ServiceException as e:
+                cls.log_error("Error adding route: %s" % str(e))
+        for ipnet in session.get_space()["ipv6_networks"]:
+            nets.append(ipnet)
+            try:
+                WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv6_gateway"])
             except ServiceException as e:
                 cls.log_error("Error adding route: %s" % str(e))
         return WGEngine.add_peer(ifname,

@@ -139,6 +139,21 @@
           type: array
           items:
             type: string
+        client_ipv6_address:
+          type: string
+        ipv6_prefix:
+          type: integer
+        server_ipv6_address:
+          type: string
+        client_ipv6_networks:
+          type: array
+          items:
+            type: string
+        server_ipv6_networks:
+          type: array
+          items:
+            type: string
+
       required:
         - client_public_key
         - server_public_key

@@ -296,14 +296,16 @@ ListenPort = {port}
     def add_peer(cls, iname: str, public: str, allowed_ips: list, endpoint: str = None, preshared: str = None, keepalive: int = 120, show_only: bool = False):
         if endpoint == "dynamic":
             endpoint = None
-        ips = ",".join(allowed_ips)
+        ips = []
+        for i in allowed_ips:
+            ips.append(str(i))
         args = [
             "wg",
             "set",
             iname,
             "peer",
             public,
-            "allowed-ips", ips,
+            "allowed-ips", ",".join(ips),
             "persistent-keepalive", str(keepalive)
         ]
         if endpoint:

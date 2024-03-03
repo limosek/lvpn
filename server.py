@@ -9,8 +9,6 @@ import _queue
 import configargparse
 import multiprocessing
 
-from lib.util import Util
-
 os.environ["NO_KIVY"] = "1"
 os.environ["KIVY_NO_ARGS"] = "1"
 

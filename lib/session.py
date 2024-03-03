@@ -20,6 +20,10 @@ class Session:
                 self._gate = Registry.vdp.get_gate(data["gateid"])
             if "spaceid" in data:
                 self._space = Registry.vdp.get_space(data["spaceid"])
+            if not self._gate:
+                raise VDPException("Gate %s for session %s unknown!" % (data["gateid"], self.get_id()))
+            if not self._space:
+                raise VDPException("Space %s for session %s unknown!" % (data["spaceid"], self.get_id()))
             if self.is_free() \
                     and self._gate.get_type() == "wg" \
                     and self.get_gate_data("wg") \
@@ -232,6 +236,10 @@ class Session:
             logging.getLogger("audit").debug("Loaded session %s from file %s" % (self.get_id(), file))
         self._gate = Registry.vdp.get_gate(self._data["gateid"])
         self._space = Registry.vdp.get_space(self._data["spaceid"])
+        if not self._gate:
+            raise VDPException("Gate %s for session %s unknown!" % (self._data["gateid"], self.get_id()))
+        if not self._space:
+            raise VDPException("Space %s for session %s unknown!" % (self._data["spaceid"], self.get_id()))
 
     def is_for_gate(self, gateid):
         return self._gate.get_id() == gateid

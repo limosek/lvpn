@@ -10,7 +10,6 @@ from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.util import Util
 from lib.vdpobject import VDPObject, VDPException
-from lib.wg_engine import WGEngine
 
 
 class Gateway(VDPObject):

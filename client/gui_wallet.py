@@ -3,6 +3,7 @@ import logging
 import time
 from kivy.clock import Clock
 from kivy.uix.gridlayout import GridLayout
+from kivy_garden.qrcode import QRCodeWidget
 
 import client
 from lib.messages import Messages

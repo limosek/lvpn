@@ -2,13 +2,9 @@ import logging
 import requests
 import json
 
-from lib.gate import Gateway
-from lib.registry import Registry
-from lib.service import ServiceException
 from lib.session import Session
 from lib.space import Space
 from lib.vdp import VDP
-import client
 
 
 class ManagerException(Exception):
@@ -33,7 +29,7 @@ class ManagerRpcCall:
             logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
             return False
 
-    def create_session(self, gate: Gateway, space: Space, days: int = None, prepare_data=None):
+    def create_session(self, gate, space: Space, days: int = None, prepare_data=None):
         session = Session()
         session.generate(gate.get_id(), space.get_id(), days)
         # Create fake session just for initializing data

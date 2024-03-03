@@ -1,18 +1,15 @@
 import logging
 import shutil
-import time
 
 import requests.exceptions
 from kivy.clock import Clock
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 
 import client
-import lib.wg_engine
-from lib.mngrrpc import ManagerRpcCall
+import lib.mngrrpc
 from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.session import Session
@@ -78,7 +75,7 @@ class Connect(GridLayout):
             client.gui.GUI.queue.put(Messages.connect(asessions[0]))
         else:
             space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-            mr = ManagerRpcCall(space.get_manager_url())
+            mr = lib.ManagerRpcCall(space.get_manager_url())
             try:
                 gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
                 space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])

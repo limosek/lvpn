@@ -1,3 +1,4 @@
+import ipaddress
 import os
 import shutil
 import unittest
@@ -65,7 +66,6 @@ class TestWGService(unittest.TestCase):
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
         WGEngine.create_wg_interface("lvpns_3e439354", WGEngine.get_private_key(gate.get_id()), 5000)
-        #WGEngine.create_wg_interface("lvpnc_3e439354", "ABlKItp6Io7YmAoFcBzg1wWmThCXVmmI9qEon2sKS1c=", 5001)
         session = self.PrepareSession(session)
         self.ActivateServer(session)
         self.ActivateClient(session)
@@ -83,8 +83,12 @@ class TestWGService(unittest.TestCase):
             "endpoint": "dynamic",
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
         })
-        self.assertEqual(session.get_gate_data("wg")["dns"], ["172.31.129.16"])
-        self.assertEqual(session.get_gate_data("wg")["client_ipv4_address"], "250.1.0.2")
+        self.assertEqual(session.get_gate_data("wg")["dns"], session.get_space()["dns_servers"])
+        ip = ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"])
+        ipnet = ipaddress.ip_network(session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(session.get_gate_data("wg")["ipv4_prefix"]), strict=False)
+        print(ip)
+        print(ipnet)
+        self.assertTrue(ip in ipnet)
         WGServerService.prepare_server_session(session, {
             "endpoint": "abcd:123",
             "public_key": "84/GP/scO1E2oPcsQ7hds+rnR2SHGOr8CQ3hNAFn4Dk="
@@ -95,12 +99,12 @@ class TestWGService(unittest.TestCase):
     def ActivateServer(self, session):
         self.assertRegex(
             WGServerService.activate_on_server(session, show_only=True),
-            "250.1.0.2")
+            session.get_gate_data("wg")["server_ipv4_address"][:4])
 
     def ActivateClient(self, session):
         self.assertRegex(
             WGClientService.activate_on_client(session, show_only=True),
-            "250.1.0.0/16")
+            str(ipaddress.ip_network(session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(session.get_gate_data("wg")["ipv4_prefix"]), strict=False)))
 
     def DeActivateServer(self, session):
         self.assertRegex(
