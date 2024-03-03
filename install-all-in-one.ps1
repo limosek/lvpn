@@ -1,6 +1,6 @@
 
 $Env:PATH = ""
-$version = "0.4"
+$version = "0.5"
 $python_version = "3.12.1"
 $lethean_version = "v5.0.1"
 $lvpn_branch = "main"

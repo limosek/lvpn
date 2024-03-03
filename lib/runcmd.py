@@ -28,18 +28,18 @@ class RunCmd:
                 info.wShowWindow = SW_HIDE
         else:
             info = None
-        logging.debug("Running popen command: %s" % (" ".join(args)))
+        logging.info("Running popen command: %s" % (" ".join(args)))
         return subprocess.Popen(args, startupinfo=info, **kwargs)
 
     @classmethod
     def run(cls, args, **kwargs):
-        logging.debug("Running run command: %s" % (" ".join(args)))
+        logging.info("Running run command: %s" % (" ".join(args)))
         return subprocess.Popen(args, **kwargs)
 
     @classmethod
     def get_output(cls, args, **kwargs):
         try:
-            logging.debug("Running get_output command: %s" % (" ".join(args)))
+            logging.info("Running get_output command: %s" % (" ".join(args)))
             ret = subprocess.check_output(args, universal_newlines=True, stderr=subprocess.PIPE, **kwargs)
             return ret
         except subprocess.CalledProcessError as e:

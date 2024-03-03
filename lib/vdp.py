@@ -99,7 +99,7 @@ class VDP:
                 providerfiles.extend(glob.glob(Registry.cfg.app_dir + "/config/providers/*lprovider"))
                 providerfiles.extend(glob.glob(Registry.cfg.my_providers_dir + "/*lprovider"))
             for providerf in providerfiles:
-                logging.getLogger().info("Loading provider %s" % providerf)
+                logging.getLogger().debug("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
                     try:
@@ -126,7 +126,7 @@ class VDP:
                 spacefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/spaces/*lspace"))
                 spacefiles.extend(glob.glob(Registry.cfg.my_spaces_dir + "/*lspace"))
             for spacef in spacefiles:
-                logging.getLogger().info("Loading space %s" % spacef)
+                logging.getLogger().debug("Loading space %s" % spacef)
                 with open(spacef, "r") as f:
                     jsn = f.read(-1)
                     try:
@@ -153,7 +153,7 @@ class VDP:
                 gatefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/gates/*lgate"))
                 gatefiles.extend(glob.glob(Registry.cfg.my_gates_dir + "/*lgate"))
             for gwf in gatefiles:
-                logging.getLogger().info("Loading gate %s" % gwf)
+                logging.getLogger().debug("Loading gate %s" % gwf)
                 with open(gwf, "r") as f:
                     jsn = f.read(-1)
                     try:
@@ -302,7 +302,7 @@ class VDP:
         for g in self.gate_ids():
             go = self.get_gate(g)
             if go.get_provider().get_id() in Registry.cfg.readonly_providers:
-                logging.getLogger("vdp").info("Not saving gate %s (Readonly provider)" % go.get_id())
+                logging.getLogger("vdp").debug("Not saving gate %s (Readonly provider)" % go.get_id())
                 ignored_gates += 1
                 continue
             saved_gates += 1
@@ -310,14 +310,14 @@ class VDP:
         for s in self.space_ids():
             so = self.get_space(s)
             if so.get_provider().get_id() in Registry.cfg.readonly_providers:
-                logging.getLogger("vdp").info("Not saving space %s (Readonly provider)" % so.get_id())
+                logging.getLogger("vdp").debug("Not saving space %s (Readonly provider)" % so.get_id())
                 ignored_spaces += 1
                 continue
             saved_spaces += 1
             so.save(cfg=cfg)
         for p in self.provider_ids():
             if p in Registry.cfg.readonly_providers:
-                logging.getLogger("vdp").info("Not saving provider %s (Readonly provider)" % p)
+                logging.getLogger("vdp").debug("Not saving provider %s (Readonly provider)" % p)
                 ignored_providers += 1
                 continue
             po = self.get_provider(p)

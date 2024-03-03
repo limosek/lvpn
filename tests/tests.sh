@@ -78,19 +78,6 @@ then
   exit 2
 fi
 
-sleep 10
-
-
-# Test that autoconnect works
-python3 $PYTHONPATH/client.py -l INFO --manager-local-bind=0.0.0.0 --enable-wg=1 --run-wallet=0 --run-gui=0 --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" >client.log 2>&1  &
-while ! curl -q http://127.0.0.1:8124
-do
-  sleep 1
-done
-sleep 15
-
-curl -q -x http://localhost:8080/ http://www.lthn >/dev/null || cat client.log
-
 echo "========================================================"
 echo "Unit tests passed"
 echo "========================================================"

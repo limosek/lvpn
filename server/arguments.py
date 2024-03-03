@@ -31,5 +31,7 @@ class ServerArguments:
                        default=0, choices=[0, 1])
         p.add_argument("--max-free-session-days", type=int, help="Maximum length of free session in days",
                        default=1)
+        p.add_argument("--max-free-wg-handshake-timeout", type=int, help="Maximum handshake timeout. Free WG sessions will be deleted after this seconds.",
+                       default=3600)
 
         return p

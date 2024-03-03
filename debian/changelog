@@ -1,6 +1,6 @@
-lvpn (0.1) UNRELEASED; urgency=medium
+lvpn (0.1+nmu1) UNRELEASED; urgency=medium
 
   * Initial release.
+  * Verion 0.5
 
- -- ntb1-lm <lukas.macura@gmail.com>  Sat, 02 Mar 2024 17:51:11 +0100
-
+ -- Lukas Macura <lukas@macura.cz>  Sun, 03 Mar 2024 20:11:24 +0100

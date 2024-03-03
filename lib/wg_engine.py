@@ -46,23 +46,9 @@ class WGEngine(Service):
             raise ServiceException(2, str(e))
 
     @classmethod
-    def replace_macros(cls, txt, iface="", af="", ip="", mask="", prefixlen="", fname="", network="", gw=""):
-        return txt.replace(
-            "{iface}", iface
-        ).replace(
-            "{af}", af
-        ).replace(
-            "{ip}", ip
-        ).replace(
-            "{mask}", mask
-        ).replace(
-            "{prefixlen}", prefixlen
-        ).replace(
-            "{fname}", fname
-        ).replace(
-            "{network}", network
-        ).replace(
-            "{gw}", gw
+    def replace_macros(cls, txt: str, **kwargs):
+        return txt.format(
+            **kwargs
         )
 
     @classmethod
@@ -120,10 +106,17 @@ class WGEngine(Service):
 
     @classmethod
     def set_interface_ip(cls, iface: str, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
+        if type(ip) is ipaddress.IPv4Address:
+            af = "ipv4"
+            tpe = ""
+        else:
+            af = "ipv6"
+            tpe = ""
         if Registry.cfg.wg_cmd_set_ip:
+            cls.log_info("Setting WG interface IP: dev=%s,ip=%s,ipnet=%s" % (iface, ip, ipnet))
             cls.wg_run_cmd(
                 *shlex.split(cls.replace_macros(
-                    Registry.cfg.wg_cmd_set_ip, iface=iface, ip=str(ip), mask=str(ipnet.netmask), prefixlen=str(ipnet.prefixlen)
+                    Registry.cfg.wg_cmd_set_ip, iface=iface, af=af, ip=str(ip), mask=str(ipnet.netmask), prefix=str(ipnet.prefixlen), type=tpe
                 )))
         else:
             cls.log_error("Cannot create WG interface - missing wg_cmd_create_interface")
@@ -142,6 +135,7 @@ ListenPort = {port}
             with open(fname, "w") as f:
                 f.write(tunnelcfg)
             if Registry.cfg.wg_cmd_create_interface:
+                cls.log_info("Creating WG interface: dev=%s" % (name))
                 cls.wg_run_cmd(
                     *shlex.split(cls.replace_macros(
                         Registry.cfg.wg_cmd_create_interface, fname=fname
@@ -152,6 +146,7 @@ ListenPort = {port}
 
         else:
             if Registry.cfg.wg_cmd_create_interface:
+                cls.log_info("Creating WG interface: dev=%s" % (name))
                 wgargs = shlex.split(
                     cls.replace_macros(
                         Registry.cfg.wg_cmd_create_interface, iface=name
@@ -179,31 +174,16 @@ ListenPort = {port}
     @classmethod
     def set_interface_up(cls, name):
         if Registry.cfg.wg_cmd_set_interface_up:
+            cls.log_info("Setting WG interface up: dev=%s" % name)
             cls.wg_run_cmd(
                 *shlex.split(cls.replace_macros(
                     Registry.cfg.wg_cmd_set_interface_up, iface=name
                 )))
 
     @classmethod
-    def set_wg_interface_ip(cls, name, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
-        try:
-            if Registry.cfg.wg_cmd_unset_ips:
-                ipargs = shlex.split(
-                    cls.replace_macros(
-                        Registry.cfg.wg_cmd_unset_ips, iface=name, ip=str(ip), mask=str(ipnet.netmask)
-                    ))
-                cls.wg_run_cmd(*ipargs)
-            ipargs = shlex.split(
-                cls.replace_macros(
-                    Registry.cfg.wg_cmd_set_ip, iface=name, ip=str(ip), mask=str(ipnet.netmask), prefixlen=ipnet.prefixlen
-                ))
-            cls.wg_run_cmd(*ipargs)
-        except Exception as e:
-            raise ServiceException(2, str(e))
-
-    @classmethod
     def delete_wg_interface(cls, name: str):
         if Registry.cfg.wg_cmd_delete_interface:
+            cls.log_info("Deleting WG interface: dev=%s" % name)
             wgargs = shlex.split(
                 cls.replace_macros(
                     Registry.cfg.wg_cmd_delete_interface, iface=name
@@ -221,9 +201,10 @@ ListenPort = {port}
     def add_route(cls, iface: str, ipnet: ipaddress.ip_network, gw: ipaddress.ip_address):
         ipn = ipaddress.ip_network(ipnet)
         if Registry.cfg.wg_cmd_route:
+            cls.log_info("Setting IP route: dev=%s,ipnet=%s,gw=%s" % (iface, ipnet, gw))
             wgargs = shlex.split(
                 cls.replace_macros(
-                    Registry.cfg.wg_cmd_route, iface=iface, network=str(ipnet), gw=str(gw), mask=str(ipn.netmask), prefixlen=str(ipn.prefixlen)
+                    Registry.cfg.wg_cmd_route, iface=iface, network=str(ipnet), gw=str(gw), mask=str(ipn.netmask), prefix=str(ipn.prefixlen)
                 ))
             try:
                 ret = cls.wg_run_cmd(*wgargs)
@@ -293,7 +274,7 @@ ListenPort = {port}
             return cls.parse_show_dump(data)
 
     @classmethod
-    def add_peer(cls, iname: str, public: str, allowed_ips: list, endpoint: str = None, preshared: str = None, keepalive: int = 120, show_only: bool = False):
+    def add_peer(cls, iname: str, public: str, allowed_ips: list, endpoint: str = None, preshared: str = None, keepalive: int = None, show_only: bool = False):
         if endpoint == "dynamic":
             endpoint = None
         ips = []
@@ -305,9 +286,10 @@ ListenPort = {port}
             iname,
             "peer",
             public,
-            "allowed-ips", ",".join(ips),
-            "persistent-keepalive", str(keepalive)
+            "allowed-ips", ",".join(ips)
         ]
+        if keepalive:
+            args.extend(["persistent-keepalive", str(keepalive)])
         if endpoint:
             args.extend(["endpoint", endpoint])
         if preshared:

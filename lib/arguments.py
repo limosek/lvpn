@@ -94,7 +94,7 @@ class SharedArguments:
         p.add_argument('--wg-cmd-prefix', type=str, default="",
                        help="Wireguard prefix to run wg command. Can be 'sudo' or 'ssh root@server' or anything else what will be prepended before wg command.")
         if platform.system() == "Windows":
-            p.add_argument('--wg-cmd-set-ip', type=str, default="netsh interface ipv4 set address name={iface} static {ip} {mask}",
+            p.add_argument('--wg-cmd-set-ip', type=str, default="netsh interface {af} set address {iface} {type} {ip}/{prefix}",
                            help="Wireguard command to assign IP address to interface")
             p.add_argument('--wg-cmd-unset-ips', type=str,
                            default="",
@@ -108,7 +108,7 @@ class SharedArguments:
             p.add_argument('--wg-cmd-route', type=str, default="route add {network} MASK {mask} {gw}",
                            help="Wireguard command to route network.")
         else:
-            p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{mask}",
+            p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{prefix}",
                        help="Wireguard command to assign IP address to interface")
             p.add_argument('--wg-cmd-unset-ips', type=str,
                            default="ip addr flush dev {iface}",

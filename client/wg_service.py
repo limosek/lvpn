@@ -74,13 +74,13 @@ class WGClientService(WGService):
                     port)
                 if session.get_gate_data("wg"):
                     if "client_ipv4_address" in session.get_gate_data("wg"):
-                        WGEngine.set_wg_interface_ip(cls.iface,
+                        WGEngine.set_interface_ip(cls.iface,
                                                      ip=ipaddress.ip_address(
                                                          session.get_gate_data("wg")["client_ipv4_address"]),
                                                      ipnet=ipaddress.ip_network(
                                                          gate.get_gate_data("wg")["ipv4_network"]))
                     if "client_ipv6_address" in session.get_gate_data("wg"):
-                        WGEngine.set_wg_interface_ip(cls.iface,
+                        WGEngine.set_interface_ip(cls.iface,
                                                      ip=ipaddress.ip_address(
                                                          session.get_gate_data("wg")["client_ipv6_address"]),
                                                      ipnet=ipaddress.ip_network(
@@ -154,7 +154,7 @@ class WGClientService(WGService):
                                  session.get_gate_data("wg")["server_public_key"],
                                  nets,
                                  session.get_gate()["wg"]["endpoint"],
-                                 session.get_gate_data("wg")["psk"], show_only=show_only)
+                                 session.get_gate_data("wg")["psk"], keepalive=55, show_only=show_only)
 
     @classmethod
     def deactivate_on_client(cls, session, show_only=False):

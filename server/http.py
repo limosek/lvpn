@@ -37,7 +37,7 @@ def make_response(code, reason, data=None):
 
 @app.errorhandler(404)
 def error_404(e):
-    return make_response(404, "Not found", str(e))
+    return make_response(404, "Not found")
 
 
 def check_authentication():
