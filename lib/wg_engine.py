@@ -108,7 +108,7 @@ class WGEngine(Service):
     def set_interface_ip(cls, iface: str, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
         if type(ip) is ipaddress.IPv4Address:
             af = "ipv4"
-            tpe = ""
+            tpe = "static"
         else:
             af = "ipv6"
             tpe = ""

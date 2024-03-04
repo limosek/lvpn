@@ -94,9 +94,9 @@ class WGServerService(lib.wg_service.WGService):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         ips = []
         if "client_ipv4_address" in session.get_gate_data("wg"):
-            ips.extend(session.get_gate_data("wg")["client_ipv4_address"])
+            ips.append(session.get_gate_data("wg")["client_ipv4_address"])
         if "client_ipv6_address" in session.get_gate_data("wg"):
-            ips.extend(session.get_gate_data("wg")["client_ipv6_address"])
+            ips.append(session.get_gate_data("wg")["client_ipv6_address"])
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["client_public_key"],
                                  ips,
