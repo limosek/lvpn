@@ -5,6 +5,8 @@
       type: object
       additionalProperties: false
       properties:
+        started:
+          type: number
         connectionid:
           type: string
         sessionid:

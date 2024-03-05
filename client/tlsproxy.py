@@ -104,7 +104,7 @@ class TLSProxy(Service):
 
     @classmethod
     def loop(cls):
-        host = "127.0.0.1"
+        host = Registry.cfg.local_bind
         port = cls.kwargs["port"]  # initiate port no above 1024s
         server_socket = socket.socket()
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -115,8 +115,8 @@ class TLSProxy(Service):
         threads = []
         while not cls.exit:
             cls.log_debug("tlsserver %s:%s loop (%s connections)" % (Registry.cfg.local_bind, port, len(threads)))
-            while len(threads) > 20:
-                cls.log_warning("Too many connections to %s:%s (%s)" % (Registry.cfg.local_bind, port, len(threads)))
+            while len(threads) > Registry.cfg.max_tls_connections:
+                cls.log_warning("Too many connections to %s:%s (%s). See --max-tls-connections" % (Registry.cfg.local_bind, port, len(threads)))
                 time.sleep(5)
                 continue
             tmp = copy(threads)
@@ -145,7 +145,15 @@ class TLSProxy(Service):
         else:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
-            s.connect(endpoint)
+            err = True
+            while err:
+                try:
+                    s.connect(endpoint)
+                    err = False
+                except Exception as e:
+                    err = True
+                    cls.log_error("Cannot connect to %s:%s" % (endpoint, e))
+                    time.sleep(15)
         if ca:
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ctx.load_cert_chain(cls.crtfile, cls.keyfile)
@@ -190,7 +198,6 @@ class TLSProxy(Service):
         sessions = Sessions()
         session = sessions.get(sessionid)
         cls.prepare(session, Registry.cfg.tmp_dir, cls.kwargs["ca"])
-        cls.connect(cls.kwargs["endpoint"], cls.kwargs["ca"])
 
     @classmethod
     def stop(cls):

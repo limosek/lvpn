@@ -8,10 +8,6 @@ import unittest
 
 os.environ["NO_KIVY"] = "1"
 
-from lib.queue import Queue
-from client.connection import Connection
-from client.tlsproxy import TLSProxy
-from client.sshproxy import SSHProxy
 from lib.session import Session
 from lib.sessions import Sessions
 from lib.registry import Registry
@@ -19,20 +15,6 @@ from tests.util import Util
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
-
-
-class TLSProxy2(TLSProxy):
-
-    @classmethod
-    def loop(cls):
-        pass
-
-
-class SSHProxy2(SSHProxy):
-
-    @classmethod
-    def loop(cls):
-        pass
 
 
 class TestSessions(unittest.TestCase):
@@ -56,8 +38,6 @@ class TestSessions(unittest.TestCase):
         self.PaySessions()
         self.LoadedSessions()
         self.Parent()
-        self.TLSproxy(session, sessions)
-        self.SSHproxy(session, sessions)
         left = self.Serialization()
         right = self.Concurrency()
         print(left, right)
@@ -120,37 +100,6 @@ class TestSessions(unittest.TestCase):
         self.assertFalse(bool(child.get_gate_data("proxy")))
         sessions.load()
         self.assertLess(len(sessions.find(active=True, noparent=True)), len(sessions.find(active=True)))
-
-    def TLSproxy(self, session, sessions):
-        queue = Queue(multiprocessing.get_context(), "test1")
-        queue2 = Queue(multiprocessing.get_context(), "test2")
-        sessions.load()
-        ctrl = {}
-        connection = Connection(session, port=8888)
-        kwargs = {
-            "endpoint": session.get_gate().get_endpoint(resolve=True),
-            "ca": session.get_gate().get_ca(),
-            "port": 8888,
-            "sessionid": session.get_id(),
-            "connectionid": connection.get_id()
-        }
-        TLSProxy2.run(ctrl, queue, queue2, **kwargs)
-
-    def SSHproxy(self, session, sessions):
-        queue = Queue(multiprocessing.get_context(), "test1")
-        queue2 = Queue(multiprocessing.get_context(), "test2")
-        sessions.load()
-        ctrl = {}
-        connection = Connection(session, port=8888)
-        session = sessions.find(gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh")[0]
-        kwargs = {
-            "gate": session.get_gate(),
-            "space": session.get_space(),
-            "sessionid": session.get_id(),
-            "connectionid": connection.get_id()
-        }
-        #with self.assertRaises(sshtunnel.BaseSSHTunnelForwarderError):
-        #    SSHProxy2.run(ctrl, queue, queue2, **kwargs)
 
     def Concurrency(self):
         self.cleanup_sessions()

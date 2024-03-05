@@ -53,8 +53,12 @@ class Sessions:
                         s = Session(data)
                         self.update(s)
                     else:
-                        logging.getLogger().warning("Session %s is not anymore on server." % (s.get_id()))
-                        #self.remove(s)
+                        if s.is_free():
+                            logging.getLogger().warning("Session %s is not anymore on server. Removing." % (s.get_id()))
+                            self.remove(s)
+                        else:
+                            logging.getLogger().error("Paid session %s is not anymore on server." % (s.get_id()))
+
                 except Exception as e:
                     pass
                 time.sleep(5)

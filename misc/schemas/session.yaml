@@ -159,7 +159,6 @@
         - server_public_key
         - client_ipv4_address
         - ipv4_prefix
-        - psk
         - server_ipv4_address
 
     ProxySessionData:

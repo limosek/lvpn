@@ -20,6 +20,8 @@ class ClientArguments:
 
         p.add_argument('--local-bind', help='Bind address to use for proxy and TLS ports', default="127.0.0.1")
 
+        p.add_argument('--max-tls-connections', help='How many connection at maximum to back-off', type=int, default=20)
+
         p.add_argument('--ssh-engine', help='SSH engine to use', choices=["paramiko", "ssh"], default="ssh")
 
         p.add_argument('--auto-connect', type=str, help='Auto connect uris',

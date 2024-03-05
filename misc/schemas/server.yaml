@@ -311,6 +311,9 @@ components:
               default: false
             public_key:
               type: string
+            use_psk:
+              type: boolean
+              default: true
             ipv4_network:
               type: string
             ipv4_gateway:
@@ -646,7 +649,6 @@ components:
         - server_public_key
         - client_ipv4_address
         - ipv4_prefix
-        - psk
         - server_ipv4_address
 
     ProxySessionData:

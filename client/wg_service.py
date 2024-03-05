@@ -1,4 +1,5 @@
 import ipaddress
+import multiprocessing
 import time
 
 from lib.messages import Messages
@@ -50,11 +51,22 @@ class WGClientService(WGService):
         sessions.add(nsession)
         cls.session = nsession
         cls.queue.put(Messages.connect(nsession))
+        messages = []
         for g in cls.gate["gates"]:
-            session = Session()
-            session.generate(g, cls.space.get_id(), 1)
-            session.save()
-            cls.queue.put(Messages.connect(session))
+            gate = Registry.vdp.get_gate(g)
+            if gate:
+                mr = lib.ManagerRpcCall(cls.space.get_manager_url())
+                session = Session(mr.create_session(gate, cls.space))
+                session.save()
+                sessions.add(session)
+                messages.append(Messages.connect(session))
+            else:
+                cls.log_error("Non-existent WG gateway %s" % g)
+                messages.append(
+                    Messages.gui_popup("Non-existent WG gateway %s" % g)
+                )
+        for m in messages:
+            cls.queue.put(m)
 
     @classmethod
     def setup_interface_client(cls, session):
@@ -150,11 +162,15 @@ class WGClientService(WGService):
                 WGEngine.add_route(ifname, ipnet, session.get_gate().get_gate_data("wg")["ipv6_gateway"])
             except ServiceException as e:
                 cls.log_error("Error adding route: %s" % str(e))
+        if "psk" in session.get_gate_data("wg"):
+            psk = session.get_gate_data("wg")
+        else:
+            psk = None
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["server_public_key"],
                                  nets,
                                  session.get_gate()["wg"]["endpoint"],
-                                 session.get_gate_data("wg")["psk"], keepalive=55, show_only=show_only)
+                                 psk, keepalive=55, show_only=show_only)
 
     @classmethod
     def deactivate_on_client(cls, session, show_only=False):

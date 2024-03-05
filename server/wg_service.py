@@ -35,10 +35,10 @@ class WGServerService(lib.wg_service.WGService):
             cls.log_info("Found %s peers, %s is needed from sessions" % (len(cls.gathered["peers"]), len(cls.needed)))
             for peer in cls.gathered["peers"].keys():
                 if peer in cls.needed.keys():
-                    if cls.gathered["peers"][peer]["latest_handshake"] < time.time() - Registry.cfg.max_free_wg_handshake_timeout:
+                    if int(cls.gathered["peers"][peer]["latest_handshake"]) < int(time.time()) - Registry.cfg.max_free_wg_handshake_timeout and int(cls.gathered["peers"][peer]["latest_handshake"]) > 0:
                         if cls.needed[peer].is_free():
                             cls.log_info("Removing peer %s - did not get handshake more than %s seconds" % (peer, Registry.cfg.max_free_wg_handshake_timeout))
-                            cls.needed[peer].remove()
+                            sessions.remove(cls.needed[peer])
                     continue
                 else:
                     WGEngine.remove_peer(cls.iface, peer)
@@ -78,7 +78,6 @@ class WGServerService(lib.wg_service.WGService):
             "client_public_key": wg_data["public_key"],
             "client_endpoint": client_endpoint,
             "server_public_key": session.get_gate().get_gate_data("wg")["public_key"],
-            "psk": WGEngine.generate_psk(),
             "client_ipv4_address": cls.find_free_ip(session.get_gate()),
             "client_ipv6_address": cls.find_free_ipv6(session.get_gate()),
             "server_ipv4_address": session.get_gate().get_gate_data("wg")["ipv4_gateway"],
@@ -87,6 +86,8 @@ class WGServerService(lib.wg_service.WGService):
             "ipv4_prefix": ipnet.prefixlen,
             "dns": session.get_space()["dns_servers"]
         }
+        if "use_psk" in session.get_gate().get_gate_data("wg") and session.get_gate().get_gate_data("wg")["use_psk"]:
+            data["psk"] = WGEngine.generate_psk()
         session.set_gate_data("wg", data)
 
     @classmethod
@@ -97,11 +98,15 @@ class WGServerService(lib.wg_service.WGService):
             ips.append(session.get_gate_data("wg")["client_ipv4_address"])
         if "client_ipv6_address" in session.get_gate_data("wg"):
             ips.append(session.get_gate_data("wg")["client_ipv6_address"])
+        if "psk" in session.get_gate_data("wg"):
+            psk = session.get_gate_data("wg")
+        else:
+            psk = None
         return WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["client_public_key"],
                                  ips,
                                  session.get_gate_data("wg")["client_endpoint"],
-                                 session.get_gate_data("wg")["psk"], keepalive=None, show_only=show_only)
+                                 psk, keepalive=None, show_only=show_only)
 
     @classmethod
     def deactivate_on_server(cls, session, show_only=False):

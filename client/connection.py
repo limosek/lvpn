@@ -26,7 +26,8 @@ class Connection:
                 "connectionid": "c-" + secrets.token_hex(8),
                 "sessionid": session.get_id(),
                 "children": [],
-                "data": {}
+                "data": {},
+                "started": int(time.time())
             }
             if parent:
                 self._data["parent"] = parent
@@ -97,7 +98,13 @@ class Connection:
                 self.get_session().get_title(short=True))
         return txt
 
+    def get_duration(self):
+        return int(time.time() - self._data["started"])
+
     def check_alive(self) -> bool:
+        if self.get_duration() < 90:
+            # For new connections, we are waiting to settle.
+            return True
         if self.get_port():
             if self.get_gate().get_type() == "http-proxy":
                 try:
@@ -154,10 +161,10 @@ class Connection:
                     if result.is_alive:
                         return True
                     else:
-                        logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), result))
+                        logging.getLogger("proxy").error("Connection %s dead. Cannot ping." % (self.get_id()))
                         return False
                 except Exception as e:
-                    logging.getLogger("proxy").error("Connection %s dead?: %s" % (self.get_id(), e))
+                    logging.getLogger("proxy").error("Connection %s dead: %s" % (self.get_id(), e))
                     return False
             else:
                 logging.getLogger("proxy").error(

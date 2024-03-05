@@ -58,6 +58,9 @@
               default: false
             public_key:
               type: string
+            use_psk:
+              type: boolean
+              default: true
             ipv4_network:
               type: string
             ipv4_gateway:

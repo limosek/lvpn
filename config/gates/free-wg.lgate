@@ -15,7 +15,8 @@
     "ipv4_network": "100.66.0.0/16",
     "ipv4_gateway": "100.66.0.1",
     "ipv6_network": "fc00:0:0:66::/64",
-    "ipv6_gateway": "fc00:0:0:66::1"
+    "ipv6_gateway": "fc00:0:0:66::1",
+    "use_psk": false
   },
   "spaces": [
     "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"

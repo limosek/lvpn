@@ -57,9 +57,6 @@ class Proxy(Service):
                 "pid": mp.pid
             }
         )
-        conns = cls.get_value("connections")
-        conns.append(connection)
-        cls.set_value("connections", conns)
         cls.processes.append(
             {
                 "process": mp,
@@ -67,6 +64,7 @@ class Proxy(Service):
                 "connection": connection
             }
         )
+        return connection
 
     @classmethod
     def connect(cls, connections, sessionid):
@@ -91,7 +89,9 @@ class Proxy(Service):
                 cls.disconnect(connections, replaced_connection)
                 time.sleep(1)
         if gate.get_type() in ["http-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy", "socks-proxy"]:
-            cls.run_tls_proxy(gate.get_local_port(), session)
+            connection = cls.run_tls_proxy(gate.get_local_port(), session)
+            connections.add(connection)
+            cls.update_connections(connections)
 
         elif gate.get_type() == "ssh":
             connection = Connection(session)
@@ -206,12 +206,20 @@ class Proxy(Service):
         return False
 
     @classmethod
-    def loop(cls):
+    def loop(cls, once=False):
         cls.connections = cls.get_connections()
-        st = threading.Thread(target=cls.refresh_sessions)
-        st.start()
-        ct = threading.Thread(target=cls.refresh_connections)
-        ct.start()
+        if once:
+            cls.refresh_sessions(once=True)
+            st = None
+        else:
+            st = threading.Thread(target=cls.refresh_sessions)
+            st.start()
+        if once:
+            cls.refresh_connections(once=True)
+            ct = None
+        else:
+            ct = threading.Thread(target=cls.refresh_connections)
+            ct.start()
         while not cls.exit:
             cls.log_debug("Proxy loop")
             time.sleep(1)
@@ -243,24 +251,30 @@ class Proxy(Service):
                         cls.processes.append(p)
                 except _queue.Empty:
                     continue
+            if once:
+                break
 
         cls.log_gui("proxy", "Proxy process exited")
         cls.exit = True
-        st.join()
-        ct.join()
+        if st:
+            st.join()
+        if ct:
+            ct.join()
         cls.stop()
 
     @classmethod
-    def refresh_sessions(cls):
+    def refresh_sessions(cls, once=False):
         while not cls.exit:
             sessions = Sessions()
             cls.log_gui("proxy", "Checking sessions: %s" % repr(sessions))
             sessions.refresh_status()
             cls.log_gui("proxy", "Done checking Sessions: %s" % repr(sessions))
+            if once:
+                break
             time.sleep(60)
 
     @classmethod
-    def refresh_connections(cls):
+    def refresh_connections(cls, once=False):
         while not cls.exit:
             #cls.log_gui("proxy", "Checking connections: %s" % repr(cls.connections))
             for pinfo in cls.processes.copy():
@@ -285,6 +299,8 @@ class Proxy(Service):
                                 cls.connections.remove(ch)
                             cls.connections.remove(conn.get_id())
             cls.connections.check_alive()
+            if once:
+                break
             #cls.log_gui("proxy", "Checked connections: %s" % repr(cls.connections))
 
     @classmethod
