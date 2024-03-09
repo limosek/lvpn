@@ -34,6 +34,7 @@ from lib.wizard import Wizard
 from client.connection import Connections
 from lib.registry import Registry
 from lib.wg_engine import WGEngine
+from lib.runcmd import Process
 import lib
 
 
@@ -189,30 +190,34 @@ def main():
 
     if cfg.run_gui:
         os.environ["NO_KIVY"] = ""  # Set to load KIVY for gui
-        gui = multiprocessing.Process(target=GUI.run, args=[ctrl, queue, gui_queue], name="GUI")
+        gui = Process(target=GUI.run, args=[ctrl, queue, gui_queue], name="GUI")
         gui.start()
         processes["gui"] = gui
         os.environ["NO_KIVY"] = "1"  # Set to not load KIVY for subprocesses
 
     if cfg.run_proxy:
-        proxy = multiprocessing.Process(target=Proxy.run, args=[ctrl, queue, proxy_queue], name="Proxy")
+        proxy = Process(target=Proxy.run, args=[ctrl, queue, proxy_queue], name="Proxy")
         proxy.start()
         processes["proxy"] = proxy
 
     if cfg.run_wallet:
-        wallet = multiprocessing.Process(target=ClientWallet.run, args=[ctrl, queue, wallet_queue], kwargs={}, name="Wallet")
-        wallet.start()
-        processes["wallet"] = wallet
-        cd = multiprocessing.Process(target=ClientDaemon.run, args=[ctrl, queue, cd_queue], kwargs=
-        {
-            "daemon_host": cfg.daemon_host,
-            "daemon_port": cfg.daemon_p2p_port,
-            "daemon_rpc_url": cfg.daemon_rpc_url
-        }, name="Daemon")
-        cd.start()
-        processes["daemon"] = cd
+        kwargs = {}
+    else:
+        kwargs = {"norun": True}
 
-    http = multiprocessing.Process(target=Manager.run, args=[ctrl, queue, http_queue], kwargs={}, name="Manager")
+    wallet = Process(target=ClientWallet.run, args=[ctrl, queue, wallet_queue], kwargs=kwargs, name="Wallet")
+    wallet.start()
+    processes["wallet"] = wallet
+    cd = Process(target=ClientDaemon.run, args=[ctrl, queue, cd_queue], kwargs=
+    {
+        "daemon_host": cfg.daemon_host,
+        "daemon_port": cfg.daemon_p2p_port,
+        "daemon_rpc_url": cfg.daemon_rpc_url
+    }, name="Daemon")
+    cd.start()
+    processes["daemon"] = cd
+
+    http = Process(target=Manager.run, args=[ctrl, queue, http_queue], kwargs={}, name="Manager")
     http.start()
     processes["http"] = http
 

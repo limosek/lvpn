@@ -61,7 +61,11 @@ class VDPObject:
         if Registry.cfg and Registry.cfg.force_manager_url:
             logging.getLogger("vdp").warning("Using forced manager URL %s" % Registry.cfg.force_manager_url)
             return Registry.cfg.force_manager_url
-        return self.get_provider().get_manager_url()
+        else:
+            if "manager-url" in self._data:
+                return self._data["manager-url"]
+            else:
+                return self.get_provider().get_manager_url()
 
     def get_price(self):
         if "price" in self._data and "per-day" in self._data["price"]:

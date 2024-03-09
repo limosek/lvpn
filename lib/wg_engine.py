@@ -119,8 +119,7 @@ class WGEngine(Service):
                     Registry.cfg.wg_cmd_set_ip, iface=iface, af=af, ip=str(ip), mask=str(ipnet.netmask), prefix=str(ipnet.prefixlen), type=tpe
                 )))
         else:
-            cls.log_error("Cannot create WG interface - missing wg_cmd_create_interface")
-            raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_create_interface")
+            cls.log_warning("Not creating WG interface - missing wg_cmd_create_interface")
 
     @classmethod
     def create_wg_interface(cls, name: str, private, port):
@@ -169,7 +168,7 @@ ListenPort = {port}
                 except Exception as e:
                     raise ServiceException(2, str(e))
             else:
-                cls.log_error("Not creating WG interface - missing wg_cmd_create_interface")
+                cls.log_warning("Not creating WG interface - missing wg_cmd_create_interface")
 
     @classmethod
     def set_interface_up(cls, name):
@@ -194,8 +193,7 @@ ListenPort = {port}
             except Exception as e:
                 raise ServiceException(2, str(e))
         else:
-            cls.log_error("Cannot create WG interface - missing wg_cmd_delete_interface")
-            raise ServiceException(3, "Cannot create WG interface - missing wg_cmd_delete_interface")
+            cls.log_warning("Not deleting WG interface - missing wg_cmd_delete_interface")
 
     @classmethod
     def add_route(cls, iface: str, ipnet: ipaddress.ip_network, gw: ipaddress.ip_address):
@@ -212,8 +210,7 @@ ListenPort = {port}
             except Exception as e:
                 raise ServiceException(2, str(e))
         else:
-            cls.log_error("Cannot add route - missing wg_cmd_route")
-            #raise ServiceException(3, "Cannot add route - missing wg_cmd_route")
+            cls.log_warning("Not adding route - missing wg_cmd_route")
 
     @classmethod
     def parse_show_dump(cls, dump):
@@ -260,7 +257,7 @@ ListenPort = {port}
 
     @classmethod
     def gather_wg_data(cls, iname: str):
-        if Registry.cfg.enable_wg:
+        if Registry.cfg.enable_wg and not cls.show_only:
             output = cls.wg_run_cmd("wg", "show", iname, "dump")
             data = cls.parse_show_dump(output)
             return data

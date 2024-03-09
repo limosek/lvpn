@@ -36,6 +36,7 @@ unittest ./sessions.py
 unittest ./connection.py
 unittest ./wg_engine.py
 unittest ./wg_service.py
+#unittest ./proxies.py
 
 export WLS_CFG_DIR=$(realpath ./scfg)
 export WLC_CFG_DIR=$(realpath ./ccfg)

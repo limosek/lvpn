@@ -25,7 +25,8 @@ class Sessions:
                 self.remove(s)
                 continue
             except json.JSONDecodeError:
-                self.remove(s)
+                logging.getLogger("wallet").error("Bad session file %s - removing" % f)
+                self.remove(s, f)
                 continue
             if s.is_fresh():
                 self._sessions[s.get_id()] = s
@@ -52,8 +53,9 @@ class Sessions:
                     if data:
                         s = Session(data)
                         self.update(s)
+                        logging.getLogger("audit").info("Updated session %s from server" % s.get_id())
                     else:
-                        if s.is_free():
+                        if s.is_free() and s.get_created() + 120 < time.time():
                             logging.getLogger().warning("Session %s is not anymore on server. Removing." % (s.get_id()))
                             self.remove(s)
                         else:
@@ -125,14 +127,20 @@ class Sessions:
         self._sessions[session.get_id()] = session
         session.save()
 
-    def remove(self, session):
-        if session.get_id() in self._sessions:
-            session.deactivate()
-            del self._sessions[session.get_id()]
-        if os.path.exists(session.get_filename()):
-            os.unlink(session.get_filename())
-            logging.getLogger("audit").info("Removed session %s from disk: %s" % (session.get_id(), session.get_filename()))
-        self.load()
+    def remove(self, session, file=None):
+        logging.getLogger("audit").warning("Removing session %s (rmfile=%s)" % (session.get_id(), file))
+        if file:
+            try:
+                os.unlink(file)
+            except Exception as e:
+                pass
+        else:
+            if session.get_id() in self._sessions:
+                session.deactivate()
+                del self._sessions[session.get_id()]
+            if os.path.exists(session.get_filename()):
+                os.unlink(session.get_filename())
+                logging.getLogger("audit").info("Removed session %s from disk: %s" % (session.get_id(), session.get_filename()))
 
     def update(self, session):
         self._sessions[session.get_id()] = session
@@ -153,3 +161,6 @@ class Sessions:
     def __repr__(self):
         return "Sessions[all=%s,active=%s,free=%s,paid=%s,needpay=%s]" % (
             len(self.find()), len(self.find(active=True)), len(self.find(free=True)), len(self.find(paid=True)), len(self.find(needpay=True)))
+
+    def __len__(self):
+        return len(self._sessions)

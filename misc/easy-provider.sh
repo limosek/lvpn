@@ -48,16 +48,20 @@ then
   exit 1
 fi
 
+mkdir "$WLS_CFG_DIR"
+
 if [ -z "$EASY_WALLET_PASSWORD" ]
 then
   EASY_WALLET_PASSWORD=$(pwgen 12)
   echo "VPN password: $EASY_WALLET_PASSWORD"
+  echo $EASY_WALLET_PASSWORD >$WLS_CFG_DIR/wallet_pass
 fi
 
 if [ -z "$EASY_WALLET_RPC_PASSWORD" ]
 then
   EASY_WALLET_RPC_PASSWORD=$(pwgen 12)
   echo "VPN RPC password: $EASY_WALLET_RPC_PASSWORD"
+  echo $EASY_WALLET_RPC_PASSWORD >$WLS_CFG_DIR/wallet_rpc_pass
 fi
 
 if ! which lethean-wallet-cli >/dev/null
@@ -65,8 +69,6 @@ then
   echo "You need lethean-wallet-cli binary"
   exit 1
 fi
-
-mkdir "$WLS_CFG_DIR"
 
 mgmt init
 
@@ -96,4 +98,5 @@ generate_wallet "$WLS_CFG_DIR/vpn-wallet" "$EASY_WALLET_PASSWORD" >/dev/null 2>/
 mkdir -p $WLS_CFG_DIR/gates $WLS_CFG_DIR/providers $WLS_CFG_DIR/spaces
 mgmt generate-vdp "$EASY_CA_CN" free "$EASY_FQDN" "$(cat $WLS_CFG_DIR/vpn-wallet.address.txt)"
 
+echo "Waiting for Wallet process to finish"
 wait

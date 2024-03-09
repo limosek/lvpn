@@ -225,6 +225,29 @@ def get_session():
         return make_response(400, "Missing sessionid", {})
 
 
+@app.route('/api/session/rekey', methods=['GET'])
+@openapi_validated
+def rekey_session():
+    sessions = Sessions(noload=True)
+    if "sessionid" in request.args:
+        session = sessions.get(request.args["sessionid"])
+        if session:
+            if not session.is_active():
+                return make_response(402, "Waiting for payment", session.get_dict())
+            else:
+                if session.get_gate().get_type == "wg":
+                    if "wg_public_key" in request.args:
+                        WGServerService.prepare_server_session(session, {"public_key": request.args["wg_public_key"], "endpoint": "dynamic"})
+                        return make_response(200, "OK", session.get_dict())
+                    else:
+                        return make_response(400, "Missing wg_public_key", {})
+                return make_response(200, "OK", session.get_dict())
+        else:
+            return make_response(404, "Session not found", {})
+    else:
+        return make_response(400, "Missing sessionid", {})
+
+
 @app.route('/api/sessions', methods=['GET'])
 @openapi_validated
 def sessions():

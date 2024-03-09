@@ -28,10 +28,18 @@ class ClientArguments:
                        default="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free,paid"
                        )
         p.add_argument('--auto-reconnect', type=bool, help='Auto reconnect on failure', default=False)
-        p.add_argument('--auto-pay-days', type=int,
-                       help='Auto pay service when there is an request to connect for this number of days. By default, not pay and exit.')
+        p.add_argument('--auto-pay-days', type=int, default=0,
+                       help='Auto pay service when there is an request to connect for this number of days. By default, payment must be confirmed by GUI')
         p.add_argument('--free-session-days', type=int,
                        help='How many days to request for free service', default=1)
+
+        try:
+            p.add_argument('--contributions', type=str,
+                       help='Contribute other parties by using this service as a client (increase price).',
+                       default="")
+        except Exception as e:
+            """We probably already defined within server args"""
+            pass
 
         return p
 

@@ -1,4 +1,7 @@
 import json
+import multiprocessing
+import time
+
 import configargparse
 import logging
 import nacl.signing
@@ -6,11 +9,11 @@ import nacl.encoding
 import os
 import sys
 import ownca
-
-from lib.registry import Registry
+import requests
 
 os.environ["NO_KIVY"] = "1"
 
+from lib.registry import Registry
 from client.arguments import ClientArguments
 from lib.arguments import SharedArguments
 from server.arguments import ServerArguments
@@ -24,6 +27,20 @@ from lib.vdp import VDP
 from lib.wizard import Wizard
 
 
+def print_session_row(session):
+    print("%s,%s,%s,%s,%s,%s,%s,%s,%s" % (
+        session.get_id(),
+        session.get_gateid(),
+        session.get_spaceid(),
+        session.is_active(),
+        session.is_free(),
+        session.seconds_left(),
+        session.is_paid(),
+        session.get_price(),
+        session.get_contributions_price()
+    ))
+
+
 def main():
     if not os.getenv("WLS_CFG_DIR"):
         os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
@@ -35,6 +52,8 @@ def main():
                                "WLS", "client")
     p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
     p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
+    p.add_argument("--client-mgmt-url", type=str, help="Client management URL", default="http://localhost:8124")
+    p.add_argument("--server-mgmt-url", type=str, help="Client management URL", default="http://localhost:8123")
     p.add_argument("cmd", help="Command to be used", type=str, choices={
         "init": "Initialize files",
         "show-vdp": "Print VDP from actual spaces and gates to stdout",
@@ -43,6 +62,8 @@ def main():
         "list-providers": "List actual known providers",
         "list-spaces": "List actual known spaces",
         "list-gates": "List actual known gates",
+        "list-server-sessions": "List actual server sessions",
+        "list-client-sessions": "List actual client sessions",
         "generate-provider-keys": "Generate provider public and private keys",
         "generate-cfg": "Generate config file",
         "sign-text": "Sign text by provider",
@@ -50,8 +71,10 @@ def main():
         "issue-crt": "Issue certificate",
         "generate-ca": "Generate certificate authority",
         "generate-vdp": "Generate basic VDP data for provider",
-        "create-session": "Create session to connect to gate/space",
-        "prepare-client-session": "Prepare client files based on sessionid"
+        "request-client-session": "Request session to connect to gate/space",
+        "pay-client-session": "Pay requested session",
+        "prepare-client-session": "Prepare client files based on sessionid",
+        "create-paid-server-session": "Prepare session manually on server"
     })
     p.add_argument("args", help="Args for command", nargs="*")
 
@@ -60,6 +83,7 @@ def main():
     cfg.l = cfg.log_level
     logging.basicConfig(level=cfg.l)
     Registry.cfg = cfg
+    Registry.cfg.log_file = cfg.var_dir + "/lvpn-mgmt.log"
     #Registry.vdp = VDP()
 
     if cfg.cmd == "show-vdp":
@@ -125,6 +149,31 @@ def main():
         print("id,name,local")
         for p in vdp.gates():
             print("%s,%s,%s" % (p.get_id(), p.get_name(), p.is_local()))
+
+    elif cfg.cmd == "list-server-sessions":
+        m = requests.request("GET", cfg.server_mgmt_url + "/api/sessions", headers={"Authorization": "Bearer %s" % Registry.cfg.manager_bearer_auth})
+        if m.status_code == 200:
+            sessions = json.loads(m.text)
+            print("id,gate,space,active,free,seconds_left,paid,price,contributions_price")
+            for s in sessions:
+                session = Session(s)
+                print_session_row(session)
+        else:
+            print(m.status_code, m.text)
+            sys.exit(2)
+
+    elif cfg.cmd == "list-client-sessions":
+        Registry.vdp = VDP()
+        m = requests.request("GET", cfg.client_mgmt_url + "/api/sessions", headers={"Authorization": "Bearer %s" % Registry.cfg.manager_bearer_auth})
+        if m.status_code == 200:
+            sessions = json.loads(m.text)
+            print("id,gate,space,active,free,seconds_left,paid,price,contributions_price")
+            for s in sessions:
+                session = Session(s)
+                print_session_row(session)
+        else:
+            print(m.status_code, m.text)
+            sys.exit(2)
 
     elif cfg.cmd == "init":
         Wizard.files(cfg)
@@ -209,26 +258,39 @@ def main():
             logging.error("Need generate-vdp 'name' 'space' 'fqdn' 'wallet'")
             sys.exit(1)
 
-    elif cfg.cmd == "create-session":
-        if cfg.args and len(cfg.args) == 3:
+    elif cfg.cmd == "request-client-session":
+        if cfg.args and len(cfg.args) >= 2:
             gateid = cfg.args[0]
             spaceid = cfg.args[1]
+            if len(cfg.args) == 3:
+                days = int(cfg.args[2])
+            else:
+                days = None
             cfg.vdp = VDP()
-            days = cfg.args[2]
+            Registry.vdp = cfg.vdp
             gate = cfg.vdp.get_gate(gateid)
             space = cfg.vdp.get_space(spaceid)
             if gate and space:
-                url = space.get_manager_url()
-                mngr = ManagerRpcCall(url)
-                s = mngr.create_session(gate, space, int(days))
+                mngr = ManagerRpcCall(Registry.cfg.client_mgmt_url)
+                s = mngr.create_session(gate, space, days)
                 session = Session(s)
-                print(json.dumps(session.get_dict(), indent=2))
-                if session.get_gate_data("ssh"):
-                    print(session.get_gate_data("ssh")["key"])
-                    print(session.get_gate_data("ssh")["crt"])
+                session.save()
+                print(session)
             else:
                 logging.error("Unknown gate or space")
                 sys.exit(1)
+        else:
+            logging.error("Use request-session gate space")
+            sys.exit(1)
+
+    elif cfg.cmd == "pay-client-session":
+        if cfg.args and len(cfg.args) == 1:
+            sessionid = cfg.args[0]
+            m = requests.request("GET", Registry.cfg.client_mgmt_url + "/api/pay/session/%s" % sessionid)
+            print(m.status_code, m.text)
+        else:
+            logging.error("Use pay-session sessionid")
+            sys.exit(1)
 
     elif cfg.cmd == "prepare-client-session":
         if cfg.args and len(cfg.args) == 2:
@@ -250,6 +312,31 @@ def main():
         else:
             logging.error("Use prepare-client-session sessionid directory")
             sys.exit(1)
+
+    elif cfg.cmd == "create-paid-server-session":
+        s = Session()
+        if len(cfg.args) >= 3:
+            Registry.vdp = VDP()
+            gateid = cfg.args[0]
+            spaceid = cfg.args[1]
+            days = int(cfg.args[2])
+            Registry.cfg.is_server = True
+            Registry.cfg.is_client = False
+            s.generate(gateid, spaceid, days)
+            for arg in cfg.args[3:]:
+                try:
+                    (attr, value) = arg.split("=")
+                    s._data[attr] = value
+                except Exception as e:
+                    logging.error("Use create-paid-server-session gateid spaceid days attr1=value [attr2=value] ...")
+                    sys.exit(3)
+            s.validate()
+            s.add_payment(s.get_price(), 1234, "manually_paid")
+            s.save()
+            print(s)
+        else:
+            logging.error("Use create-paid-server-session gateid spaceid days attr1=value [attr2=value] ...")
+            sys.exit(3)
 
     else:
         print("Bad command!")

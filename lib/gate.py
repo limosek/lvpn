@@ -3,6 +3,7 @@ import os.path
 import socket
 import time
 from ownca import CertificateAuthority
+import dns.resolver
 
 import client.wg_service
 import server.wg_service
@@ -33,20 +34,38 @@ class Gateway(VDPObject):
                 and not self.get_gate_data(self.get_type())["tls"]:
             return None
         else:
-            return self.get_provider().get_ca()
+            if "ca" in self._data:
+                return self._data["ca"]
+            else:
+                return self.get_provider().get_ca()
 
     def set_provider(self, provider):
         self._provider = provider
         self._local = self._provider.is_local()
 
-    def get_endpoint(self, resolve=False):
+    def get_endpoint(self, resolve=False, dnsservers=None):
         if not resolve:
             return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
         else:
             try:
-                ip = socket.gethostbyname(self._data[self.get_type()]["host"])
+                if 0 and self.is_internal():
+                    """Internal resolver is disabled for now"""
+                    resolver = dns.resolver.Resolver()
+                    if dnsservers:
+                        resolver.nameservers = dnsservers
+                    dns.resolver.override_system_resolver(resolver)
+                    answers = dns.resolver.resolve(self._data[self.get_type()]["host"], 'A')
+                    if len(answers.rrset) > 0:
+                        ip = str(answers.rrset[0])
+                    else:
+                        return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
+                else:
+                    ip = socket.gethostbyname(self._data[self.get_type()]["host"])
                 return tuple([ip, self._data[self.get_type()]["port"]])
             except socket.error:
+                logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
+                return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
+            except dns.resolver.NXDOMAIN:
                 logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
                 return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
 
@@ -129,8 +148,12 @@ class Gateway(VDPObject):
         return data
 
     def activate_client(self, session):
-        if self.get_type() == "wg":
-            client.wg_service.WGClientService.activate_on_client(session)
+        if session.get_gate().get_type() == "wg":
+            if session.get_gate_data("wg"):
+                client.wg_service.WGClientService.activate_on_client(session)
+            else:
+                logging.getLogger("audit").warning("Not activating WG session. Missing WG data.")
+                return False
 
     def activate_server(self, session):
         if self.get_type() == "ssh":
@@ -199,7 +222,11 @@ class Gateway(VDPObject):
             os.unlink(lckfile)
 
         elif self.get_type() == "wg":
-            server.wg_service.WGServerService.activate_on_server(session)
+            if session.get_gate_data("wg"):
+                server.wg_service.WGServerService.activate_on_server(session)
+            else:
+                logging.getLogger("audit").warning("Not activating WG session. Missing WG data.")
+                return False
         return True
 
     def deactivate_client(self, session):

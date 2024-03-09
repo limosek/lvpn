@@ -2,6 +2,7 @@ import codecs
 import pickle
 
 import lib.session
+from lib import Registry
 
 
 class Messages:
@@ -123,3 +124,4 @@ class Messages:
         ctrl["wallet_height"] = -1
         ctrl["wallet_address"] = ""
         ctrl["wg_interfaces"] = []
+        ctrl["vdp"] = Registry.vdp

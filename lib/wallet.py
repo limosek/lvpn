@@ -213,6 +213,8 @@ class Wallet(Service):
     @classmethod
     def postinit(cls):
         if "norun" in cls.kwargs:
+            cls.p = None
+            cls.pc = None
             return
         else:
             args = [

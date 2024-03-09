@@ -53,3 +53,8 @@ class Util:
         logging.basicConfig(level=logging.NOTSET, handlers=[sh])
         Registry.vdp = VDP()
         return cfg
+
+    @classmethod
+    def cleanup_sessions(self):
+        shutil.rmtree("./var/sessions")
+        os.mkdir("./var/sessions")

@@ -27,6 +27,12 @@
           type: string
         description:
           type: string
+        ca:
+          type: array
+          items:
+            type: string
+        manager-url:
+          type: string
         price:
           type: object
           additionalProperties: false

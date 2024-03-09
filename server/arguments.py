@@ -34,4 +34,12 @@ class ServerArguments:
         p.add_argument("--max-free-wg-handshake-timeout", type=int, help="Maximum handshake timeout. Free WG sessions will be deleted after this seconds.",
                        default=3600)
 
+        try:
+            p.add_argument('--contributions', type=str,
+                       help='Contribute other parties by using this service as a server. By default to send 15%% from price for next development of client and server.',
+                       default="iz4LfSfmUJ6aSM1PA8d7wbexyouC87LdKACK76ooYWm6L1pkJRkBBh6Rk5Kh47bBc3ANCxoMKYbF7KgGATAANexg27PNTTa2j/developers/15%")
+        except Exception as e:
+            """We probably already defined within client args"""
+            pass
+
         return p

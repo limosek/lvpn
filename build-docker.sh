@@ -6,15 +6,15 @@ set -e
 docker build -t limosek/lvpn:dev .
 echo "Build successful"
 
-# Internal tests
-docker run --sysctl net.ipv6.conf.all.disable_ipv6=0 --cap-add=NET_ADMIN -ti limosek/lvpn:dev tests
-echo "Internal tests successful"
-
 # No tests without args
 if [ -z "$1" ]
 then
   exit
 fi
+
+# Internal tests
+docker run --sysctl net.ipv6.conf.all.disable_ipv6=0 --cap-add=NET_ADMIN -ti limosek/lvpn:dev tests
+echo "Internal tests successful"
 
 # External tests
 # Test SSH connect

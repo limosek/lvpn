@@ -5,7 +5,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 import logging
 
-from client.gui_connect import Connect
+from client.gui_connect import Connect, PayBoxInfo
 from client.gui_status import Status
 from client.gui_wizard import Wizard
 from client.gui_wallet import Wallet
@@ -45,12 +45,9 @@ class Switcher(GridLayout):
         self.clear_widgets()
         self.add_widget(self._wallet)
 
-    def prepare_pay(self, wallet, amount, paymentid):
-        self.show_wallet()
-        self._wallet.ids.wallet_to_send.text = wallet
-        self._wallet.ids.amount_to_send.text = amount
-        self._wallet.ids.paymentid_to_send.text = paymentid
-        self._wallet.check_validity()
+    def payboxinfo(self, session):
+        self.clear_widgets()
+        self.ids.connect_button.add_widget(PayBoxInfo(session))
 
     def switcher_loop(self, dt):
         if not client.gui.GUI.myqueue.empty():

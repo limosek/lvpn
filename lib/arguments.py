@@ -83,6 +83,8 @@ class SharedArguments:
                        help='External script to be run on session activation. Session file is passed as argument.')
         p.add_argument('--on-session-deactivation',
                        help='External script to be run on session deactivation. Session file is passed as argument.')
+        p.add_argument('--default-pay-days', default=30, type=int,
+                       help='How many days to pay by default for paid services.')
         p.add_argument('--unpaid-expiry', type=int, default=3600,
                        help='How long time in seconds before unpaid session is deleted')
         p.add_argument('--use-tx-pool', type=bool, default=False,
@@ -127,5 +129,6 @@ class SharedArguments:
 
         p.add_argument('--is-client', type=bool, help='For internal usage', default=False)
         p.add_argument('--is-server', type=bool, help='For internal usage', default=False)
+        p.add_argument('--single-thread', type=int, choices=[0, 1], help='For internal usage', default=0)
 
         return p

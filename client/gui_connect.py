@@ -7,6 +7,7 @@ from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.widget import Widget
 
 import client
 import lib.mngrrpc
@@ -57,6 +58,27 @@ class ConnectionButton(Button):
         self.gateid = gateid
 
 
+class SessionButton(Button):
+    def __init__(self, session, **kwargs):
+        super().__init__(**kwargs)
+        self.session = session
+
+
+class PayBoxInfo(GridLayout):
+    def __init__(self, session, **kwargs):
+        super().__init__(**kwargs)
+        self.session = session
+        self.ids.payboxinfo.text = "%s\n%s\n%s" % (session.get_space(), session.get_gate(), session.days())
+
+    def main(self):
+        Connect.main(self)
+
+    def pay(self):
+        for m in self.session.get_pay_msgs():
+            client.gui.GUI.queue.put(m)
+        Connect.main(self)
+
+
 class Connect(GridLayout):
 
     def __init__(self, **kwargs):
@@ -65,26 +87,30 @@ class Connect(GridLayout):
         self.ids.space_filter.bind(text=self.fill_spaces)
         self.ids.connect_button.bind(on_press=self.connect)
         Clock.schedule_interval(self.fill_connections, 1)
+        Clock.schedule_interval(self.fill_sessions, 1)
         Clock.schedule_interval(self.update_gate_info, 2)
 
     def connect(self, instance):
-        logging.getLogger("gui").info("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
-        sessions = Sessions()
-        asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
-        if len(asessions) > 0:
-            client.gui.GUI.queue.put(Messages.connect(asessions[0]))
+        if type(instance) is SessionButton:
+            client.gui.GUI.queue.put(Messages.connect(instance.session))
         else:
-            space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-            mr = lib.ManagerRpcCall(space.get_manager_url())
-            try:
-                gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
+            logging.getLogger("gui").info("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
+            sessions = Sessions()
+            asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
+            if len(asessions) > 0:
+                client.gui.GUI.queue.put(Messages.connect(asessions[0]))
+            else:
                 space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-                session = Session(mr.create_session(gate, space))
-                session.save()
-                client.gui.GUI.queue.put(Messages.connect(session))
-            except requests.exceptions.RequestException as e:
-                logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
-                client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
+                mr = lib.ManagerRpcCall(space.get_manager_url())
+                try:
+                    gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
+                    space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
+                    session = Session(mr.create_session(gate, space))
+                    session.save()
+                    client.gui.GUI.queue.put(Messages.connect(session))
+                except requests.exceptions.RequestException as e:
+                    logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
+                    client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
 
     def disconnect(self, instance):
         logging.getLogger("gui").warning("Disconnect %s" % (instance.connection))
@@ -137,18 +163,29 @@ class Connect(GridLayout):
         self.clear_widgets()
         self.add_widget(client.gui_switcher.Switcher())
 
+    def payboxinfo(self, session):
+        self.clear_widgets()
+        self.add_widget(PayBoxInfo(session))
+
     def pay_service(self, instance):
         space = Registry.vdp.get_space(instance._spaceid)
         gate = Registry.vdp.get_gate(instance._gateid)
         try:
-            mngr = ManagerRpcCall(space.get_manager_url())
+            mngr = lib.ManagerRpcCall(space.get_manager_url())
             data = mngr.create_session(gate, space, instance._days)
             session = Session(data=data)
             session.save()
             if not session.is_paid():
-                client.gui.GUI.queue.put(session.get_pay_msg())
+                if Registry.cfg.auto_pay_days > instance._days:
+                    for m in session.get_pay_msgs():
+                        client.gui.GUI.queue.put(m)
+                else:
+                    self.payboxinfo(session)
+
         except Exception as e:
             logging.getLogger("gui").error("Cannot prepare payment: %s" % e)
+            client.gui.GUI.queue.put(Messages.gui_popup("Cannot prepare payment to %s/%s: %s" % (
+                client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
 
     def select_space(self, instance):
         if instance.state == "down":
@@ -205,7 +242,7 @@ class Connect(GridLayout):
                         self.ids.pay_buttons.add_widget(pay_1)
                         self.ids.pay_buttons.add_widget(pay_30)
                         self.ids.connect_button.disabled = True
-                        self.ids.payment_state.text = "Not paid (%.1f/%.1f per day)" % (space.get_price(), gate.get_price())
+                        self.ids.payment_state.text = "Not paid (%.1f/%.1f per day+contributions)" % (space.get_price(), gate.get_price())
                 if len(fsessions) > 0:
                     if len(asessions) > 0:
                         session = asessions[0]
@@ -277,6 +314,18 @@ class Connect(GridLayout):
                 dbtn = DisconnectButton(text="Disconnect ", on_press=self.disconnect, connection=c, size_hint_x=0.2)
                 row.add_widget(dbtn)
             self.ids.connections_info.add_widget(row)
+
+    def fill_sessions(self, dt):
+        self.ids.sessions_info.clear_widgets()
+        sessions = Sessions()
+        for s in sessions.find(fresh=True):
+            row = GridLayout(cols=3, rows=1, size_hint_y=0.2)
+            lbl = Label(text=s.get_title())
+            row.add_widget(lbl)
+            if s.is_active():
+                lbl = SessionButton(text="Connect", session=s, on_press=self.connect, size_hint_x=0.1)
+                row.add_widget(lbl)
+            self.ids.sessions_info.add_widget(row)
 
     def show_connection(self, instance):
         client.gui.GUI.ctrl["selected_space"] = instance.spaceid

@@ -41,6 +41,13 @@ class TestVDP(unittest.TestCase):
         self.assertEqual(old_endpoint, gate2.get_endpoint())
         pass
 
+    def test_endpoint_resolve(self):
+        Util.parse_args(["--readonly-providers=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"])
+        gate = Registry.vdp.get_gate(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy")
+        e = gate.get_endpoint(resolve=True)
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

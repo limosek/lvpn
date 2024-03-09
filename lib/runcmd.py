@@ -58,6 +58,12 @@ class RunCmd:
 
 class Process(multiprocessing.Process):
 
+    def start(self):
+        if Registry.cfg.single_thread:
+            super().run()
+        else:
+            super().start()
+
     def run(self):
         termmethod = self._target.__self__.sigterm
         signal.signal(signal.SIGTERM, termmethod)

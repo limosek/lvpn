@@ -37,6 +37,34 @@
       text: "Exit"
       on_press: app.stop()
 
+<PayBoxInfo>
+  cols: 3
+  BoxLayout:
+    size_hint_y: 0.1
+    orientation: "vertical"
+    id: paybox
+    Label:
+      size_hint_y: 0.1
+      text: "Confirm payment"
+    TextInput:
+      id: payboxinfo
+      write_tab: False
+      multiline: True
+      readonly: True
+      size_hint_x: 1
+      size_hint_y: 1
+    BoxLayout:
+      id: payinfo_buttons
+      orientation: "horizontal"
+      Button:
+        id: confirm_payment
+        text: "OK"
+        on_press: root.pay()
+      Button:
+        id: cancel_payment
+        text: "Cancel"
+        on_press: root.main()
+
 <Wizard>:
   cols: 3
   BoxLayout:
@@ -224,6 +252,13 @@
         orientation: "vertical"
         id: connections_info
         # Available gates list
+      Label:
+        text: "Active sessions"
+        size_hint_y: 0.1
+      BoxLayout:
+        size_hint_y: 0.3
+        orientation: "vertical"
+        id: sessions_info
 
     Button:
       text: "Main"

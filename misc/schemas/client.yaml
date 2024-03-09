@@ -365,6 +365,12 @@ components:
           type: string
         description:
           type: string
+        ca:
+          type: array
+          items:
+            type: string
+        manager-url:
+          type: string
         price:
           type: object
           additionalProperties: false
@@ -594,6 +600,22 @@ components:
           type: string
         wallet:
           type: string
+        contributions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              purpose:
+                type: string
+              price:
+                type: number
+              wallet:
+                type: string
+            required:
+              - purpose
+              - price
+              - wallet
         price:
           type: number
         days:

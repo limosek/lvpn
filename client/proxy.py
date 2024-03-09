@@ -43,7 +43,7 @@ class Proxy(Service):
     @classmethod
     def run_tls_proxy(cls, port, session):
         connection = Connection(session, port=port)
-        mp = multiprocessing.Process(target=TLSProxy.run, args=[cls.ctrl, cls.queue, None], kwargs={
+        mp = Process(target=TLSProxy.run, args=[cls.ctrl, cls.queue, None], kwargs={
             "endpoint": session.get_gate().get_endpoint(resolve=True),
             "ca": session.get_gate().get_ca(),
             "port": port,
@@ -142,32 +142,38 @@ class Proxy(Service):
 
         elif gate.get_type() == "wg":
             connection = Connection(session)
-            args = [cls.ctrl, cls.queue, None]
-            kwargs = {
-                "gate": gate,
-                "space": space,
-                "sessionid": sessionid,
-                "session": session,
-                "connectionid": connection.get_id()
-            }
-            mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
-            mp.start()
-            connection.set_data({
-                "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
-                "pid": mp.pid,
-                "gateid": gate.get_id(),
-                "spaceid": space.get_id(),
-                "interface": WGEngine.get_interface_name(gate.get_id()),
-                "ip": session.get_gate_data("wg")["client_ipv4_address"],
-                "gw": session.get_gate_data("wg")["server_ipv4_address"]
-            })
-            p = {
-                "process": mp,
-                "connection": connection
-            }
-            cls.processes.append(p)
-            connections.add(connection)
-            cls.update_connections(connections)
+            if not session.get_gate_data("wg"):
+                """This is just empty session to start handshake with WG"""
+                WGClientService.run(cls.ctrl, cls.queue, cls.myqueue, gate=gate, space=space, sessionid=sessionid, session=session, connectionid=connection.get_id())
+                return
+            else:
+                args = [cls.ctrl, cls.queue, None]
+                kwargs = {
+                    "gate": gate,
+                    "space": space,
+                    "sessionid": sessionid,
+                    "session": session,
+                    "connectionid": connection.get_id()
+                }
+                mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
+                mp.start()
+                connection.set_data({
+                    "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
+                    "pid": mp.pid,
+                    "gateid": gate.get_id(),
+                    "spaceid": space.get_id(),
+                    "interface": WGEngine.get_interface_name(gate.get_id()),
+                    "ip": session.get_gate_data("wg")["client_ipv4_address"],
+                    "gw": session.get_gate_data("wg")["server_ipv4_address"]
+                })
+                p = {
+                    "process": mp,
+                    "connection": connection
+                }
+                cls.processes.append(p)
+                connections.add(connection)
+                cls.update_connections(connections)
+                pass
 
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
@@ -265,13 +271,13 @@ class Proxy(Service):
     @classmethod
     def refresh_sessions(cls, once=False):
         while not cls.exit:
+            time.sleep(60)
             sessions = Sessions()
             cls.log_gui("proxy", "Checking sessions: %s" % repr(sessions))
             sessions.refresh_status()
             cls.log_gui("proxy", "Done checking Sessions: %s" % repr(sessions))
             if once:
                 break
-            time.sleep(60)
 
     @classmethod
     def refresh_connections(cls, once=False):
@@ -306,14 +312,17 @@ class Proxy(Service):
     @classmethod
     def stop(cls):
         cls.exit = True
-        for pinfo in cls.processes:
-            try:
-                if pinfo["process"] and not pinfo["process"].returncode:
-                    cls.log_warning("Killing subprocess with PID %s" % pinfo["process"].pid)
-                    try:
-                        os.kill(pinfo["process"].pid, signal.SIGINT)
-                    except Exception:
-                        pass
-            except AttributeError:
-                pinfo["process"].kill()
-                pinfo["process"].join()
+        if Registry.cfg.single_thread:
+            return
+        else:
+            for pinfo in cls.processes:
+                try:
+                    if pinfo["process"] and not pinfo["process"].returncode:
+                        cls.log_warning("Killing subprocess with PID %s" % pinfo["process"].pid)
+                        try:
+                            os.kill(pinfo["process"].pid, signal.SIGINT)
+                        except Exception:
+                            pass
+                except AttributeError:
+                    pinfo["process"].kill()
+                    pinfo["process"].join()

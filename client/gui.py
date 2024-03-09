@@ -31,6 +31,7 @@ class GUI(Service):
             p.start()
 
         Builder.load_file(Registry.cfg.app_dir + '/config/lvpn.kv')
+        print(Registry.cfg.app_dir + '/config/lvpn.kv')
         LVpn().run()
         cls.exit = True
 

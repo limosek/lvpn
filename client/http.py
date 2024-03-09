@@ -244,24 +244,26 @@ def pay_session(sessionid):
         if session.is_active():
             return make_response(201, "Already paid")
         elif not session.is_paid():
-            Manager.queue.put(session.get_pay_msg())
+            for m in session.get_pay_msgs():
+                Manager.queue.put(m)
             waited = 0
-            paid = False
-            while waited < 30 and not paid:
+            paid = []
+            while waited < 30:
                 session = sessions.get(session.get_id())
                 if session.is_paid():
+                    return make_response(200, "OK", session.get_dict())
+                if len(paid) >= session.get_pay_msgs():
                     return make_response(200, "OK", session.get_dict())
                 if Manager.myqueue and not Manager.myqueue.empty():
                     try:
                         msg = Manager.myqueue.get(block=False, timeout=0.1)
                         if msg.startswith(Messages.PAID):
                             data = Messages.get_msg_data(msg)
-                            if data == session.get_pay_msg():
+                            if data not in paid:
+                                paid.append(data)
                                 return make_response(200, "OK", session.get_dict())
                         elif msg.startswith(Messages.UNPAID):
-                            data = Messages.get_msg_data(msg)
-                            if data == session.get_pay_msg():
-                                return make_response(500, "Payment error", session.get_dict())
+                            return make_response(500, "Payment error", session.get_dict())
                     except _queue.Empty:
                         pass
                 time.sleep(1)

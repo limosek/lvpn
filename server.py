@@ -155,7 +155,7 @@ def main():
 
     if cfg.enable_wg:
         for gate in cfg.vdp.gates():
-            if gate.get_type() == "wg":
+            if gate.get_type() == "wg" and gate.is_local():
                 wg_queue = Queue(multiprocessing.get_context(), gate.get_id())
                 wg = multiprocessing.Process(target=WGServerService.run, args=[ctrl, queue, wg_queue],
                                              kwargs={"gate": gate, "space": None}, name="WGService-%s" % gate.get_id())

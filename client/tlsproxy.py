@@ -132,7 +132,11 @@ class TLSProxy(Service):
                 t.start()
                 threads.append(t)
             except TimeoutError:
-                continue
+                pass
+            if Registry.cfg.single_thread:
+                cls.exit = True
+                break
+
         for t in threads:
             t.join()
         cls.log_warning("End of tlsproxy")
@@ -143,25 +147,28 @@ class TLSProxy(Service):
             proxydata = urllib3.util.parse_url(Registry.cfg.use_http_proxy)
             s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
         else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(5)
             err = True
             while err:
                 try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(5)
                     s.connect(endpoint)
                     err = False
                 except Exception as e:
                     err = True
                     cls.log_error("Cannot connect to %s:%s" % (endpoint, e))
-                    time.sleep(15)
+                    time.sleep(10)
         if ca:
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            ctx.load_cert_chain(cls.crtfile, cls.keyfile)
-            ctx.load_verify_locations(cadata=ca)
-            ctx.set_ciphers("HIGH")
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_REQUIRED
-            client = ctx.wrap_socket(s)
+            try:
+                ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                ctx.load_cert_chain(cls.crtfile, cls.keyfile)
+                ctx.load_verify_locations(cadata=ca)
+                ctx.set_ciphers("HIGH")
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_REQUIRED
+                client = ctx.wrap_socket(s)
+            except ssl.SSLCertVerificationError:
+                raise ServiceException(44, "SSL verification error")
         else:
             client = s
         return client

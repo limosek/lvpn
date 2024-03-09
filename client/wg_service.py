@@ -19,54 +19,63 @@ class WGClientService(WGService):
 
     @classmethod
     def loop(cls):
+        if cls.exit:
+            return
         cls.sactive = False
         while not cls.exit:
             if not cls.sactive and cls.session.is_active():
                 cls.activate_on_client(cls.session)
                 cls.sactive = True
             time.sleep(1)
+        cls.log_error("Exiting loop and removing peer")
         cls.deactivate_on_client(cls.session)
 
     @classmethod
     def postinit(cls):
         if not Registry.cfg.enable_wg:
-            return False
+            raise ServiceException(4, "WG not enabled")
         sessions = Sessions()
         cls.session = cls.kwargs["session"]
         cls.gate = cls.kwargs["gate"]
         cls.space = cls.kwargs["space"]
         cls.iface = WGEngine.get_interface_name(cls.gate.get_id())
-        try:
-            cls.deactivate_interface_client()
-        except ServiceException as e:
-            pass
-        cls.setup_interface_client(cls.session)
-        cls.gathered = WGEngine.gather_wg_data(cls.iface)
-        mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
-        nsession = Session(mr.create_session(cls.gate, cls.space,
-                              prepare_data={"wg": cls.gate.get_prepare_data()}))
-        nsession.save()
-        # Let us remove presession and enable session
-        sessions.remove(cls.session)
-        sessions.add(nsession)
-        cls.session = nsession
-        cls.queue.put(Messages.connect(nsession))
-        messages = []
-        for g in cls.gate["gates"]:
-            gate = Registry.vdp.get_gate(g)
-            if gate:
-                mr = lib.ManagerRpcCall(cls.space.get_manager_url())
-                session = Session(mr.create_session(gate, cls.space))
-                session.save()
-                sessions.add(session)
-                messages.append(Messages.connect(session))
-            else:
-                cls.log_error("Non-existent WG gateway %s" % g)
-                messages.append(
-                    Messages.gui_popup("Non-existent WG gateway %s" % g)
-                )
-        for m in messages:
-            cls.queue.put(m)
+        if not cls.session.get_gate_data("wg"):
+            cls.log_warning("WG connect phase1 - %s" % cls.session.get_id())
+            """This is just empty session to start handshake with WG"""
+            try:
+                cls.deactivate_interface_client()
+            except ServiceException as e:
+                pass
+            cls.setup_interface_client(cls.session)
+            cls.gathered = WGEngine.gather_wg_data(cls.iface)
+            mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
+            nsession = Session(mr.create_session(cls.gate, cls.space,
+                                  prepare_data={"wg": cls.gate.get_prepare_data()}))
+            nsession.save()
+            sessions.add(nsession)
+            cls.session = nsession
+            cls.queue.put(Messages.connect(nsession))
+            cls.exit = True
+        else:
+            """Everything was set before"""
+            cls.log_warning("WG connect phase2 - %s" % cls.session.get_id())
+            messages = []
+            for g in cls.gate["gates"]:
+                gate = Registry.vdp.get_gate(g)
+                if gate:
+                    mr = lib.ManagerRpcCall(cls.space.get_manager_url())
+                    session = Session(mr.create_session(gate, cls.space))
+                    session.set_parent(cls.session.get_id())
+                    session.save()
+                    sessions.add(session)
+                    messages.append(Messages.connect(session))
+                else:
+                    cls.log_error("Non-existent WG gateway %s" % g)
+                    messages.append(
+                        Messages.gui_popup("Non-existent WG gateway %s" % g)
+                    )
+            for m in messages:
+                cls.queue.put(m)
 
     @classmethod
     def setup_interface_client(cls, session):
@@ -167,9 +176,9 @@ class WGClientService(WGService):
         else:
             psk = None
         return WGEngine.add_peer(ifname,
-                                 session.get_gate_data("wg")["server_public_key"],
+                                 session.get_gate().get_gate_data("wg")["public_key"],
                                  nets,
-                                 session.get_gate()["wg"]["endpoint"],
+                                 session.get_gate().get_gate_data("wg")["endpoint"],
                                  psk, keepalive=55, show_only=show_only)
 
     @classmethod

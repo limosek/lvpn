@@ -111,9 +111,12 @@ class WGServerService(lib.wg_service.WGService):
     @classmethod
     def deactivate_on_server(cls, session, show_only=False):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
-        return WGEngine.remove_peer(ifname,
+        if session.get_gate_data("wg"):
+            return WGEngine.remove_peer(ifname,
                                     session.get_gate_data("wg")["client_public_key"],
                                     show_only=show_only)
+        else:
+            return False
 
     @classmethod
     def find_free_ip(cls, gate):

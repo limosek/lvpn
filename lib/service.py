@@ -57,7 +57,7 @@ class Service:
         cls.ctrl = ctrl
         if multiprocessing.parent_process():
             Registry.cfg = ctrl["cfg"]
-            Registry.vdp = Registry.cfg.vdp
+            Registry.vdp = ctrl["vdp"]
         cls.queue = queue
         cls.myqueue = myqueue
         cls.args = args

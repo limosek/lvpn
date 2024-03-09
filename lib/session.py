@@ -6,7 +6,7 @@ from copy import copy
 
 from lib.registry import Registry
 from lib.runcmd import RunCmd
-from lib.vdpobject import VDPException
+from lib.vdpobject import VDPException, VDPObject
 import lib
 
 
@@ -14,7 +14,7 @@ class Session:
 
     def __init__(self, data=None):
         self._data = data
-        self._auto_pay = False
+        self._contributions_price = 0
         if data:
             if "gateid" in data:
                 self._gate = Registry.vdp.get_gate(data["gateid"])
@@ -29,6 +29,10 @@ class Session:
                     and self.get_gate_data("wg") \
                     and not self.is_active():
                 self.activate()
+            else:
+                if "contributions" not in self._data:
+                    self._data["contributions"] = []
+                self.recalculate_contributions(True)
 
     def generate(self, gateid: str, spaceid: str, days: int = None):
         if not Registry.vdp.get_space(spaceid):
@@ -37,21 +41,23 @@ class Session:
             raise VDPException("Unknown gate %s" % gateid)
         self._gate = Registry.vdp.get_gate(gateid)
         self._space = Registry.vdp.get_space(spaceid)
+        self._contributions_price = 0
         self._data = {
-            "sessionid": "s-" + secrets.token_hex(8),
+            "sessionid": "s-" + secrets.token_hex(32),
             "spaceid": spaceid,
             "gateid": gateid,
             "created": int(time.time()),
             "paymentid": secrets.token_hex(8),
-            "username": "u-" + secrets.token_hex(5),
-            "password": secrets.token_hex(10),
-            "bearer": "b-" + secrets.token_hex(12),
+            "username": "u-" + secrets.token_hex(8),
+            "password": secrets.token_hex(16),
+            "bearer": "b-" + secrets.token_hex(32),
             "wallet": Registry.vdp.get_space(spaceid).get_wallet(),
             "expires": int(time.time()) + Registry.cfg.unpaid_expiry,
             "paid": False,
             "payments": [],
+            "contributions": [],
             "activated": 0,
-            "payment_sent": False
+            "payment_sent": ""
         }
 
         if self.is_free():
@@ -65,16 +71,39 @@ class Session:
             self.payment_sent("Zero-Free-payment")
         else:
             if not days:
-                if Registry.cfg.auto_pay_days:
-                    self._data["days"] = Registry.cfg.auto_pay_days
-                    self._auto_pay = True
-                else:
-                    raise Exception("This service needs to be paid and auto_pay_days is not set.")
+                self._data["days"] = Registry.cfg.default_pay_days
             else:
                 self._data["days"] = int(days)
             self._data["price"] = (
                                     Registry.vdp.get_space(spaceid).get_price()
                                     + Registry.vdp.get_gate(gateid).get_price()) * self._data["days"]
+            if Registry.cfg.is_client:
+                """Clients contributes by adding price"""
+                self.recalculate_contributions(increase=True)
+            elif Registry.cfg.is_server:
+                """Server contributes by decreasing price"""
+                self.recalculate_contributions(increase=False)
+
+    def recalculate_contributions(self, increase=False):
+        """Recalculate price by contributions. If increase is True, contributions are added to price, if False,
+        price is decreased by contributions"""
+        if Registry.cfg.contributions and not self.is_free():
+            try:
+                contributions = Registry.cfg.contributions.split(",")
+                for s in contributions:
+                    (swallet, purpose, amount) = s.split("/")
+                    if amount.find("%") > 0:
+                        amount = self.get_price() * (float(amount[:-1])/100)
+                    else:
+                        amount = float(amount)
+                    self._data["contributions"].append({"wallet": swallet, "purpose": purpose, "price": amount})
+                    self._contributions_price += amount
+            except Exception as e:
+                logging.getLogger("audit").error("Bad contributions setting %s, but continuing" % Registry.cfg.contributions)
+            if increase:
+                self._data["price"] += self._contributions_price
+            else:
+                self._data["price"] -= self._contributions_price
 
     def reuse(self, days):
         price = (self._space.get_price() + self._gate.get_price()) * days
@@ -90,28 +119,26 @@ class Session:
         self._data["payments"] = []
         self._data["activated"] = 0
         self._data["price"] = price,
-        self._data["payment_sent"] = False
+        self._data["payment_sent"] = ""
+        self.recalculate_contributions(increase=False)
 
     def activate(self):
         if self.get_payment() >= self._data["price"] and not self.is_active():
-            try:
-                logging.getLogger("audit").debug("Trying to activate session %s" % self.get_id())
-                now = int(time.time())
-                if Registry.cfg.is_server:
-                    self._gate.activate_server(self)
-                    self._space.activate_server(self)
-                elif Registry.cfg.is_client:
-                    self._gate.activate_client(self)
-                    self._space.activate_client(self)
-                if Registry.cfg.on_session_activation:
-                    RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
-                logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
-                self._data["expires"] = now + self._data["days"] * 3600 * 24
-                self._data["activated"] = now
-                logging.getLogger("audit").warning("Activated session %s" % self.get_id())
-                return True
-            except Exception as e:
-                logging.getLogger("audit").error("Error activating session %s:%s" % (self.get_id(), e))
+            logging.getLogger("audit").debug("Trying to activate session %s" % self.get_id())
+            now = int(time.time())
+            if Registry.cfg.is_server:
+                self._gate.activate_server(self)
+                self._space.activate_server(self)
+            elif Registry.cfg.is_client:
+                self._gate.activate_client(self)
+                self._space.activate_client(self)
+            if Registry.cfg.on_session_activation:
+                RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
+            logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))
+            self._data["expires"] = now + self._data["days"] * 3600 * 24
+            self._data["activated"] = now
+            logging.getLogger("audit").warning("Activated session %s" % self.get_id())
+            return True
         else:
             return False
 
@@ -147,6 +174,9 @@ class Session:
     def get_gate(self):
         return self._gate
 
+    def get_created(self):
+        return self._data["created"]
+
     def get_manager_url(self):
         return self._space.get_manager_url()
 
@@ -155,6 +185,9 @@ class Session:
 
     def get_price(self):
         return self._data["price"]
+
+    def get_contributions_price(self):
+        return self._contributions_price
 
     def get_expiry(self):
         return self._data["expires"]
@@ -167,9 +200,6 @@ class Session:
 
     def get_activation(self):
         return self._data["activated"]
-
-    def should_auto_pay(self):
-        return self._auto_pay
 
     def add_payment(self, amount, height, txid):
         payment = {"amount": amount, "height": height, "txid": txid}
@@ -304,12 +334,20 @@ class Session:
         else:
             return False
 
-    def get_pay_msg(self):
+    def get_pay_msgs(self):
+        msgs = []
         m = lib.messages.Messages.pay([{
             "wallet": self._data["wallet"],
             "amount": self._data["price"]
         }], self.get_paymentid())
-        return m
+        msgs.append(m)
+        if "contributions" in self._data:
+            payments = []
+            for s in self._data["contributions"]:
+                payments.append({"wallet": s["wallet"], "amount": s["price"]})
+                m = lib.messages.Messages.pay(payments, "0000000000000000")
+                msgs.append(m)
+        return msgs
 
     def __str__(self):
         return json.dumps(self._data)
@@ -320,6 +358,9 @@ class Session:
         else:
             txt = "%s%s" % (self.get_gate(), self.get_space())
         return txt
+
+    def validate(self):
+        VDPObject.validate(self._data, "Session")
 
     def __repr__(self):
         try:

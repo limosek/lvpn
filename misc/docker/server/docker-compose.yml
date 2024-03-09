@@ -108,16 +108,16 @@ services:
       - ${DNS_IP}
 
 # LVPN server. It needs to expose manager HTTP server and Wireguard UDP ports
-  lvpns:
+  node:
     image: limosek/lvpn:dev
     volumes:
       - ./lvpn:/home/lvpn
-    command: lvpns
+    command: node
     cap_add:
       - NET_ADMIN
     restart: unless-stopped
     environment:
-      - MODE=server
+      - MODE=node
     ports:
       - 8790:8123
       - 8774:8774/udp
