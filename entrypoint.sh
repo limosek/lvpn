@@ -53,11 +53,25 @@ node)
     $0 easy-provider
     cp -R /home/lvpn/easy/* "$WLS_CFG_DIR"/
   fi
-  lethean-wallet-rpc --wallet-dir="$WLS_CFG_DIR" --rpc-login="vpn:$(cat $WLS_CFG_DIR/wallet_rpc_pass)" \
-    --rpc-bind-port=1444 --daemon-address=172.31.129.19:48782 --trusted-daemon &
 
-  $0 lvpns $LVPNS_ARGS --wallet-password="$(cat $WLS_CFG_DIR/wallet_pass)" --wallet-name=vpn-wallet \
-    --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$(cat $WLS_CFG_DIR/wallet_rpc_pass)" &
+  # Run client wallet
+  while true;
+  do
+    lethean-wallet-rpc --wallet-dir="$WLS_CFG_DIR" --rpc-login="vpn:$(cat $WLS_CFG_DIR/wallet_rpc_pass)" \
+      --rpc-bind-port=1444 --daemon-address=172.31.129.19:48782 --trusted-daemon
+    sleep 5
+  done &
+
+  # Run server wallet
+  while true;
+  do
+    lethean-wallet-rpc --wallet-file="$WLS_CFG_DIR"/vpn-wallet --rpc-login="vpn:$(cat $WLS_CFG_DIR/wallet_rpc_pass)" \
+      --rpc-bind-port=1445 --daemon-address=172.31.129.19:48782 --trusted-daemon --password "$(cat $WLS_CFG_DIR/wallet_pass)"
+    sleep 5
+  done &
+
+  $0 lvpns $LVPNS_ARGS \
+    --wallet-rpc-url=http://localhost:1445/json_rpc --wallet-rpc-password="$(cat $WLS_CFG_DIR/wallet_rpc_pass)" &
 
   $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 \
     --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$(cat $WLS_CFG_DIR/wallet_rpc_pass)" \
@@ -68,6 +82,7 @@ node)
   letheand --non-interactive --confirm-external-bind --data-dir=/home/lvpn/blockchain \
     --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-peer 172.31.129.19 &
 
+  $0 lmgmt push-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
   wait
   ;;
 
