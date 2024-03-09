@@ -89,6 +89,7 @@ class Session:
         price is decreased by contributions"""
         if Registry.cfg.contributions and not self.is_free():
             try:
+                carr = []
                 contributions = Registry.cfg.contributions.split(",")
                 for s in contributions:
                     (swallet, purpose, amount) = s.split("/")
@@ -96,14 +97,22 @@ class Session:
                         amount = self.get_price() * (float(amount[:-1])/100)
                     else:
                         amount = float(amount)
-                    self._data["contributions"].append({"wallet": swallet, "purpose": purpose, "price": amount})
+                    carr.append({"wallet": swallet, "purpose": purpose, "price": amount})
                     self._contributions_price += amount
+                if increase:
+                    self._data["price"] += self._contributions_price
+                else:
+                    self._data["price"] -= self._contributions_price
             except Exception as e:
                 logging.getLogger("audit").error("Bad contributions setting %s, but continuing" % Registry.cfg.contributions)
-            if increase:
-                self._data["price"] += self._contributions_price
-            else:
-                self._data["price"] -= self._contributions_price
+        for c in self._data["contributions"]:
+            self._contributions_price += c["price"]
+
+    def get_contributions_info(self):
+        info = ""
+        for c in self._data["contributions"]:
+            info += "  price: %s, purpose: %s, wallet: %s" % (c["price"], c["purpose"], c["wallet"])
+        return info
 
     def reuse(self, days):
         price = (self._space.get_price() + self._gate.get_price()) * days
@@ -259,11 +268,11 @@ class Session:
             f.write(json.dumps(self._data))
 
     def load(self, file):
-        logging.getLogger("audit").debug("Trying to load session from file %s" % file)
+        #logging.getLogger("audit").debug("Trying to load session from file %s" % file)
         with open(file, "r") as f:
             buf = f.read(-1)
             self._data = json.loads(buf)
-            logging.getLogger("audit").debug("Loaded session %s from file %s" % (self.get_id(), file))
+            #logging.getLogger("audit").debug("Loaded session %s from file %s" % (self.get_id(), file))
         self._gate = Registry.vdp.get_gate(self._data["gateid"])
         self._space = Registry.vdp.get_space(self._data["spaceid"])
         if not self._gate:

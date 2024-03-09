@@ -238,4 +238,7 @@ class Gateway(VDPObject):
             server.wg_service.WGServerService.deactivate_on_server(session)
 
     def __repr__(self):
-        return "Gateway %s/%s[local=%s]" % (self._data["gateid"], self._data["name"], self.is_local())
+        if Registry.cfg.is_server:
+            return "Gateway %s/%s[local=%s]" % (self._data["gateid"], self._data["name"], self.is_local())
+        else:
+            return "Gateway %s/%s" % (self._data["gateid"], self._data["name"])

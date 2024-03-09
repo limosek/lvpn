@@ -40,4 +40,7 @@ class Provider(VDPObject):
             f.write(self.get_json())
 
     def __repr__(self):
-        return "Provider %s/%s[local=%s]" % (self._data["providerid"], self._data["name"], self.is_local())
+        if Registry.cfg.is_server:
+            return "Provider %s/%s[local=%s]" % (self._data["providerid"], self._data["name"], self.is_local())
+        else:
+            return "Provider %s/%s" % (self._data["providerid"], self._data["name"])

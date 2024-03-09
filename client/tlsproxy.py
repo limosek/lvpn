@@ -151,7 +151,7 @@ class TLSProxy(Service):
             while err:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(5)
+                    s.settimeout(15)
                     s.connect(endpoint)
                     err = False
                 except Exception as e:

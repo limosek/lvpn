@@ -92,7 +92,8 @@ tests)
   ;;
 
 set-perms)
-  chown -R lvpn:lvpn /home/lvpn
+  sudo mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR"
+  sudo chown -R lvpn:lvpn /home/lvpn
   ;;
 
 sh)

@@ -11,6 +11,7 @@ from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
 from client.wg_service import WGClientService
+from lib import Session
 from lib.registry import Registry
 from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
@@ -304,6 +305,14 @@ class Proxy(Service):
                             for ch in conn.get_children():
                                 cls.connections.remove(ch)
                             cls.connections.remove(conn.get_id())
+                        if Registry.cfg.auto_reconnect:
+                            session = Session()
+                            session.generate(conn.get_session().get_gate().get_id(),
+                                             conn.get_session().getspace().get_id(),
+                                             conn.get_session().days())
+                            session.save()
+                            time.sleep(10)
+                            cls.myqueue.put(Messages.connect(session.get_id()))
             cls.connections.check_alive()
             if once:
                 break

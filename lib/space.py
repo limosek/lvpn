@@ -51,4 +51,7 @@ class Space(VDPObject):
         return True
 
     def __repr__(self):
-        return "Space %s/%s[local=%s]" % (self._data["spaceid"], self._data["name"], self.is_local())
+        if Registry.cfg.is_server:
+            return "Space %s/%s[local=%s]" % (self._data["spaceid"], self._data["name"], self.is_local())
+        else:
+            return "Space %s/%s" % (self._data["spaceid"], self._data["name"])

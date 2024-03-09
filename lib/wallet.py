@@ -243,7 +243,8 @@ class Wallet(Service):
             amount += p["amount"]
         msg += " paymentid=%s]" % paymentid
         cls.log_warning("Transferring coins start: %s" % msg)
-        balance = cls.get_unlocked_balance()
+        ubalance = cls.get_unlocked_balance()
+        balance = cls.get_balance()
         if balance is False or balance is None:
             cls.log_error("Cannot get balance from wallet")
             cls.log_gui("wallet", "Cannot conntact wallet. Is it syncing?")
@@ -253,6 +254,11 @@ class Wallet(Service):
                 cls.log_error("Not enough balance to send (%s, needs %s)" % (balance, amount))
                 cls.log_gui("wallet", "Not enough balance to send (%s, needs %s)" % (balance, amount))
                 return False
+            if ubalance < amount:
+                cls.log_error("Waiting 60 secs for balance unlock")
+                cls.log_gui("wallet", "Waiting 60 secs for balance unlock")
+                time.sleep(60)
+                return cls.transfer(payments, paymentid)
         try:
             cls.rpc("transfer_split",
                     {

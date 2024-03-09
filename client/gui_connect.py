@@ -68,7 +68,31 @@ class PayBoxInfo(GridLayout):
     def __init__(self, session, **kwargs):
         super().__init__(**kwargs)
         self.session = session
-        self.ids.payboxinfo.text = "%s\n%s\n%s" % (session.get_space(), session.get_gate(), session.days())
+
+        self.ids.payboxinfo.text = """
+You are going to pay service:
+Gate: %s 
+Space: %s
+Days: %s
+
+Price for gate per day: %s
+Price for space per day: %s
+
+Overall price: %s
+
+Contributions:
+Price: %s
+[
+%s
+]
+""" % (session.get_gate(),
+       session.get_space(),
+       session.days(),
+       session.get_gate().get_price(),
+       session.get_space().get_price(),
+       session.get_price() + session.get_contributions_price(),
+       session.get_contributions_price(),
+       session.get_contributions_info())
 
     def main(self):
         Connect.main(self)
@@ -94,9 +118,11 @@ class Connect(GridLayout):
         if type(instance) is SessionButton:
             client.gui.GUI.queue.put(Messages.connect(instance.session))
         else:
-            logging.getLogger("gui").info("Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
+            logging.getLogger("gui").info(
+                "Connect %s/%s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"]))
             sessions = Sessions()
-            asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"], spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
+            asessions = sessions.find(gateid=client.gui.GUI.ctrl["selected_gate"],
+                                      spaceid=client.gui.GUI.ctrl["selected_space"], active=True)
             if len(asessions) > 0:
                 client.gui.GUI.queue.put(Messages.connect(asessions[0]))
             else:
@@ -109,8 +135,10 @@ class Connect(GridLayout):
                     session.save()
                     client.gui.GUI.queue.put(Messages.connect(session))
                 except requests.exceptions.RequestException as e:
-                    logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
-                    client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
+                    logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (
+                    client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
+                    client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (
+                    client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
 
     def disconnect(self, instance):
         logging.getLogger("gui").warning("Disconnect %s" % (instance.connection))
@@ -242,7 +270,8 @@ class Connect(GridLayout):
                         self.ids.pay_buttons.add_widget(pay_1)
                         self.ids.pay_buttons.add_widget(pay_30)
                         self.ids.connect_button.disabled = True
-                        self.ids.payment_state.text = "Not paid (%.1f/%.1f per day+contributions)" % (space.get_price(), gate.get_price())
+                        self.ids.payment_state.text = "Not paid (%.1f/%.1f per day+contributions)" % (
+                        space.get_price(), gate.get_price())
                 if len(fsessions) > 0:
                     if len(asessions) > 0:
                         session = asessions[0]
@@ -272,7 +301,8 @@ class Connect(GridLayout):
                 state = "down"
             else:
                 state = "normal"
-            btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled, state=state)
+            btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled,
+                             state=state)
             setattr(self.ids, g.get_id(), btn)
             self.ids.choose_gate.add_widget(btn)
 
@@ -295,12 +325,13 @@ class Connect(GridLayout):
                 lbl = Label(text=c.get_title(short=True), color=(0.2, 0.2, 2))
             else:
                 lbl = ConnectionButton(text=c.get_title(short=True),
-                                  spaceid=c.get_space().get_id(),
-                                  gateid=c.get_gate().get_id(),
-                                  on_press=self.show_connection)
+                                       spaceid=c.get_space().get_id(),
+                                       gateid=c.get_gate().get_id(),
+                                       on_press=self.show_connection)
             row.add_widget(lbl)
             if c.get_gate().get_type() == "http-proxy":
-                bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c.get_port(), url="http://www.lthn",
+                bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c.get_port(),
+                                     url="http://www.lthn",
                                      on_press=self.run_browser, size_hint_x=0.1)
                 row.add_widget(bbtn)
             else:
