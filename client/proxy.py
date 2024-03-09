@@ -11,13 +11,13 @@ from client.connection import Connection, Connections
 from client.sshproxy import SSHProxy
 from client.tlsproxy import TLSProxy
 from client.wg_service import WGClientService
-from lib import Session
 from lib.registry import Registry
 from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
 from lib.sessions import Sessions
 from lib.messages import Messages
 from lib.wg_engine import WGEngine
+import lib
 
 
 class ProxyException(Exception):
@@ -306,7 +306,7 @@ class Proxy(Service):
                                 cls.connections.remove(ch)
                             cls.connections.remove(conn.get_id())
                         if Registry.cfg.auto_reconnect:
-                            session = Session()
+                            session = lib.Session()
                             session.generate(conn.get_session().get_gate().get_id(),
                                              conn.get_session().getspace().get_id(),
                                              conn.get_session().days())
