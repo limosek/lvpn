@@ -104,7 +104,7 @@ node)
   while true;
   do
     letheand --non-interactive --confirm-external-bind --data-dir=/home/lvpn/blockchain \
-      --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-peer 172.31.129.19 >/home/lvpn/daemon.log 2>&1
+      --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-exclusive-node 172.31.129.19 --add-priority-node 172.31.129.19 --add-peer 172.31.129.19 >/home/lvpn/daemon.log 2>&1
     sleep 5
   done &
 
@@ -122,7 +122,7 @@ node)
     --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
     --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
     --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
-    --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" 2>/home/lvpn/client.log &
+    --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" >/home/lvpn/client.log 2>&1 &
 
   # Wait for client to connect
   echo -n "Waiting for lvpnc to connect."
@@ -190,7 +190,7 @@ node)
 
   # Run the server
   $0 lvpns $LVPNS_ARGS \
-    --wallet-rpc-url=http://localhost:1445/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" 2>/home/lvpn/server.log &
+    --wallet-rpc-url=http://localhost:1445/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" >/home/lvpn/server.log 2>&1 &
 
   # Regularly Push new VDP to server and fetch fresh VDP
   while true
@@ -199,6 +199,8 @@ node)
     $0 lmgmt push-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     # Fetch fresh VDP from main server
     $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
+    # Refresh VDP timestamps
+    $0 lmgmt refresh-vdp
     sleep 3500
   done &
 

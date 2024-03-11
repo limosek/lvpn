@@ -173,7 +173,8 @@ class Wallet(Service):
                 else:
                     logging.getLogger("wallet").error("Cannot get height. Continuing")
                     height = False
-                cls.log_info("Inspected wallet payments, from_height=%s, to_height=%s,transfers=%s, updated=%s" % (height - skew, height, len(in_transfers), matched))
+                if height:
+                    cls.log_info("Inspected wallet payments, from_height=%s, to_height=%s,transfers=%s, updated=%s" % (height - skew, height, len(in_transfers), matched))
             if not cls.myqueue.empty():
                 try:
                     msg = cls.myqueue.get(block=False, timeout=0.01)

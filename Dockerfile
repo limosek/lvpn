@@ -20,6 +20,10 @@ ENV MODE="client"
 ENV DAEMON_HOST="seed.lethean.io"
 ENV HTTP_PROXY=""
 
+# Client wallet RPC
+EXPOSE 1444
+# Server wallet RPC
+EXPOSE 1445
 # Client MGMT
 EXPOSE 8123
 # Server MGMT

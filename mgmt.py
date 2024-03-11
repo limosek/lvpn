@@ -105,6 +105,7 @@ def main():
             try:
                 jsn = mgr.fetch_vdp()
                 vdp = VDP(vdpdata=jsn)
+                print("Fetched remote VDP to local database")
                 print(vdp.save())
             except Exception as m:
                 print("Error fetching VDP!")
@@ -121,7 +122,8 @@ def main():
                 mgr = ManagerRpcCall(vdp.get_provider(cfg.args[0]).get_manager_url())
                 try:
                     pushed = mgr.push_vdp(vdp)
-                    print(pushed)
+                    print("Pushed VDP to remote server %s" % vdp.get_provider(cfg.args[0]).get_manager_url())
+                    print(json.loads(pushed))
                 except ManagerException as m:
                     print("Error pushing VDP!")
                     print(m)
@@ -134,7 +136,7 @@ def main():
             sys.exit(1)
 
     elif cfg.cmd == "refresh-vdp":
-        if cfg.args and len(cfg.args) == 0:
+        if len(cfg.args) == 0:
             vdp = VDP()
             for g in vdp.gates(my_only=True):
                 g.set_as_fresh()
