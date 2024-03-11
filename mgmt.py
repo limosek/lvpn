@@ -45,13 +45,23 @@ def main():
     if not os.getenv("WLS_CFG_DIR"):
         os.environ["WLS_CFG_DIR"] = "/etc/lvpn"
     if not os.getenv("WLS_VAR_DIR"):
-        os.environ["WLS_VAR_DIR"] = os.path.expanduser("~") + "/lvpn"
+        os.environ["WLS_VAR_DIR"] = os.path.expanduser("~") + "/lvpn/"
+    if not os.getenv("WLC_CFG_DIR"):
+        os.environ["WLC_CFG_DIR"] = os.path.expanduser("~") + "/lvpn/"
+    if not os.getenv("WLC_VAR_DIR"):
+        os.environ["WLC_VAR_DIR"] = os.path.expanduser("~") + "/lvpn/"
 
-    p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/mgmt.ini'])
-    p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__),
-                               "WLS", "client")
-    p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
-    p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
+    if os.getenv("WLC_CLIENT"):
+        p = configargparse.ArgParser(default_config_files=[os.environ["WLC_CFG_DIR"] + '/mgmt.ini'])
+        p = SharedArguments.define(p, os.environ["WLC_CFG_DIR"], os.environ["WLC_VAR_DIR"], os.path.dirname(__file__),
+                                   "WLC", "client")
+        p = ClientArguments.define(p, os.environ["WLC_CFG_DIR"], os.environ["WLC_VAR_DIR"], os.path.dirname(__file__))
+    else:
+        p = configargparse.ArgParser(default_config_files=[os.environ["WLS_CFG_DIR"] + '/mgmt.ini'])
+        p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__),
+                                   "WLS", "client")
+        p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], os.environ["WLS_VAR_DIR"], os.path.dirname(__file__))
+
     p.add_argument("--client-mgmt-url", type=str, help="Client management URL", default="http://localhost:8124")
     p.add_argument("--server-mgmt-url", type=str, help="Client management URL", default="http://localhost:8123")
     p.add_argument("cmd", help="Command to be used", type=str, choices={
@@ -137,17 +147,27 @@ def main():
 
     elif cfg.cmd == "refresh-vdp":
         if len(cfg.args) == 0:
-            vdp = VDP()
-            for g in vdp.gates(my_only=True):
-                g.set_as_fresh()
-            for s in vdp.spaces(my_only=True):
-                s.set_as_fresh()
-            for p in vdp.providers(my_only=True):
-                p.set_as_fresh()
-            vdp.save()
+            wg = False
+        elif len(cfg.args) == 0:
+            gateid = cfg.args[0]
+            wg = True
+            sessions = Sessions().find(gateid=gateid, active=True)
+            ip = sessions[0].get_gate_data("wg")["client_ipv4_address"]
         else:
             print("Use refresh-vdp")
             sys.exit(1)
+        vdp = VDP()
+        for g in vdp.gates(my_only=True):
+            g.set_as_fresh()
+            if wg:
+                endpoint = g.get_endpoint()
+                endpoint[0] = ip
+                g.set_endpoint(ip, endpoint[1])
+        for s in vdp.spaces(my_only=True):
+            s.set_as_fresh()
+        for p in vdp.providers(my_only=True):
+            p.set_as_fresh()
+        vdp.save()
 
     elif cfg.cmd == "list-providers":
         vdp = VDP()

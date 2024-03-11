@@ -3,8 +3,8 @@
 . /etc/profile
 
 haproxy_cfg(){
-  cat /home/lvpn/server/etc/ca/private/ca_key.pem /home/lvpn/server/etc/ca/ca.crt >/home/lvpn/server/etc/ca-combined.pem
-  cp /home/lvpn/server/etc/ca/certs/${EASY_FQDN}/${EASY_FQDN}.crt /home/lvpn/server/etc/ca.crt
+  cat /home/lvpn/server/etc/ca/certs/main/*.pem /home/lvpn/server/etc/ca/certs/main/*.crt >/home/lvpn/server/etc/ca-combined.pem
+  cp /home/lvpn/server/etc/ca/ca.crt /home/lvpn/server/etc/ca.crt
   cat >/home/lvpn/server/etc/haproxy.cfg <<EOF
 global
         daemon
@@ -118,7 +118,7 @@ node)
   echo OK
 
   # First, let us start client
-  $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 \
+  $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 \
     --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
     --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
     --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
@@ -148,6 +148,7 @@ node)
   then
     $0 easy-provider
     cp -R /home/lvpn/easy/* "$WLS_CFG_DIR"/
+    mv "$WLS_CFG_DIR"/ca/certs/${EASY_FQDN} "$WLS_CFG_DIR"/ca/certs/main
   fi
 
   # Configure haproxy
@@ -197,10 +198,11 @@ node)
   do
     # Push our VDP
     $0 lmgmt push-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
-    # Fetch fresh VDP from main server
+    # Fetch fresh VDP from main server for client and server
     $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
+    WLC_CLIENT=1 $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     # Refresh VDP timestamps
-    $0 lmgmt refresh-vdp
+    $0 lmgmt refresh-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg
     sleep 3500
   done &
 

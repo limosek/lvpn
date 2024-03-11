@@ -265,9 +265,20 @@ class Manager(Service):
     myname = "server-manager"
 
     @classmethod
+    def refresh_vdp(cls):
+        while not cls.exit:
+            for i in range(1, 300):
+                time.sleep(1)
+                if cls.exit:
+                    return
+            Registry.vdp = VDP()
+
+    @classmethod
     def postinit(cls):
         cls.p = threading.Thread(target=cls.loop)
         cls.p.start()
+        cls.vdp = threading.Thread(target=cls.refresh_vdp)
+        cls.vdp.start()
         cls.app = app
         cls.app.run(port=Registry.cfg.http_port, host="0.0.0.0", debug=Registry.cfg.l == "DEBUG", use_reloader=False)
         cls.exit = True

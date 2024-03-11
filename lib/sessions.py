@@ -128,13 +128,14 @@ class Sessions:
         session.save()
 
     def remove(self, session, file=None):
-        logging.getLogger("audit").warning("Removing session %s (rmfile=%s)" % (session.get_id(), file))
         if file:
+            logging.getLogger("audit").warning("Removing session %s" % file)
             try:
                 os.unlink(file)
             except Exception as e:
                 pass
         else:
+            logging.getLogger("audit").warning("Removing session %s" % session.get_id())
             if session.get_id() in self._sessions:
                 session.deactivate()
                 del self._sessions[session.get_id()]
