@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import secrets
+import time
 
 import nacl
 import nacl.signing
@@ -111,63 +112,109 @@ wallet-rpc-password = %s
             public_key_file.write(verification_key_bytes)
 
     @staticmethod
-    def provider_vdp(cfg, providername="Easy LVPN provider", spacename="free", wallet="[fill-in]", host="[fill-in]"):
+    def provider_vdp(cfg, providername="Easy LVPN provider", spacename=None, wallet="[fill-in]", host="[fill-in]"):
         logging.getLogger("Wizard: Creating Provider VDP")
         with open(cfg.ca_dir + "/ca.crt", "r") as cf:
             cert = cf.read(-1)
         verification_key = Verify(cfg.provider_public_key).key()
+        if not spacename:
+            spacename = "Easy-Free-%s" % verification_key
         provider = {
             "file_type": "LetheanProvider",
             "file_version": "1.1",
             "providerid": verification_key,
             "name": providername,
             "description": providername,
+            "revision": int(time.time()),
+            "ttl": 3600,
             "ca": [cert],
             "wallet": wallet,
-            "manager-url": "https://%s:8790/" % host,
+            "manager-url": "https://%s:8123/" % host,
             "spaces": [
                 spacename
             ]
         }
-        space = {
+        spacef = {
           "file_type": "LetheanSpace",
           "file_version": "1.1",
           "spaceid": spacename.lower(),
           "providerid": verification_key,
           "name": spacename,
-          "description": spacename,
+          "revision": int(time.time()),
+          "ttl": 3600,
+          "description": "Easy-provider-%s Space to access internal resources" % verification_key,
           "price": {
             "per-day": 0
           },
           "ipv4_networks": ["192.168.1.0/24"],
           "ipv6_networks": [],
-          "dns_servers": ["192.168.1.1"],
+          "dns_servers": ["192.168.1.1"]
         }
-        httpgate = {
+        spacei = {
+            "file_type": "LetheanSpace",
+            "file_version": "1.1",
+            "spaceid": "internet",
+            "providerid": verification_key,
+            "revision": int(time.time()),
+            "ttl": 3600,
+            "name": "Easy-Internet-%s" % verification_key,
+            "description": "Easy-provider-%s Space to access Internet" % verification_key,
+            "price": {
+                "per-day": 100
+            },
+            "ipv4_networks": ["192.168.1.0/24"],
+            "ipv6_networks": [],
+            "dns_servers": ["192.168.1.1"]
+        }
+        httpgatef = {
           "file_type": "LetheanGateway",
           "type": "http-proxy",
           "file_version": "1.1",
           "gateid": "free-http-proxy",
           "providerid": verification_key,
+          "revision": int(time.time()),
+          "ttl": 3600,
           "name": "HTTP proxy to access other Lethean instances",
           "description": "Used to access internal Lethean infrastructure",
           "price": {
             "per-day": 0
           },
+          "internal": True,
           "http-proxy": {
             "host": host,
-            "port": 8888
+            "port": 8887
           },
           "spaces": [
             "%s.free" % verification_key
           ]
         }
+        httpgatei = {
+            "file_type": "LetheanGateway",
+            "type": "http-proxy",
+            "file_version": "1.1",
+            "gateid": "http-proxy",
+            "providerid": verification_key,
+            "revision": int(time.time()),
+            "ttl": 3600,
+            "name": "HTTP proxy to access Internet",
+            "description": "Used to access Internet",
+            "price": {
+                "per-day": 100
+            },
+            "http-proxy": {
+                "host": host,
+                "port": 8880
+            },
+            "spaces": [
+                "%s.internet" % verification_key
+            ]
+        }
         vdp = VDP(vdpdata={
             "file_type": "VPNDescriptionProtocol",
             "file_version": "1.1",
             "providers": [provider],
-            "gates": [httpgate],
-            "spaces": [space]
+            "gates": [httpgatef, httpgatei],
+            "spaces": [spacef, spacei]
         })
         vdp.save(cfg)
 

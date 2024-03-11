@@ -199,13 +199,15 @@ class VDP:
         VDPObject.validate(self._localdict, "Vdp")
         logging.getLogger("vdp").warning(repr(self))
 
-    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, as_json: bool = False):
+    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False):
         """Return all gates"""
         gates = []
         for g in self._gates.values():
             if not internal and g.is_internal():
                 continue
             if my_only and not g.is_local():
+                continue
+            if fresh and not g.is_fresh():
                 continue
             if (filter == "") or g.get_json().find(filter) >= 0:
                 if spaceid:
@@ -224,10 +226,12 @@ class VDP:
         else:
             return gates
 
-    def spaces(self, filter: str = "", my_only: bool = False, as_json: bool = False):
+    def spaces(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
         spaces = []
         for s in self._spaces.values():
             if my_only and not s.is_local():
+                continue
+            if fresh and not s.is_fresh():
                 continue
             if (filter == "") or s.get_json().find(filter) >= 0:
                 if as_json:
@@ -239,10 +243,12 @@ class VDP:
         else:
             return spaces
 
-    def providers(self, filter: str = "", my_only: bool = False, as_json: bool = False):
+    def providers(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
         providers = []
         for s in self._providers.values():
             if my_only and not s.is_local():
+                continue
+            if fresh and not s.is_fresh():
                 continue
             if (filter == "") or s.get_json().find(filter) >= 0:
                 if as_json:

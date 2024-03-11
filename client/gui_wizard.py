@@ -30,5 +30,7 @@ class Wizard(GridLayout):
         try:
             vdp = VDP(self.ids.vdp_url.text)
             client.gui.GUI.log_gui("vdp", vdp.save())
+            Registry.vdp = vdp
+            Registry.cfg.vdp = vdp
         except Exception as e:
             client.gui.GUI.queue.put(Messages.gui_popup("Cannot import VDP: %s" % e))

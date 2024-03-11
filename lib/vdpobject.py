@@ -2,6 +2,7 @@ import json
 import logging
 import tempfile
 import os
+import time
 
 import jsonschema
 import openapi_schema_validator
@@ -41,6 +42,17 @@ class VDPObject:
 
     def set_as_local(self):
         self._local = True
+
+    def is_fresh(self):
+        if "revision" and "ttl" in self._data:
+            # If revision + TTL is bigger than now, we are fresh
+            return self._data["revision"] + self._data["ttl"] > int(time.time())
+        else:
+            # We have no info, assuming fresh
+            return True
+
+    def set_as_fresh(self):
+        self._data["revision"] = int(time.time())
 
     def get_name(self):
         return self._data["name"]

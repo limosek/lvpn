@@ -59,6 +59,7 @@ def main():
         "show-vdp": "Print VDP from actual spaces and gates to stdout",
         "push-vdp": "Push VDP to server",
         "fetch-vdp": "Fetch VDP and save locally",
+        "refresh-vdp": "Refresh revisions on all local VDP objects",
         "list-providers": "List actual known providers",
         "list-spaces": "List actual known spaces",
         "list-gates": "List actual known gates",
@@ -130,6 +131,20 @@ def main():
                 sys.exit(4)
         else:
             print("Use push-vdp providerid")
+            sys.exit(1)
+
+    elif cfg.cmd == "refresh-vdp":
+        if cfg.args and len(cfg.args) == 0:
+            vdp = VDP()
+            for g in vdp.gates(my_only=True):
+                g.set_as_fresh()
+            for s in vdp.spaces(my_only=True):
+                s.set_as_fresh()
+            for p in vdp.providers(my_only=True):
+                p.set_as_fresh()
+            vdp.save()
+        else:
+            print("Use refresh-vdp")
             sys.exit(1)
 
     elif cfg.cmd == "list-providers":

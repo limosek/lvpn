@@ -6,7 +6,7 @@ LABEL description="LVPN"
 
 RUN apt-get update; \
     apt-get upgrade -y; \
-    apt-get install -y sudo joe less net-tools wget python3-venv pwgen wireguard-tools wireguard-go iproute2 iputils-ping tcpdump iptables;
+    apt-get install -y sudo joe less net-tools wget python3-venv pwgen wireguard-tools wireguard-go iproute2 iputils-ping tcpdump iptables tinyproxy haproxy stunnel;
 
 ARG DAEMON_BIN_URL="https://github.com/letheanVPN/blockchain-iz/releases/latest/download/lethean-cli-linux.tar"
 
@@ -24,14 +24,16 @@ ENV HTTP_PROXY=""
 EXPOSE 8123
 # Server MGMT
 EXPOSE 8124
-# HTTP Proxy
+# Client HTTP Proxy
 EXPOSE 8080
-# Socks Proxy
+# Client Socks Proxy
 EXPOSE 8081
 # Daemon P2P
 EXPOSE 48772
 # Daemon RPC
 EXPOSE 48782
+# Easy-http-proxy
+EXPOSE 8880
 
 RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \
