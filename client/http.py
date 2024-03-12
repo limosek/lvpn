@@ -144,7 +144,12 @@ def create_session():
         if fresh.is_active():
             return make_response(200, "OK", fresh.get_dict())
         else:
-            return make_response(402, "Awaiting payment", fresh.get_dict())
+            if Registry.cfg.auto_pay_days > days:
+                for m in fresh.get_pay_msgs():
+                    Manager.queue.put(m)
+                return make_response(402, "Payment sent, awaiting server", fresh.get_dict())
+            else:
+                return make_response(402, "Awaiting payment", fresh.get_dict())
     else:
         try:
             mngr = ManagerRpcCall(space.get_manager_url())

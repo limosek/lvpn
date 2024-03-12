@@ -3,7 +3,7 @@
 . /etc/profile
 
 haproxy_cfg(){
-  cat /home/lvpn/server/etc/ca/certs/main/*.pem /home/lvpn/server/etc/ca/certs/main/*.crt >/home/lvpn/server/etc/ca-combined.pem
+  cat /home/lvpn/server/etc/ca/certs/localhost/*.pem /home/lvpn/server/etc/ca/certs/localhost/*.crt >/home/lvpn/server/etc/ca-combined.pem
   cp /home/lvpn/server/etc/ca/ca.crt /home/lvpn/server/etc/ca.crt
   cat >/home/lvpn/server/etc/haproxy.cfg <<EOF
 global
@@ -51,7 +51,7 @@ ConnectPort 8080
 EOF
 }
 
-mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR"
+mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR" "$WLS_CFG_DIR"
 
 if [ -n "$DAEMON_HOST" ]
 then
@@ -60,7 +60,7 @@ fi
 
 if [ -z "$LVPNC_ARGS" ]
 then
-  LVPNC_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0"
+  LVPNC_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 --wg-shutdown-on-disconnect=0"
 fi
 
 if [ -z "$LVPNS_ARGS" ]
@@ -71,14 +71,12 @@ fi
 case $1 in
 
 client|lvpnc)
-  mkdir -p "$WLC_CFG_DIR"
   shift
   echo "Starting client:" lvpnc $LVPNC_ARGS $CARGS "$@"
   lvpnc $LVPNC_ARGS $CARGS "$@"
   ;;
 
 server|lvpns)
-  mkdir -p "$WLS_CFG_DIR"
   shift
   echo "Starting server:" lvpns $LVPNS_ARGS "$@"
   lvpns $LVPNS_ARGS "$@"
@@ -95,9 +93,6 @@ node)
     mkdir /home/lvpn/blockchain
   fi
   $0 set-perms
-
-  export EASY_WALLET_PASSWORD=$(pwgen 12)
-  export EASY_WALLET_RPC_PASSWORD=$(pwgen 12)
 
   # Run local daemon
   echo "Running local daemon"
@@ -118,11 +113,11 @@ node)
   echo OK
 
   # First, let us start client
-  $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 \
+  $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 --auto-pay-days=30 \
     --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
     --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
     --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
-    --auto-connect="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free" >/home/lvpn/client.log 2>&1 &
+    --auto-connect=${NODE_AUTO_CONNECT} >/home/lvpn/client.log 2>&1 &
 
   # Wait for client to connect
   echo -n "Waiting for lvpnc to connect."
@@ -135,20 +130,25 @@ node)
 
   # Wait for client to have wg session
   echo -n "Waiting for working WG session."
-  while ! curl -q http://127.0.0.1:8124/api/sessions 2>/dev/null | grep client_ipv4_address
+  while ! curl -q http://127.0.0.1:8124/api/sessions 2>/dev/null | grep client_ipv4_address >/dev/null
   do
     sleep 1
   done
-  IP=$(curl http://localhost:8124/api/sessions | json_pp | grep client_ipv4_address | cut -d '"' -f 4)
+  IP=$(curl -q http://localhost:8124/api/sessions | json_pp | grep client_ipv4_address | cut -d '"' -f 4)
   echo "OK (IP=$IP)"
-  export EASY_FQDN=$IP
 
   # Generate VDP
   if ! [ -f "$WLS_CFG_DIR"/provider.private ]
   then
+    export EASY_WALLET_PASSWORD=$(pwgen 12)
+    export EASY_WALLET_RPC_PASSWORD=$(pwgen 12)
+    export EASY_ENDPOINT=$IP
+    rm -rf /home/lvpn/easy
     $0 easy-provider
     cp -R /home/lvpn/easy/* "$WLS_CFG_DIR"/
-    mv "$WLS_CFG_DIR"/ca/certs/${EASY_FQDN} "$WLS_CFG_DIR"/ca/certs/main
+  else
+    export EASY_WALLET_PASSWORD=$(cat $WLS_CFG_DIR/wallet_pass)
+    export EASY_WALLET_RPC_PASSWORD=$(cat $WLS_CFG_DIR/wallet_rpc_pass)
   fi
 
   # Configure haproxy
@@ -160,16 +160,16 @@ node)
   # Run client wallet
   while true;
   do
-    lethean-wallet-rpc --wallet-dir="$WLS_CFG_DIR" --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
-      --rpc-bind-port=1444 --daemon-address=172.31.129.19:48782 --trusted-daemon >/home/lvpn/client-wallet.log 2>&1
+    cd /tmp && lethean-wallet-rpc --wallet-dir="$WLS_CFG_DIR" --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
+      --rpc-bind-port=1444 --trusted-daemon >/home/lvpn/client-wallet.log 2>&1
     sleep 5
   done &
 
   # Run server wallet
   while true;
   do
-    lethean-wallet-rpc --wallet-file="$WLS_CFG_DIR"/vpn-wallet --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
-      --rpc-bind-port=1445 --daemon-address=172.31.129.19:48782 --trusted-daemon --password "$EASY_WALLET_PASSWORD" >/home/lvpn/server-wallet.log 2>&1
+    cd /tmp && lethean-wallet-rpc --wallet-file="$WLS_CFG_DIR"/vpn-wallet --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
+      --rpc-bind-port=1445 --trusted-daemon --password "$EASY_WALLET_PASSWORD" >/home/lvpn/server-wallet.log 2>&1
     sleep 5
   done &
 
@@ -202,14 +202,17 @@ node)
     $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     WLC_CLIENT=1 $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     # Refresh VDP timestamps
-    $0 lmgmt refresh-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg
+    $0 lmgmt refresh-vdp
     sleep 3500
   done &
 
-  echo "Running haproxy"
-  /usr/sbin/haproxy -f /home/lvpn/server/etc/haproxy.cfg
-  echo "Running tinyproxy"
-  tinyproxy -c /home/lvpn/server/etc/tinyproxy.cfg
+  if [ "${NODE_RUN_SERVER}" = "yes" ]
+  then
+    echo "Running haproxy"
+    /usr/sbin/haproxy -f /home/lvpn/server/etc/haproxy.cfg
+    echo "Running tinyproxy"
+    tinyproxy -c /home/lvpn/server/etc/tinyproxy.cfg
+  fi
 
   echo "Everythig UP! Great!"
   # Wait for background processes

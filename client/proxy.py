@@ -272,7 +272,8 @@ class Proxy(Service):
     @classmethod
     def refresh_sessions(cls, once=False):
         while not cls.exit:
-            time.sleep(60)
+            if not once:
+                time.sleep(60)
             sessions = Sessions()
             cls.log_gui("proxy", "Checking sessions: %s" % repr(sessions))
             sessions.refresh_status()

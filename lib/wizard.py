@@ -112,13 +112,15 @@ wallet-rpc-password = %s
             public_key_file.write(verification_key_bytes)
 
     @staticmethod
-    def provider_vdp(cfg, providername="Easy LVPN provider", spacename=None, wallet="[fill-in]", host="[fill-in]"):
+    def provider_vdp(cfg, providername="Easy LVPN provider", spacename=None, wallet="[fill-in]", host="[fill-in]", manager_url=None):
         logging.getLogger("Wizard: Creating Provider VDP")
         with open(cfg.ca_dir + "/ca.crt", "r") as cf:
             cert = cf.read(-1)
         verification_key = Verify(cfg.provider_public_key).key()
         if not spacename:
             spacename = "Easy-Free-%s" % verification_key
+        if not manager_url:
+            manager_url = "https://%s:8123/" % host
         provider = {
             "file_type": "LetheanProvider",
             "file_version": "1.1",
@@ -129,7 +131,7 @@ wallet-rpc-password = %s
             "ttl": 3600,
             "ca": [cert],
             "wallet": wallet,
-            "manager-url": "https://%s:8123/" % host,
+            "manager-url": manager_url,
             "spaces": [
                 spacename
             ]
@@ -170,7 +172,7 @@ wallet-rpc-password = %s
           "file_type": "LetheanGateway",
           "type": "http-proxy",
           "file_version": "1.1",
-          "gateid": "free-http-proxy",
+          "gateid": "free-http-proxy-tls",
           "providerid": verification_key,
           "revision": int(time.time()),
           "ttl": 3600,
@@ -192,7 +194,7 @@ wallet-rpc-password = %s
             "file_type": "LetheanGateway",
             "type": "http-proxy",
             "file_version": "1.1",
-            "gateid": "http-proxy",
+            "gateid": "http-proxy-tls",
             "providerid": verification_key,
             "revision": int(time.time()),
             "ttl": 3600,

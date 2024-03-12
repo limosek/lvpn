@@ -36,12 +36,6 @@ then
   exit 1
 fi
 
-if [ -z "$EASY_FQDN" ]
-then
-  echo "You need to set env variable EASY_FQDN with hostname of your VPN server."
-  exit 1
-fi
-
 if ! which pwgen >/dev/null
 then
   echo "You need pwgen binary"
@@ -54,15 +48,15 @@ if [ -z "$EASY_WALLET_PASSWORD" ]
 then
   EASY_WALLET_PASSWORD=$(pwgen 12)
   echo "VPN password: $EASY_WALLET_PASSWORD"
-  echo $EASY_WALLET_PASSWORD >$WLS_CFG_DIR/wallet_pass
 fi
+echo $EASY_WALLET_PASSWORD >$WLS_CFG_DIR/wallet_pass
 
 if [ -z "$EASY_WALLET_RPC_PASSWORD" ]
 then
   EASY_WALLET_RPC_PASSWORD=$(pwgen 12)
   echo "VPN RPC password: $EASY_WALLET_RPC_PASSWORD"
-  echo $EASY_WALLET_RPC_PASSWORD >$WLS_CFG_DIR/wallet_rpc_pass
 fi
+echo $EASY_WALLET_RPC_PASSWORD >$WLS_CFG_DIR/wallet_rpc_pass
 
 if ! which lethean-wallet-cli >/dev/null
 then
@@ -81,6 +75,11 @@ if [ -z "$EASY_CA_CN" ]
 then
   EASY_CA_CN="Easy-provider-$(cat $WLS_CFG_DIR/provider.public)"
 fi
+if [ -z "$EASY_FQDN" ]
+then
+  EASY_FQDN="vpn.$(cat $WLS_CFG_DIR/provider.public).lthn"
+fi
+
 if [ -z "$EASY_DAYS" ]
 then
   EASY_DAYS="825"
@@ -96,7 +95,7 @@ generate_wallet "$WLS_CFG_DIR/vpn-wallet" "$EASY_WALLET_PASSWORD" >/dev/null 2>/
 
 # Generate VDP
 mkdir -p $WLS_CFG_DIR/gates $WLS_CFG_DIR/providers $WLS_CFG_DIR/spaces
-mgmt generate-vdp "$EASY_CA_CN" free "$EASY_FQDN" "$(cat $WLS_CFG_DIR/vpn-wallet.address.txt)"
+mgmt generate-vdp "$EASY_CA_CN" free "$EASY_ENDPOINT" "$(cat $WLS_CFG_DIR/vpn-wallet.address.txt)" http://$EASY_ENDPOINT:8123
 
 echo "Waiting for Wallet process to finish"
 wait

@@ -136,11 +136,15 @@ class Session:
             logging.getLogger("audit").debug("Trying to activate session %s" % self.get_id())
             now = int(time.time())
             if Registry.cfg.is_server:
-                self._gate.activate_server(self)
-                self._space.activate_server(self)
+                if not self._gate.activate_server(self):
+                    return False
+                if not self._space.activate_server(self):
+                    return False
             elif Registry.cfg.is_client:
-                self._gate.activate_client(self)
-                self._space.activate_client(self)
+                if not self._gate.activate_client(self):
+                    return False
+                if not self._space.activate_client(self):
+                    return False
             if Registry.cfg.on_session_activation:
                 RunCmd.run("%s %s" % (Registry.cfg.on_session_activation, self.get_filename()))
             logging.getLogger().warning("Activated session %s[free=%s]" % (self.get_id(), self.is_free()))

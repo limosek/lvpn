@@ -7,8 +7,6 @@ import unittest
 from copy import copy
 import requests
 
-from client.wg_service import WGClientService
-
 os.environ["NO_KIVY"] = "1"
 
 from client import Proxy
@@ -21,6 +19,7 @@ from client.sshproxy import SSHProxy
 from tests.util import Util
 from lib.wg_engine import WGEngine
 from server import WGServerService
+from client.wg_service import WGClientService
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
@@ -68,13 +67,28 @@ class Proxy2(Proxy):
     @classmethod
     def loop(cls, once=False):
         cls.exit = False
-        super().loop(once=True)
+        super().loop(once=once)
 
 
 class TestProxies(unittest.TestCase):
 
     @exit_after(10)
     def runTLSproxy(self, session, sessions):
+        queue = Queue(multiprocessing.get_context(), "test1")
+        queue2 = Queue(multiprocessing.get_context(), "test2")
+        sessions.load()
+        ctrl = {}
+        connection = Connection(session, port=8888)
+        kwargs = {
+            "endpoint": session.get_gate().get_endpoint(resolve=True),
+            "ca": session.get_gate().get_ca(),
+            "port": 8888,
+            "sessionid": session.get_id(),
+            "connectionid": connection.get_id()
+        }
+        TLSProxy.run(ctrl, queue, queue2, **kwargs)
+
+    def runTLSproxy2(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
         sessions.load()
@@ -225,6 +239,22 @@ class TestProxies(unittest.TestCase):
         # WG phase2
         WGClientService.activate_on_client(session)
 
+    def testRunRealProxy(self):
+        Util.parse_args(["--enable-wg=1", "--single-thread=0"])
+        Util.cleanup_sessions()
+        sessions = Sessions()
+        ctrl = multiprocessing.Manager().dict()
+        Messages.init_ctrl(ctrl)
+        ctrl["cfg"] = Registry.cfg
+        gate = Registry.vdp.get_gate(
+            "9c74b2e8d51fade774d00b07cfb4a91db424f6448cdcc2e83a26e0654031ce0a.http-proxy")
+        space = Registry.vdp.get_space(
+            "9c74b2e8d51fade774d00b07cfb4a91db424f6448cdcc2e83a26e0654031ce0a.free")
+        mr = ManagerRpcCall(space.get_manager_url())
+        session = Session(mr.create_session(gate, space))
+        session.save()
+        sessions.add(session)
+        self.runTLSproxy2(session, sessions)
 
 
 if __name__ == "main":

@@ -31,7 +31,7 @@ class Util:
         p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir, "WLS_", "server")
         p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
         p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
-        args.extend(["--wallet-rpc-password=1234", "--log-file=%s/tests.log" % vardir, "--log-level=INFO"])
+        args.extend(["--wallet-rpc-password=1234", "--log-file=%s/tests.log" % vardir, "--log-level=INFO", "--force-manager-url", os.getenv("MANAGER_URL")])
         cfg = p.parse_args(args)
         cfg.l = cfg.log_level
         if os.path.exists("./var"):

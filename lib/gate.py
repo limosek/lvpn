@@ -204,22 +204,12 @@ class Gateway(VDPObject):
 
         elif self.get_type() in ["http-proxy", "socks-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy"] and self.is_tls():
             ca = CertificateAuthority(ca_storage=Registry.cfg.ca_dir)
-            lckfile = "%s/lock" % Registry.cfg.ca_dir
-            while os.path.exists(lckfile):
-                time.sleep(0.1)
-            with open(lckfile, "w") as lck:
-                lck.write(str(os.getpid()))
-            try:
-                crt = ca.issue_certificate("%s.lvpn" % session.get_id(), maximum_days=session.days_left() + 1,
-                                           key_size=4096)
-                session.set_gate_data("proxy", {
-                    "key": crt.key_bytes.decode("utf-8"),
-                    "crt": crt.cert_bytes.decode("utf-8")
-                })
-            except Exception as e:
-                os.unlink(lckfile)
-                return False
-            os.unlink(lckfile)
+            crt = ca.issue_certificate("%s" % session.get_gate()["gateid"], maximum_days=session.days_left() + 1,
+                                       key_size=4096)
+            session.set_gate_data("proxy", {
+                "key": crt.key_bytes.decode("utf-8"),
+                "crt": crt.cert_bytes.decode("utf-8")
+            })
 
         elif self.get_type() == "wg":
             if session.get_gate_data("wg"):

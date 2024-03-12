@@ -27,8 +27,9 @@ class WGClientService(WGService):
                 cls.activate_on_client(cls.session)
                 cls.sactive = True
             time.sleep(1)
-        cls.log_error("Exiting loop and removing peer")
-        cls.deactivate_on_client(cls.session)
+        if Registry.cfg.wg_shutdown_on_disconnect:
+            cls.log_error("Exiting loop and removing peer")
+            cls.deactivate_on_client(cls.session)
 
     @classmethod
     def postinit(cls):
@@ -39,15 +40,21 @@ class WGClientService(WGService):
         cls.gate = cls.kwargs["gate"]
         cls.space = cls.kwargs["space"]
         cls.iface = WGEngine.get_interface_name(cls.gate.get_id())
-        if not cls.session.get_gate_data("wg"):
-            cls.log_warning("WG connect phase1 - %s" % cls.session.get_id())
-            """This is just empty session to start handshake with WG"""
-            try:
-                cls.deactivate_interface_client()
-            except ServiceException as e:
-                pass
+        cls.log_warning("WG connect phase1 - %s" % cls.session.get_id())
+        """This is just empty session to start handshake with WG"""
+        try:
+            # Let us try if interface already exists
+            data = WGEngine.gather_wg_data(cls.iface)
+            if not "iface" in data:
+                # It does not exists, let us create
+                cls.setup_interface_client(cls.session)
+        except ServiceException as e:
+            # It does not exists, let us create
             cls.setup_interface_client(cls.session)
-            cls.gathered = WGEngine.gather_wg_data(cls.iface)
+        cls.gathered = WGEngine.gather_wg_data(cls.iface)
+
+        if not cls.session.get_gate_data("wg") or cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
+            # We are either missing WG session data or WG interface changed keys. So we need to request new session.
             mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
             nsession = Session(mr.create_session(cls.gate, cls.space,
                                   prepare_data={"wg": cls.gate.get_prepare_data()}))
@@ -59,6 +66,17 @@ class WGClientService(WGService):
         else:
             """Everything was set before"""
             cls.log_warning("WG connect phase2 - %s" % cls.session.get_id())
+            try:
+                # Let us try if interface already exists
+                data = WGEngine.gather_wg_data(cls.iface)
+                if not "iface" in data:
+                    # It does not exists, let us create
+                    cls.setup_interface_client(cls.session)
+                    data = WGEngine.gather_wg_data(cls.iface)
+
+            except ServiceException as e:
+                # It does not exists, let us create
+                cls.setup_interface_client(cls.session)
             messages = []
             for g in cls.gate["gates"]:
                 gate = Registry.vdp.get_gate(g)

@@ -282,17 +282,18 @@ def main():
             sys.exit(1)
 
     elif cfg.cmd == "generate-vdp":
-        if cfg.args and len(cfg.args) == 4:
+        if cfg.args and len(cfg.args) == 5:
             name = cfg.args[0]
             space = cfg.args[1]
             fqdn = cfg.args[2]
             wallet = cfg.args[3]
+            manager_url = cfg.args[4]
             cfg.providers_dir = cfg.my_providers_dir
             cfg.spaces_dir = cfg.my_spaces_dir
             cfg.gates_dir = cfg.my_gates_dir
-            Wizard.provider_vdp(cfg, name,  space, wallet, fqdn)
+            Wizard.provider_vdp(cfg, name,  space, wallet, fqdn, manager_url)
         else:
-            logging.error("Need generate-vdp 'name' 'space' 'fqdn' 'wallet'")
+            logging.error("Need generate-vdp 'name' 'space' 'fqdn' 'wallet' 'manager_url'")
             sys.exit(1)
 
     elif cfg.cmd == "request-client-session":
