@@ -21,6 +21,7 @@ ENV DAEMON_HOST="seed.lethean.io"
 ENV HTTP_PROXY=""
 ENV NODE_AUTO_CONNECT="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
 ENV NODE_RUN_SERVER="yes"
+ENV DAEMON_ARGS=""
 
 # Client wallet RPC
 EXPOSE 1444
@@ -38,8 +39,10 @@ EXPOSE 8081
 EXPOSE 48772
 # Daemon RPC
 EXPOSE 48782
-# Easy-http-proxy
+# Easy-http-tls-proxy
 EXPOSE 8880
+# Easy-tls-manager
+EXPOSE 8881
 
 RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \

@@ -156,6 +156,9 @@ def main():
         else:
             print("Use refresh-vdp")
             sys.exit(1)
+        Registry.cfg.spaces_dir = Registry.cfg.my_spaces_dir
+        Registry.cfg.providers_dir = Registry.cfg.my_providers_dir
+        Registry.cfg.gates_dir = Registry.cfg.my_gates_dir
         vdp = VDP()
         for g in vdp.gates(my_only=True):
             g.set_as_fresh()
@@ -163,11 +166,13 @@ def main():
                 endpoint = g.get_endpoint()
                 endpoint[0] = ip
                 g.set_endpoint(ip, endpoint[1])
+            g.save(origfile=True)
         for s in vdp.spaces(my_only=True):
             s.set_as_fresh()
+            s.save(origfile=True)
         for p in vdp.providers(my_only=True):
             p.set_as_fresh()
-        vdp.save()
+            p.save(origfile=True)
 
     elif cfg.cmd == "list-providers":
         vdp = VDP()

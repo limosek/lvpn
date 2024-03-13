@@ -24,6 +24,7 @@ class Gateway(VDPObject):
         if not self._provider:
             raise VDPException("Unknown providerid %s" % self._data["providerid"])
         self._local = self._provider.is_local()
+        self._file = file
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["gateid"]
@@ -124,10 +125,14 @@ class Gateway(VDPObject):
     def space_ids(self):
         return self._data["spaces"]
 
-    def save(self, cfg=None):
+    def save(self, cfg=None, origfile=False):
         if cfg:
             Registry.cfg = cfg
-        fname = "%s/%s.lgate" % (Registry.cfg.gates_dir, self.get_id())
+        if origfile:
+            fname = self._file
+        else:
+            fname = "%s/%s.lgate" % (Registry.cfg.gates_dir, self.get_id())
+        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
         with open(fname, "w") as f:
             f.write(self.get_json())
 

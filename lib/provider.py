@@ -12,6 +12,7 @@ class Provider(VDPObject):
         self.validate(providerinfo, "Provider", file)
         self._data = providerinfo
         self._local = False
+        self._file = file
 
     def get_id(self):
         return self._data["providerid"]
@@ -32,10 +33,14 @@ class Provider(VDPObject):
             return Registry.cfg.force_manager_url
         return self._data["manager-url"]
 
-    def save(self, cfg=None):
+    def save(self, cfg=None, origfile=False):
         if cfg:
             Registry.cfg = cfg
-        fname = "%s/%s.lprovider" % (Registry.cfg.providers_dir, self.get_id())
+        if origfile:
+            fname = self._file
+        else:
+            fname = "%s/%s.lprovider" % (Registry.cfg.providers_dir, self.get_id())
+        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
         with open(fname, "w") as f:
             f.write(self.get_json())
 

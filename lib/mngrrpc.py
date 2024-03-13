@@ -2,6 +2,9 @@ import logging
 import requests
 import json
 
+from requests.exceptions import SSLError
+
+from lib import Registry
 from lib.session import Session
 from lib.space import Space
 from lib.vdp import VDP
@@ -36,11 +39,22 @@ class ManagerRpcCall:
         data = {"gateid": gate.get_id(), "spaceid": space.get_id(), "days": session.days()}
         if prepare_data:
             data.update(prepare_data)
-        r = requests.post(
-            self._baseurl + "/api/session",
-            headers={"Content-Type": "application/json"},
-            json=data
-        )
+        try:
+            r = requests.post(
+                self._baseurl + "/api/session",
+                headers={"Content-Type": "application/json"},
+                json=data
+            )
+        except SSLError:
+            try:
+                r = requests.post(
+                    self._baseurl + "/api/session",
+                    headers={"Content-Type": "application/json"},
+                    json=data,
+                    cert=gate.get_cafile(Registry.cfg.tmp_dir)
+                )
+            except SSLError as e:
+                raise ManagerException("%s -- %s" % (self._baseurl, e))
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
         elif r.status_code == 465:

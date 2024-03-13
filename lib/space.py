@@ -17,6 +17,8 @@ class Space(VDPObject):
         if not self._provider:
             raise VDPException("Unknown providerid %s" % self._data["providerid"])
         self._local = self._provider.is_local()
+        self._file = file
+
 
     def get_id(self):
         return self.get_provider_id() + "." + self._data["spaceid"]
@@ -28,10 +30,14 @@ class Space(VDPObject):
         self._provider = provider
         self._local = self._provider.is_local()
 
-    def save(self, cfg=None):
+    def save(self, cfg=None, origfile=False):
         if cfg:
             Registry.cfg = cfg
-        fname = "%s/%s.lspace" % (Registry.cfg.spaces_dir, self.get_id())
+        if origfile:
+            fname = self._file
+        else:
+            fname = "%s/%s.lspace" % (Registry.cfg.spaces_dir, self.get_id())
+        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
         with open(fname, "w") as f:
             f.write(self.get_json())
 

@@ -24,14 +24,23 @@ defaults
         option                  http-keep-alive
         http-reuse              safe
 
-frontend tls-proxy
+frontend authenticated-tls-proxy
     bind 0.0.0.0:8880 ssl crt /home/lvpn/server/etc/ca-combined.pem ca-file /home/lvpn/server/etc/ca.crt verify required tfo
     default_backend http-proxy
+
+frontend manager-tls-proxy
+    bind 0.0.0.0:8881 ssl crt /home/lvpn/server/etc/ca-combined.pem ca-file /home/lvpn/server/etc/ca.crt verify none tfo
+    default_backend manager
 
 backend http-proxy
     mode http
     # Must be directed to your HTTP proxy instance
-    server localproxy localhost:8888
+    server localproxy 127.0.0.1:8888
+
+backend manager
+    mode http
+    # Must be directed to your lvpns manager
+    server localproxy 127.0.0.1:8123
 EOF
 }
 
@@ -68,6 +77,13 @@ then
   LVPNS_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 "
 fi
 
+if [ -z "$DAEMON_ARGS" ]
+then
+  DAEMON_ARGS="--non-interactive --confirm-external-bind --data-dir=/home/lvpn/blockchain \
+      --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-exclusive-node 172.31.129.19 --add-priority-node 172.31.129.19 --add-peer 172.31.129.19"
+fi
+
+# Main logic here
 case $1 in
 
 client|lvpnc)
@@ -98,8 +114,7 @@ node)
   echo "Running local daemon"
   while true;
   do
-    letheand --non-interactive --confirm-external-bind --data-dir=/home/lvpn/blockchain \
-      --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-exclusive-node 172.31.129.19 --add-priority-node 172.31.129.19 --add-peer 172.31.129.19 >/home/lvpn/daemon.log 2>&1
+    letheand $DAEMON_ARGS >/home/lvpn/daemon.log 2>&1
     sleep 5
   done &
 
@@ -146,16 +161,14 @@ node)
     rm -rf /home/lvpn/easy
     $0 easy-provider
     cp -R /home/lvpn/easy/* "$WLS_CFG_DIR"/
+    # Configure haproxy
+    haproxy_cfg
+    # Configure tinyproxy
+    tinyproxy_cfg
   else
     export EASY_WALLET_PASSWORD=$(cat $WLS_CFG_DIR/wallet_pass)
     export EASY_WALLET_RPC_PASSWORD=$(cat $WLS_CFG_DIR/wallet_rpc_pass)
   fi
-
-  # Configure haproxy
-  haproxy_cfg
-
-  # Configure tinyproxy
-  tinyproxy_cfg
 
   # Run client wallet
   while true;
