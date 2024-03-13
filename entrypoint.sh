@@ -127,12 +127,21 @@ node)
   done
   echo OK
 
-  # First, let us start client
-  $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 --auto-pay-days=30 \
-    --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
-    --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
-    --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
-    --auto-connect=${NODE_AUTO_CONNECT} >/home/lvpn/client.log 2>&1 &
+  while true
+  do
+    if [ -f $WLS_CFG_DIR/wallet_pass ]
+    then
+      export EASY_WALLET_PASSWORD=$(cat $WLS_CFG_DIR/wallet_pass)
+      export EASY_WALLET_RPC_PASSWORD=$(cat $WLS_CFG_DIR/wallet_rpc_pass)
+    fi
+    # First, let us start client
+    $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 --auto-pay-days=30 \
+      --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
+      --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
+      --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
+      --auto-connect=${NODE_AUTO_CONNECT} >/home/lvpn/client.log 2>&1
+    sleep 10
+  done &
 
   # Wait for client to connect
   echo -n "Waiting for lvpnc to connect."
@@ -170,6 +179,9 @@ node)
     export EASY_WALLET_RPC_PASSWORD=$(cat $WLS_CFG_DIR/wallet_rpc_pass)
   fi
 
+  # Remove stale files which blocks wallets to start
+  rm -f /tmp/*.login
+
   # Run client wallet
   while true;
   do
@@ -203,8 +215,12 @@ node)
   echo "OK"
 
   # Run the server
-  $0 lvpns $LVPNS_ARGS \
-    --wallet-rpc-url=http://localhost:1445/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" >/home/lvpn/server.log 2>&1 &
+  while true
+  do
+    $0 lvpns $LVPNS_ARGS \
+      --wallet-rpc-url=http://localhost:1445/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" >/home/lvpn/server.log 2>&1
+    sleep 10
+  done &
 
   # Regularly Push new VDP to server and fetch fresh VDP
   while true

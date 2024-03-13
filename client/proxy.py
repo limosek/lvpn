@@ -309,7 +309,7 @@ class Proxy(Service):
                         if Registry.cfg.auto_reconnect:
                             session = lib.Session()
                             session.generate(conn.get_session().get_gate().get_id(),
-                                             conn.get_session().getspace().get_id(),
+                                             conn.get_session().get_space().get_id(),
                                              conn.get_session().days())
                             session.save()
                             time.sleep(10)
