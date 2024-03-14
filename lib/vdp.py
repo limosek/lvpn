@@ -119,7 +119,7 @@ class VDP:
                                 if oldprov.get_revision() <= prov.get_revision():
                                     self._providers[prov.get_id()] = prov
                                 else:
-                                    logging.getLogger("vdp").warning("Ignoring Provider %s[file=%d] with lower revision" % (prov.get_id(), prov._file))
+                                    logging.getLogger("vdp").warning("Ignoring Provider %s[file=%s] with lower revision" % (prov.get_id(), prov._file))
                                     self._outdated.append(prov)
                             else:
                                 self._providers[prov.get_id()] = prov
@@ -149,7 +149,7 @@ class VDP:
                             if oldspc.get_revision() <= spc.get_revision():
                                 self._spaces[spc.get_id()] = spc
                             else:
-                                logging.getLogger("vdp").warning("Ignoring Space %s[file=%d] with lower revision" % (spc.get_id(), spc._file))
+                                logging.getLogger("vdp").warning("Ignoring Space %s[file=%s] with lower revision" % (spc.get_id(), spc._file))
                                 self._outdated.append(spc)
                         else:
                             self._spaces[spc.get_id()] = spc
@@ -181,7 +181,7 @@ class VDP:
                             if oldgw.get_revision() <= gw.get_revision():
                                 self._gates[gw.get_id()] = gw
                             else:
-                                logging.getLogger("vdp").warning("Ignoring gate %s[file=%d] with lower revision" % (gw.get_id(), gw._file))
+                                logging.getLogger("vdp").warning("Ignoring gate %s[file=%s] with lower revision" % (gw.get_id(), gw._file))
                                 self._outdated.append(gw)
                         else:
                             self._gates[gw.get_id()] = gw

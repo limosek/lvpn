@@ -68,10 +68,19 @@ class WGClientService(WGService):
             mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
             rekey = mr.rekey_session(cls.session, cls.gathered["iface"]["public"])
             if not rekey:
-                raise ServiceException(33, "Error rekeying session")
+                sessions.remove(cls.session)
+                session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
+                                            prepare_data={"wg": cls.prepare_session_request()})
+                if not session:
+                    raise ServiceException(33, "Error requesting WG session")
+                else:
+                    cls.session = Session(session)
+                    cls.session.save()
+                    sessions.add(cls.session)
             else:
                 cls.session = Session(rekey)
                 cls.session.save()
+                sessions.add(cls.session)
 
         messages = []
         for g in cls.gate["gates"]:
