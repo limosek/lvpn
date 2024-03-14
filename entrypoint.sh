@@ -119,11 +119,11 @@ node)
   done &
 
   # Wait for daemon to start
-  echo -n "Waiting for daemon to start."
+  echo "Waiting for daemon to start."
   while ! curl -q http://127.0.0.1:48782/json_rpc 2>/dev/null >/dev/null
   do
     sleep 1
-    echo -n "."
+    echo "."
   done
   echo OK
 
@@ -144,19 +144,20 @@ node)
   done &
 
   # Wait for client to connect
-  echo -n "Waiting for lvpnc to connect."
+  echo "Waiting for lvpnc to connect."
   while ! curl -q http://127.0.0.1:8124/api/connections 2>/dev/null | grep endpoint >/dev/null
   do
     sleep 1
-    echo -n "."
+    echo "."
   done
   echo OK
 
   # Wait for client to have wg session
-  echo -n "Waiting for working WG session."
+  echo "Waiting for working WG session."
   while ! curl -q http://127.0.0.1:8124/api/sessions 2>/dev/null | grep client_ipv4_address >/dev/null
   do
     sleep 1
+    echo "."
   done
   IP=$(curl -q http://localhost:8124/api/sessions | json_pp | grep client_ipv4_address | cut -d '"' -f 4)
   echo "OK (IP=$IP)"
@@ -164,6 +165,7 @@ node)
   # Generate VDP
   if ! [ -f "$WLS_CFG_DIR"/provider.private ]
   then
+    echo "Running easy-provider"
     export EASY_WALLET_PASSWORD=$(pwgen 12)
     export EASY_WALLET_RPC_PASSWORD=$(pwgen 12)
     export EASY_ENDPOINT=$IP
@@ -183,6 +185,7 @@ node)
   rm -f /tmp/*.login
 
   # Run client wallet
+  echo "Running client wallet"
   while true;
   do
     cd /tmp && lethean-wallet-rpc --wallet-dir="$WLS_CFG_DIR" --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
@@ -191,6 +194,7 @@ node)
   done &
 
   # Run server wallet
+  echo "Running server wallet"
   while true;
   do
     cd /tmp && lethean-wallet-rpc --wallet-file="$WLS_CFG_DIR"/vpn-wallet --rpc-login="vpn:$EASY_WALLET_RPC_PASSWORD" \
@@ -199,22 +203,25 @@ node)
   done &
 
   # Wait for client wallet
-  echo -n "Waiting for client wallet."
+  echo "Waiting for client wallet."
   while ! curl -q http://localhost:1444/json_rpc 2>/dev/null >/dev/null
   do
     sleep 1
+    echo "."
   done
   echo "OK"
 
   # Wait for client wallet
-  echo -n "Waiting for server wallet."
+  echo "Waiting for server wallet."
   while ! curl -q http://localhost:1445/json_rpc 2>/dev/null >/dev/null
   do
     sleep 1
+    echo "."
   done
   echo "OK"
 
   # Run the server
+  echo "Running server"
   while true
   do
     $0 lvpns $LVPNS_ARGS \
@@ -225,13 +232,13 @@ node)
   # Regularly Push new VDP to server and fetch fresh VDP
   while true
   do
+    # Refresh VDP timestamps
+    $0 lmgmt refresh-vdp
     # Push our VDP
     $0 lmgmt push-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     # Fetch fresh VDP from main server for client and server
     $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     WLC_CLIENT=1 $0 lmgmt fetch-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
-    # Refresh VDP timestamps
-    $0 lmgmt refresh-vdp
     sleep 3500
   done &
 
@@ -241,6 +248,15 @@ node)
     /usr/sbin/haproxy -f /home/lvpn/server/etc/haproxy.cfg
     echo "Running tinyproxy"
     tinyproxy -c /home/lvpn/server/etc/tinyproxy.cfg
+  fi
+
+  if [ "${NODE_RUN_SHARE}" = "yes" ] && [ -d "${NODE_SHARE_DIR}" ]
+  then
+    echo "Running ctorrent"
+    cd ${NODE_SHARE_DIR} && ctorrent -t -u "${NODE_TRACKER_URL}" -s "node.torrent" ${NODE_SHARE_DIR}
+    ctorrent -p 2706 -d node.torrent
+  else
+    echo "Sharing files disabled"
   fi
 
   echo "Everythig UP! Great!"

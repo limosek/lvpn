@@ -147,17 +147,12 @@ class TLSProxy(Service):
             proxydata = urllib3.util.parse_url(Registry.cfg.use_http_proxy)
             s = cls.http_proxy_tunnel_connect(proxydata.host, proxydata.port, endpoint)
         else:
-            err = True
-            while err:
-                try:
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(15)
-                    s.connect(endpoint)
-                    err = False
-                except Exception as e:
-                    err = True
-                    cls.log_error("Cannot connect to %s:%s" % (endpoint, e))
-                    time.sleep(10)
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(15)
+                s.connect(endpoint)
+            except Exception as e:
+                cls.log_error("Cannot connect to %s:%s" % (endpoint, e))
         if ca:
             try:
                 ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)

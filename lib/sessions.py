@@ -154,7 +154,8 @@ class Sessions:
             if s.add_payment(amount, height, txid):
                 updated.append(s)
         if len(updated) == 0:
-            logging.getLogger("audit").debug("Paymentid %s did not match any session" % paymentid)
+            #logging.getLogger("audit").debug("Paymentid %s did not match any session" % paymentid)
+            pass
         else:
             self.load()
         return updated

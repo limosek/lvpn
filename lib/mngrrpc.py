@@ -73,6 +73,18 @@ class ManagerRpcCall:
         else:
             raise ManagerException("%s -- %s" % (self._baseurl, r.text))
 
+    def rekey_session(self, session, public_key):
+        if session.get_gate().get_type() == "wg":
+            r = requests.get(
+                self._baseurl + "/api/session/rekey?sessionid=%s&wg_public_key=%s" % (session.get_id(), public_key),
+            )
+            if r.status_code == 200:
+                return self.parse_response(r.text)
+            else:
+                raise ManagerException("%s -- %s" % (self._baseurl, r.text))
+        else:
+            raise ManagerException("%s -- %s" % (self._baseurl, "Not a WG session for rekey"))
+
     def push_vdp(self, vdp: VDP):
         vdp_jsn = vdp.get_json()
         try:

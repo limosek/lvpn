@@ -144,6 +144,10 @@ class Connect(GridLayout):
         logging.getLogger("gui").warning("Disconnect %s" % (instance.connection))
         client.gui.GUI.queue.put(Messages.disconnect(instance.connection.get_id()))
 
+    def remove_session(self, instance):
+        if type(instance) is SessionButton:
+            Sessions().remove(instance.session)
+
     @classmethod
     def run_edge(cls, instance, incognito: bool = True):
         if incognito:
@@ -356,6 +360,8 @@ class Connect(GridLayout):
             if s.is_active():
                 lbl = SessionButton(text="Connect", session=s, on_press=self.connect, size_hint_x=0.1)
                 row.add_widget(lbl)
+            lbl = SessionButton(text="Remove", session=s, on_press=self.remove_session, size_hint_x=0.1)
+            row.add_widget(lbl)
             self.ids.sessions_info.add_widget(row)
 
     def show_connection(self, instance):

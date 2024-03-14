@@ -160,19 +160,25 @@ def main():
         Registry.cfg.providers_dir = Registry.cfg.my_providers_dir
         Registry.cfg.gates_dir = Registry.cfg.my_gates_dir
         vdp = VDP()
-        for g in vdp.gates(my_only=True):
+        for g in vdp.gates(my_only=True, fresh=False):
             g.set_as_fresh()
             if wg:
                 endpoint = g.get_endpoint()
                 endpoint[0] = ip
                 g.set_endpoint(ip, endpoint[1])
             g.save(origfile=True)
-        for s in vdp.spaces(my_only=True):
+        for s in vdp.spaces(my_only=True, fresh=False):
             s.set_as_fresh()
             s.save(origfile=True)
-        for p in vdp.providers(my_only=True):
+        for p in vdp.providers(my_only=True, fresh=False):
             p.set_as_fresh()
             p.save(origfile=True)
+        vdp = VDP()
+        outdated = vdp.get_outdated()
+        for o in outdated:
+            if o._file:
+                logging.getLogger("vdp").warning("Cleaning outdated VDP object %s[file=%s]" % (o, o._file))
+                os.unlink(o._file)
 
     elif cfg.cmd == "list-providers":
         vdp = VDP()

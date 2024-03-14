@@ -18,6 +18,7 @@ class VDP:
         self._gates = {}
         self._spaces = {}
         self._providers = {}
+        self._outdated = []
         if vdpfile:
             data = urllib3.util.parse_url(vdpfile)
             if data.scheme:
@@ -46,6 +47,7 @@ class VDP:
                                     self._providers[prov.get_id()] = prov
                                 else:
                                     logging.getLogger("vdp").warning("Ignoring provider %s with lower revision" % prov.get_id())
+                                    self._outdated.append(prov)
                             else:
                                 self._providers[prov.get_id()] = prov
                     if "spaces" in self._data:
@@ -61,6 +63,7 @@ class VDP:
                                     self._spaces[spc.get_id()] = spc
                                 else:
                                     logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
+                                    self._outdated.append(spc)
                             else:
                                 self._spaces[spc.get_id()] = spc
                     if "gates" in self._data:
@@ -79,6 +82,7 @@ class VDP:
                                     self._gates[gw.get_id()] = gw
                                 else:
                                     logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gw.get_id())
+                                    self._outdated.append(gw)
                             else:
                                 self._gates[gw.get_id()] = gw
                 else:
@@ -99,21 +103,26 @@ class VDP:
                 providerfiles.extend(glob.glob(Registry.cfg.app_dir + "/config/providers/*lprovider"))
                 providerfiles.extend(glob.glob(Registry.cfg.my_providers_dir + "/*lprovider"))
             for providerf in providerfiles:
-                logging.getLogger().debug("Loading provider %s" % providerf)
                 with open(providerf, "r") as f:
                     jsn = f.read(-1)
                     try:
                         prov = Provider(json.loads(jsn), providerf)
                         if providerf.startswith(Registry.cfg.my_providers_dir):
+                            logging.getLogger().debug("Loading local provider %s" % providerf)
                             prov.set_as_local()
-                        oldprov = self.get_provider(prov.get_id())
-                        # Check if we have newer revision, otherwise do not update
-                        if oldprov:
-                            if oldprov.get_revision() <= prov.get_revision():
-                                self._providers[prov.get_id()] = prov
+                        else:
+                            logging.getLogger().debug("Loading provider %s" % providerf)
+                        if not prov.is_local():
+                            oldprov = self.get_provider(prov.get_id())
+                            # Check if we have newer revision, otherwise do not update
+                            if oldprov:
+                                if oldprov.get_revision() <= prov.get_revision():
+                                    self._providers[prov.get_id()] = prov
+                                else:
+                                    logging.getLogger("vdp").warning("Ignoring Provider %s[file=%d] with lower revision" % (prov.get_id(), prov._file))
+                                    self._outdated.append(prov)
                             else:
-                                logging.getLogger("vdp").warning(
-                                    "Ignoring provider %s with lower revision" % prov.get_id())
+                                self._providers[prov.get_id()] = prov
                         else:
                             self._providers[prov.get_id()] = prov
                     except Exception as e:
@@ -140,7 +149,8 @@ class VDP:
                             if oldspc.get_revision() <= spc.get_revision():
                                 self._spaces[spc.get_id()] = spc
                             else:
-                                logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
+                                logging.getLogger("vdp").warning("Ignoring Space %s[file=%d] with lower revision" % (spc.get_id(), spc._file))
+                                self._outdated.append(spc)
                         else:
                             self._spaces[spc.get_id()] = spc
                     except Exception as e:
@@ -171,11 +181,20 @@ class VDP:
                             if oldgw.get_revision() <= gw.get_revision():
                                 self._gates[gw.get_id()] = gw
                             else:
-                                logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gw.get_id())
+                                logging.getLogger("vdp").warning("Ignoring gate %s[file=%d] with lower revision" % (gw.get_id(), gw._file))
+                                self._outdated.append(gw)
                         else:
                             self._gates[gw.get_id()] = gw
                     except Exception as e:
                         print("Error loading %s: %s" % (gwf, e))
+
+        objects = self.providers(fresh=False)
+        objects.extend(self.spaces(fresh=False))
+        objects.extend(self.gates(fresh=False))
+        for o in objects:
+            if not o.is_fresh():
+                logging.getLogger("vdp").warning(
+                    "VDP object %s[file=%s] is outdated (ttl=%s)" % (o.get_id(), o._file, o["ttl"]))
 
         self._dict = {
             "file_type": "VPNDescriptionProtocol",
@@ -198,6 +217,9 @@ class VDP:
         VDPObject.validate(self._dict, "Vdp")
         VDPObject.validate(self._localdict, "Vdp")
         logging.getLogger("vdp").warning(repr(self))
+
+    def get_outdated(self):
+        return self._outdated
 
     def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False):
         """Return all gates"""
@@ -339,4 +361,4 @@ class VDP:
         }
 
     def __repr__(self):
-        return "VDP[providers=%s,spaces=%s,gates=%s,local_providers=%s]" % (len(self._providers), len(self._spaces), len(self._gates), len(self.providers(my_only=True)))
+        return "VDP[providers=%s,spaces=%s,gates=%s,local_providers=%s,fresh_providers=%s]" % (len(self._providers), len(self._spaces), len(self._gates), len(self.providers(my_only=True)), len(self.providers(fresh=True)))

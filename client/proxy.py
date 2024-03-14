@@ -143,38 +143,31 @@ class Proxy(Service):
 
         elif gate.get_type() == "wg":
             connection = Connection(session)
-            if not session.get_gate_data("wg"):
-                """This is just empty session to start handshake with WG"""
-                WGClientService.run(cls.ctrl, cls.queue, cls.myqueue, gate=gate, space=space, sessionid=sessionid, session=session, connectionid=connection.get_id())
-                return
-            else:
-                args = [cls.ctrl, cls.queue, None]
-                kwargs = {
-                    "gate": gate,
-                    "space": space,
-                    "sessionid": sessionid,
-                    "session": session,
-                    "connectionid": connection.get_id()
-                }
-                mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
-                mp.start()
-                connection.set_data({
-                    "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
-                    "pid": mp.pid,
-                    "gateid": gate.get_id(),
-                    "spaceid": space.get_id(),
-                    "interface": WGEngine.get_interface_name(gate.get_id()),
-                    "ip": session.get_gate_data("wg")["client_ipv4_address"],
-                    "gw": session.get_gate_data("wg")["server_ipv4_address"]
-                })
-                p = {
-                    "process": mp,
-                    "connection": connection
-                }
-                cls.processes.append(p)
-                connections.add(connection)
-                cls.update_connections(connections)
-                pass
+            args = [cls.ctrl, cls.queue, None]
+            kwargs = {
+                "gate": gate,
+                "space": space,
+                "sessionid": sessionid,
+                "session": session,
+                "connectionid": connection.get_id()
+            }
+            mp = Process(target=WGClientService.run, args=args, kwargs=kwargs)
+            mp.start()
+            connection.set_data({
+                "endpoint": session.get_gate().get_gate_data("wg")["endpoint"],
+                "pid": mp.pid,
+                "gateid": gate.get_id(),
+                "spaceid": space.get_id(),
+                "interface": WGEngine.get_interface_name(gate.get_id())
+            })
+            p = {
+                "process": mp,
+                "connection": connection
+            }
+            cls.processes.append(p)
+            connections.add(connection)
+            cls.update_connections(connections)
+            pass
 
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())

@@ -6,7 +6,7 @@ LABEL description="LVPN"
 
 RUN apt-get update; \
     apt-get upgrade -y; \
-    apt-get install -y sudo joe less net-tools wget python3-venv pwgen wireguard-tools wireguard-go iproute2 iputils-ping tcpdump iptables tinyproxy haproxy stunnel;
+    apt-get install -y sudo joe less net-tools wget python3-venv pwgen wireguard-tools wireguard-go iproute2 iputils-ping tcpdump iptables tinyproxy haproxy stunnel ctorrent;
 
 ARG DAEMON_BIN_URL="https://github.com/letheanVPN/blockchain-iz/releases/latest/download/lethean-cli-linux.tar"
 
@@ -19,9 +19,12 @@ ENV EASY_CA_DAYS=""
 ENV MODE="client"
 ENV DAEMON_HOST="seed.lethean.io"
 ENV HTTP_PROXY=""
+ENV DAEMON_ARGS=""
 ENV NODE_AUTO_CONNECT="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
 ENV NODE_RUN_SERVER="yes"
-ENV DAEMON_ARGS=""
+ENV NODE_SHARE_DIR="/home/lvpn/share"
+ENV NODE_TRACKER_URL="http://172.31.111.19:6969/announce"
+ENV NODE_RUN_SHARE="yes"
 
 # Client wallet RPC
 EXPOSE 1444
@@ -43,6 +46,8 @@ EXPOSE 48782
 EXPOSE 8880
 # Easy-tls-manager
 EXPOSE 8881
+# Torent
+EXPOSE 2706
 
 RUN useradd -ms /bin/bash lvpn; \
   echo "lvpn ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers; \

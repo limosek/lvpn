@@ -40,8 +40,7 @@ class WGClientService(WGService):
         cls.gate = cls.kwargs["gate"]
         cls.space = cls.kwargs["space"]
         cls.iface = WGEngine.get_interface_name(cls.gate.get_id())
-        cls.log_warning("WG connect phase1 - %s" % cls.session.get_id())
-        """This is just empty session to start handshake with WG"""
+        cls.log_warning("WG connect: %s" % cls.session.get_id())
         try:
             # Let us try if interface already exists
             data = WGEngine.gather_wg_data(cls.iface)
@@ -53,47 +52,44 @@ class WGClientService(WGService):
             cls.setup_interface_client(cls.session)
         cls.gathered = WGEngine.gather_wg_data(cls.iface)
 
-        if not cls.session.get_gate_data("wg") or cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
+        if not cls.session.get_gate_data("wg"):
+            mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
+            sessions.remove(cls.session)
+            session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
+                                        prepare_data={"wg": cls.prepare_session_request()})
+            if not session:
+                raise ServiceException(33, "Error requesting WG session")
+            else:
+                cls.session = Session(session)
+                cls.session.save()
+                sessions.add(cls.session)
+        elif cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
             # We are either missing WG session data or WG interface changed keys. So we need to request new session.
-            mr = lib.mngrrpc.ManagerRpcCall(cls.space.get_manager_url())
-            nsession = Session(mr.create_session(cls.gate, cls.space,
-                                  prepare_data={"wg": cls.gate.get_prepare_data()}))
-            nsession.save()
-            sessions.add(nsession)
-            cls.session = nsession
-            cls.queue.put(Messages.connect(nsession))
-            cls.exit = True
-        else:
-            """Everything was set before"""
-            cls.log_warning("WG connect phase2 - %s" % cls.session.get_id())
-            try:
-                # Let us try if interface already exists
-                data = WGEngine.gather_wg_data(cls.iface)
-                if not "iface" in data:
-                    # It does not exists, let us create
-                    cls.setup_interface_client(cls.session)
-                    data = WGEngine.gather_wg_data(cls.iface)
+            mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
+            rekey = mr.rekey_session(cls.session, cls.gathered["iface"]["public"])
+            if not rekey:
+                raise ServiceException(33, "Error rekeying session")
+            else:
+                cls.session = Session(rekey)
+                cls.session.save()
 
-            except ServiceException as e:
-                # It does not exists, let us create
-                cls.setup_interface_client(cls.session)
-            messages = []
-            for g in cls.gate["gates"]:
-                gate = Registry.vdp.get_gate(g)
-                if gate:
-                    mr = lib.ManagerRpcCall(cls.space.get_manager_url())
-                    session = Session(mr.create_session(gate, cls.space))
-                    session.set_parent(cls.session.get_id())
-                    session.save()
-                    sessions.add(session)
-                    messages.append(Messages.connect(session))
-                else:
-                    cls.log_error("Non-existent WG gateway %s" % g)
-                    messages.append(
-                        Messages.gui_popup("Non-existent WG gateway %s" % g)
-                    )
-            for m in messages:
-                cls.queue.put(m)
+        messages = []
+        for g in cls.gate["gates"]:
+            gate = Registry.vdp.get_gate(g)
+            if gate:
+                mr = lib.ManagerRpcCall(cls.space.get_manager_url())
+                session = Session(mr.create_session(gate, cls.space))
+                session.set_parent(cls.session.get_id())
+                session.save()
+                sessions.add(session)
+                messages.append(Messages.connect(session))
+            else:
+                cls.log_error("Non-existent WG gateway %s" % g)
+                messages.append(
+                    Messages.gui_popup("Non-existent WG gateway %s" % g)
+                )
+        for m in messages:
+            cls.queue.put(m)
 
     @classmethod
     def setup_interface_client(cls, session):
@@ -111,19 +107,6 @@ class WGClientService(WGService):
                     cls.iface,
                     WGEngine.get_private_key(session.get_gate().get_id()),
                     port)
-                if session.get_gate_data("wg"):
-                    if "client_ipv4_address" in session.get_gate_data("wg"):
-                        WGEngine.set_interface_ip(cls.iface,
-                                                     ip=ipaddress.ip_address(
-                                                         session.get_gate_data("wg")["client_ipv4_address"]),
-                                                     ipnet=ipaddress.ip_network(
-                                                         gate.get_gate_data("wg")["ipv4_network"]))
-                    if "client_ipv6_address" in session.get_gate_data("wg"):
-                        WGEngine.set_interface_ip(cls.iface,
-                                                     ip=ipaddress.ip_address(
-                                                         session.get_gate_data("wg")["client_ipv6_address"]),
-                                                     ipnet=ipaddress.ip_network(
-                                                         gate.get_gate_data("wg")["ipv6_network"]))
 
             except ServiceException as s:
                 try:
@@ -205,6 +188,6 @@ class WGClientService(WGService):
             cls.log_error("Wireguard not enabled. Ignoring deactivation")
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         return WGEngine.remove_peer(ifname,
-                                    session.get_gate_data("wg")["server_public_key"],
+                                    session.get_gate().get_gate_data("wg")["public_key"],
                                     show_only=show_only)
 
