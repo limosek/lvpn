@@ -163,6 +163,11 @@ def main():
     p = ClientArguments.define(p, os.environ["WLC_CFG_DIR"], os.environ["WLC_VAR_DIR"], os.path.dirname(__file__))
 
     cfg = p.parse_args()
+    if cfg.connect_and_exit:
+        cfg.auto_reconnect = 0
+        cfg.wg_shutdown_on_disconnect = 0
+        cfg.run_gui = 0
+
     cfg.l = cfg.log_level
     try:
         os.mkdir(vardir) # We need to have vardir created for logs
@@ -291,8 +296,15 @@ def main():
 
     should_exit = False
     ctrl["should_exit"] = False
-    ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, wallet_queue])
-    ac.start()
+    if Registry.cfg.connect_and_exit:
+        auto_connect(sessions, ctrl, proxy_queue, wallet_queue)
+        wallet_queue.put(Messages.EXIT)
+        cd_queue.put(Messages.EXIT)
+        proxy_queue.put(Messages.EXIT)
+        should_exit = True
+    else:
+        ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, wallet_queue])
+        ac.start()
 
     while not should_exit:
         logging.getLogger("client").debug("Main loop")
@@ -336,10 +348,11 @@ def main():
             else:
                 logging.getLogger("client").warning("Unknown msg %s requested" % msg)
 
-    logging.getLogger().warning("Stopping all connections")
-    connections = Connections(ctrl["connections"])
-    connections.disconnect(proxy_queue)
-    proxy_queue.put(Messages.EXIT)
+    if not Registry.cfg.connect_and_exit:
+        logging.getLogger().warning("Stopping all connections")
+        connections = Connections(ctrl["connections"])
+        connections.disconnect(proxy_queue)
+        proxy_queue.put(Messages.EXIT)
 
     if Registry.cfg.wg_shutdown_on_disconnect:
         for iface in ctrl["wg_interfaces"]:
@@ -356,7 +369,8 @@ def main():
     wallet_queue.close()
     gui_queue.close()
     ctrl["should_exit"] = True
-    ac.join()
+    if not Registry.cfg.connect_and_exit:
+        ac.join()
     time.sleep(3)
     try:
         shutil.rmtree(tmpdir)

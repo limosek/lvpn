@@ -112,6 +112,8 @@ class Proxy(Service):
                     cls.queue.put(Messages.gui_popup("Error running ssh proxy %s: %s" % (session.get_id(), s)))
                     return False
                 p = SSHProxy.p
+                if Registry.cfg.connect_and_exit:
+                    return
                 connection.set_data({
                         "endpoint": session.get_gate().get_endpoint(),
                         "pid": p.pid,
@@ -331,7 +333,7 @@ class Proxy(Service):
     @classmethod
     def stop(cls):
         cls.exit = True
-        if Registry.cfg.single_thread:
+        if Registry.cfg.single_thread or Registry.cfg.connect_and_exit:
             return
         else:
             for pinfo in cls.processes:

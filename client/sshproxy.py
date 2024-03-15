@@ -127,6 +127,8 @@ class SSHProxy(Service):
                 "-o", "StrictHostKeyChecking=accept-new",
                 "-p", str(gate["ssh"]["port"]),
                 "-T", "-n", "-N"]
+            if Registry.cfg.connect_and_exit:
+                sshargs.append("-f")
             sshargs.extend(redirects)
             sshargs.append("%s@%s" % (gate["ssh"]["username"], gate["ssh"]["host"]))
             return {

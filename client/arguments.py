@@ -36,6 +36,9 @@ class ClientArguments:
         p.add_argument('--wg-shutdown-on-disconnect', type=int, choices=[0, 1],
                        help='If set to 1, WG interface will be destroyed during disconnect.', default=1)
 
+        p.add_argument('--connect-and-exit', type=int, choices=[0, 1],
+                       help='If set to 1, Client will just run connection and exits. Works only for ssh and wg gates. Implies --wg-shutdown-on-disconnect=0, --auto-reconnect=0, --run-gui=0', default=0)
+
         try:
             p.add_argument('--contributions', type=str,
                        help='Contribute other parties by using this service as a client (increase price).',

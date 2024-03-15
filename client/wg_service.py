@@ -19,7 +19,7 @@ class WGClientService(WGService):
 
     @classmethod
     def loop(cls):
-        if cls.exit:
+        if cls.exit or Registry.cfg.connect_and_exit:
             return
         cls.sactive = False
         while not cls.exit:

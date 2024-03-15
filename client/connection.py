@@ -252,6 +252,12 @@ class Connections:
                 self.remove(c.get_id())
             time.sleep(10)
 
+    def summary(self):
+        txt = []
+        for c in self._data:
+            txt.append(c.get_title())
+        return "\n".join(txt)
+
     def __repr__(self):
         return "%s active connections" % len(self)
 
