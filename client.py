@@ -3,7 +3,10 @@ import multiprocessing
 import shutil
 import sys
 import tempfile
+import threading
 import time
+from threading import Thread
+
 import _queue
 import configargparse
 import logging
@@ -52,6 +55,60 @@ def test_binary(args):
     except Exception as e:
         logging.getLogger().error("Missing binary %s: %s" % (" ".join(args), e))
         sys.exit(1)
+
+
+def auto_connect(sessions, ctrl, proxy_queue, should_exit):
+    connects = Registry.cfg.auto_connect.split(",")
+    active = Connections(ctrl["connections"])
+    if "paid" in connects:
+        for session in sessions.find(paid=True, notfree=True, noparent=True):
+            if not active.get_by_sessionid(session.get_id()):
+                proxy_queue.put(Messages.connect(session))
+                time.sleep(5)
+    elif "active" in connects:
+        for session in sessions.find(active=True, noparent=True):
+            if not active.get_by_sessionid(session.get_id()):
+                proxy_queue.put(Messages.connect(session))
+                time.sleep(5)
+    active = Connections(ctrl["connections"])
+    for url in connects:
+        if url == "active" or url == "paid":
+            # We have injected active sessions already
+            continue
+        try:
+            print("Trying to connect to %s" % url)
+            (gateid, spaceid) = url.split("/")
+            if gateid in Registry.cfg.vdp.gate_ids() and spaceid in Registry.cfg.vdp.space_ids():
+                sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                if len(sess) > 0 and not active.get_by_sessionid(sess[0]):
+                    proxy_queue.put(Messages.connect(sess[0]))
+                else:
+                    space = Registry.cfg.vdp.get_space(spaceid)
+                    mr = ManagerRpcCall(space.get_manager_url())
+                    try:
+                        gate = Registry.cfg.vdp.get_gate(gateid)
+                        space = Registry.cfg.vdp.get_space(spaceid)
+                        session = Session(mr.create_session(gate, space))
+                        if session.is_fresh():
+                            session.save()
+                            sessions.add(session)
+                            proxy_queue.put(Messages.connect(session))
+                        else:
+                            raise VDPException("Error requesting session from manager")
+                    except Exception as e:
+                        logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
+                        if Registry.cfg.auto_reconnect and not should_exit:
+                            logging.getLogger("client").warning("Waiting for %s seconds to try to reconnect." % Registry.cfg.auto_reconnect)
+                            for i in range(1, Registry.cfg.auto_reconnect):
+                                time.sleep(1)
+                                if should_exit:
+                                    return
+                            auto_connect(sessions, ctrl, proxy_queue, should_exit)
+            else:
+                logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+                print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+        except Exception as e:
+            logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
 
 
 def main():
@@ -205,12 +262,11 @@ def main():
     wallet = Process(target=ClientWallet.run, args=[ctrl, queue, wallet_queue], kwargs=kwargs, name="Wallet")
     wallet.start()
     processes["wallet"] = wallet
-    cd = Process(target=ClientDaemon.run, args=[ctrl, queue, cd_queue], kwargs=
-    {
-        "daemon_host": cfg.daemon_host,
-        "daemon_port": cfg.daemon_p2p_port,
-        "daemon_rpc_url": cfg.daemon_rpc_url
-    }, name="Daemon")
+    cd = Process(target=ClientDaemon.run, args=[ctrl, queue, cd_queue], kwargs={
+            "daemon_host": cfg.daemon_host,
+            "daemon_port": cfg.daemon_p2p_port,
+            "daemon_rpc_url": cfg.daemon_rpc_url
+        }, name="Daemon")
     cd.start()
     processes["daemon"] = cd
 
@@ -226,47 +282,10 @@ def main():
     if splash:
         splash.kill()
 
-    connects = cfg.auto_connect.split(",")
-    tried = False
-    if "paid" in connects:
-        for session in sessions.find(paid=True, notfree=True, noparent=True):
-            proxy_queue.put(Messages.connect(session))
-            tried = True
-    elif "active" in connects:
-        for session in sessions.find(active=True, noparent=True):
-            proxy_queue.put(Messages.connect(session))
-            tried = True
-    if not tried:
-        for url in connects:
-            if url == "active" or url == "paid":
-                # We have injected active sessions already
-                continue
-            try:
-                print("Trying to connect to %s" % url)
-                (gateid, spaceid) = url.split("/")
-                if gateid in cfg.vdp.gate_ids() and spaceid in cfg.vdp.space_ids():
-                    sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
-                    if len(sess) > 0:
-                        proxy_queue.put(Messages.connect(sess[0]))
-                    else:
-                        space = cfg.vdp.get_space(spaceid)
-                        mr = ManagerRpcCall(space.get_manager_url())
-                        try:
-                            gate = cfg.vdp.get_gate(gateid)
-                            space = cfg.vdp.get_space(spaceid)
-                            session = Session(mr.create_session(gate, space))
-                            session.save()
-                            sessions.add(session)
-                            proxy_queue.put(Messages.connect(session))
-                        except Exception as e:
-                            logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
-                else:
-                    logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-                    print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-            except Exception as e:
-                logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
-
     should_exit = False
+    ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, should_exit])
+    ac.start()
+
     while not should_exit:
         logging.getLogger("client").debug("Main loop")
         for p in processes.keys():
@@ -314,8 +333,9 @@ def main():
     connections.disconnect(proxy_queue)
     proxy_queue.put(Messages.EXIT)
 
-    for iface in ctrl["wg_interfaces"]:
-        WGEngine.delete_wg_interface(iface)
+    if Registry.cfg.wg_shutdown_on_disconnect:
+        for iface in ctrl["wg_interfaces"]:
+            WGEngine.delete_wg_interface(iface)
 
     logging.getLogger().warning("Waiting for subprocesses to exit")
     for p in processes.values():
@@ -324,6 +344,7 @@ def main():
         p.kill()
         while p.is_alive():
             time.sleep(0.1)
+    ac.join()
     time.sleep(3)
     try:
         shutil.rmtree(tmpdir)

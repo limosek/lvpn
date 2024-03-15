@@ -1,7 +1,7 @@
 import logging
 import requests
 import json
-
+import urllib.parse
 from requests.exceptions import SSLError
 
 from lib import Registry
@@ -24,7 +24,8 @@ class ManagerRpcCall:
 
     def get_payment_url(self, wallet: str, paymentid: str) -> [str, bool]:
         r = requests.get(
-            self._baseurl + "/api/pay/stripe?wallet=%s&paymentid=%s" % (wallet, paymentid)
+            self._baseurl + "/api/pay/stripe?wallet=%s&paymentid=%s" % (
+              urllib.parse.quote(wallet), urllib.parse.quote(paymentid))
         )
         if r.status_code == 200:
             return r.text
@@ -64,7 +65,7 @@ class ManagerRpcCall:
 
     def get_session_info(self, session):
         r = requests.get(
-            self._baseurl + "/api/session?sessionid=%s" % session.get_id(),
+            self._baseurl + "/api/session?sessionid=%s" % urllib.parse.quote(session.get_id()),
         )
         if r.status_code == 200 or r.status_code == 402:
             return self.parse_response(r.text)
@@ -76,7 +77,8 @@ class ManagerRpcCall:
     def rekey_session(self, session, public_key):
         if session.get_gate().get_type() == "wg":
             r = requests.get(
-                self._baseurl + "/api/session/rekey?sessionid=%s&wg_public_key=%s" % (session.get_id(), public_key),
+                self._baseurl + "/api/session/rekey?sessionid=%s&wg_public_key=%s" % (
+                    urllib.parse.quote(session.get_id()), urllib.parse.quote(public_key))
             )
             if r.status_code == 200:
                 return self.parse_response(r.text)
@@ -110,4 +112,3 @@ class ManagerRpcCall:
                 raise ManagerException(r.text)
         except requests.RequestException as r:
             raise ManagerException("%s -- %s" % (self._baseurl, str(r)))
-

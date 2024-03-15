@@ -265,11 +265,15 @@ class Session:
         return "%s/%s.lsession" % (Registry.cfg.sessions_dir, self.get_id())
 
     def save(self, file=None):
-        if not file:
-            file = self.get_filename()
-        with open(file, "w") as f:
-            logging.getLogger("audit").debug("Saving session %s" % self.get_id())
-            f.write(json.dumps(self._data))
+        if self.is_fresh():
+            if not file:
+                file = self.get_filename()
+            with open(file, "w") as f:
+                logging.getLogger("audit").debug("Saving session %s" % self.get_id())
+                f.write(json.dumps(self._data))
+        else:
+            logging.getLogger("audit").info("Not saving session which is incomplete.")
+            pass
 
     def load(self, file):
         #logging.getLogger("audit").debug("Trying to load session from file %s" % file)
@@ -330,7 +334,10 @@ class Session:
             return "%s,%s %s" % (payment, tme, left)
 
     def is_fresh(self):
-        return self._data["expires"] > time.time()
+        if "sessionid" in self._data and "expires" in self._data:
+            return self._data["expires"] > time.time()
+        else:
+            return False
 
     def get_dict(self):
         data = copy(self._data)

@@ -300,13 +300,29 @@ class Proxy(Service):
                                 cls.connections.remove(ch)
                             cls.connections.remove(conn.get_id())
                         if Registry.cfg.auto_reconnect:
-                            session = lib.Session()
-                            session.generate(conn.get_session().get_gate().get_id(),
-                                             conn.get_session().get_space().get_id(),
-                                             conn.get_session().days())
-                            session.save()
-                            time.sleep(10)
-                            cls.myqueue.put(Messages.connect(session.get_id()))
+                            if conn:
+                                if conn.get_session().is_active():
+                                    logging.getLogger("proxy").info(
+                                        "Reconnecting connection %s after %s seconds" % (conn.get_id(), Registry.cfg.auto_reconnect))
+                                    time.sleep(Registry.cfg.auto_reconnect)
+                                    cls.myqueue.put(Messages.connect(conn.get_session()))
+                                else:
+                                    logging.getLogger("proxy").info(
+                                        "Reconnecting connection %s after %s seconds (asking for new session)" % (conn.get_id(), Registry.cfg.auto_reconnect))
+                                    time.sleep(30)
+                                    session = lib.Session()
+                                    session.generate(conn.get_session().get_gate().get_id(),
+                                                     conn.get_session().get_space().get_id(),
+                                                     conn.get_session().days())
+                                    mr = lib.mngrrpc.ManagerRpcCall(conn.get_session().get_gate().get_manager_url())
+                                    mrs = mr.create_session(conn.get_session().get_gate(),
+                                                            conn.get_session().get_space(),
+                                                            conn.get_session().days())
+                                    if mrs:
+                                        session = lib.Session(mrs)
+                                        session.save()
+                                        cls.myqueue.put(Messages.connect(session))
+
             cls.connections.check_alive()
             if once:
                 break

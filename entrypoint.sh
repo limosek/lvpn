@@ -135,7 +135,7 @@ node)
       export EASY_WALLET_RPC_PASSWORD=$(cat $WLS_CFG_DIR/wallet_rpc_pass)
     fi
     # First, let us start client
-    $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=1 --auto-pay-days=30 \
+    $0 lvpnc $LVPNC_ARGS --run-wallet=0 --run-gui=0 --auto-reconnect=20 --auto-pay-days=30 \
       --wallet-rpc-url=http://localhost:1444/json_rpc --wallet-rpc-password="$EASY_WALLET_RPC_PASSWORD" \
       --wallet-password="$EASY_WALLET_PASSWORD" --wallet-name=vpn-wallet \
       --daemon-rpc-url="http://172.31.129.19:48782/json_rpc" --daemon-host="172.31.129.19" \
@@ -253,7 +253,8 @@ node)
   if [ "${NODE_RUN_SHARE}" = "yes" ] && [ -d "${NODE_SHARE_DIR}" ]
   then
     echo "Running ctorrent"
-    cd ${NODE_SHARE_DIR} && ctorrent -t -u "${NODE_TRACKER_URL}" -s "node.torrent" ${NODE_SHARE_DIR}
+    rm -f ${NODE_SHARE_DIR}/node.torrent
+    cd ${NODE_SHARE_DIR} && ctorrent -t -u "${NODE_TRACKER_URL}" -s "node.torrent" ./
     ctorrent -p 2706 -d node.torrent
   else
     echo "Sharing files disabled"

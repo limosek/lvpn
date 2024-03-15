@@ -51,11 +51,15 @@ class ClientWallet(Wallet):
         super().postinit()
         cls.processes = []
         cls.exit = False
-        try:
-            cls.open()
-            cls.set_value("wallet_address", cls.get_address())
-        except WalletException as e:
-            cls.log_gui("wallet", str(e))
+        err = True
+        while err and not cls.exit:
+            try:
+                cls.open()
+                cls.set_value("wallet_address", cls.get_address())
+                err = False
+            except WalletException as e:
+                cls.log_gui("wallet", str(e))
+                err = True
         b = threading.Thread(target=cls.update_wallet_info)
         cls.processes.append(b)
         for p in cls.processes:

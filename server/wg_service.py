@@ -35,9 +35,11 @@ class WGServerService(lib.wg_service.WGService):
             cls.log_info("Found %s peers, %s is needed from sessions" % (len(cls.gathered["peers"]), len(cls.needed)))
             for peer in cls.gathered["peers"].keys():
                 if peer in cls.needed.keys():
-                    if int(cls.gathered["peers"][peer]["latest_handshake"]) < int(time.time()) - Registry.cfg.max_free_wg_handshake_timeout and int(cls.gathered["peers"][peer]["latest_handshake"]) > 0:
+                    if int(time.time()) - Registry.cfg.max_free_wg_handshake_timeout > int(
+                            cls.gathered["peers"][peer]["latest_handshake"]) > 0:
                         if cls.needed[peer].is_free():
-                            cls.log_info("Removing peer %s - did not get handshake more than %s seconds" % (peer, Registry.cfg.max_free_wg_handshake_timeout))
+                            cls.log_info("Removing peer %s - did not get handshake more than %s seconds" % (
+                                peer, Registry.cfg.max_free_wg_handshake_timeout))
                             sessions.remove(cls.needed[peer])
                     continue
                 else:
@@ -113,8 +115,8 @@ class WGServerService(lib.wg_service.WGService):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         if session.get_gate_data("wg"):
             return WGEngine.remove_peer(ifname,
-                                    session.get_gate_data("wg")["client_public_key"],
-                                    show_only=show_only)
+                                        session.get_gate_data("wg")["client_public_key"],
+                                        show_only=show_only)
         else:
             return False
 
@@ -167,16 +169,16 @@ class WGServerService(lib.wg_service.WGService):
         if "ipv4_network" in gate.get_gate_data("wg"):
             try:
                 WGEngine.set_interface_ip(cls.iface,
-                                     ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),
-                                     ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"]))
+                                          ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv4_gateway"]),
+                                          ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv4_network"]))
             except ServiceException as e:
                 cls.log_error(str(e))
                 pass
         if "ipv6_network" in gate.get_gate_data("wg"):
             try:
                 WGEngine.set_interface_ip(cls.iface,
-                                         ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv6_gateway"]),
-                                         ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv6_network"]))
+                                          ip=ipaddress.ip_address(gate.get_gate_data("wg")["ipv6_gateway"]),
+                                          ipnet=ipaddress.ip_network(gate.get_gate_data("wg")["ipv6_network"]))
             except ServiceException as e:
                 cls.log_error(str(e))
                 pass
@@ -185,4 +187,4 @@ class WGServerService(lib.wg_service.WGService):
             if gather["iface"]["public"] != gate.get_gate_data("wg")["public_key"]:
                 raise ServiceException(10,
                                        "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (
-                                       gate.get_id(), gather["iface"]["public"]))
+                                           gate.get_id(), gather["iface"]["public"]))
