@@ -71,7 +71,7 @@ class Session:
             self.payment_sent("Zero-Free-payment")
         else:
             if not days:
-                self._data["days"] = Registry.cfg.default_pay_days
+                self._data["days"] = Registry.cfg.auto_pay_days
             else:
                 self._data["days"] = int(days)
             self._data["price"] = (

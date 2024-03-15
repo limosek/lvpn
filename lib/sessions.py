@@ -50,20 +50,23 @@ class Sessions:
                 mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
                 try:
                     data = mrpc.get_session_info(s)
+                    time.sleep(10)
                     if data:
                         s = Session(data)
                         self.update(s)
                         logging.getLogger("audit").info("Updated session %s from server" % s.get_id())
                     else:
-                        if s.is_free() and s.get_created() + 120 < time.time():
-                            logging.getLogger().warning("Session %s is not anymore on server. Removing." % (s.get_id()))
-                            self.remove(s)
-                        else:
-                            logging.getLogger().error("Paid session %s is not anymore on server." % (s.get_id()))
+                        if s.get_created() < time.time():
+                            if not s.is_paid():
+                                time.sleep(120)
+                                logging.getLogger().warning(
+                                    "Free session %s is not anymore on server. Removing." % (s.get_id()))
+                                self.remove(s)
+                            else:
+                                logging.getLogger("audit").error("Paid session %s is not anymore on server!" % (s.get_id()))
 
                 except Exception as e:
                     pass
-                time.sleep(5)
         else:
             for s in self.find(inactive=True, fresh=True):
                 if s.activate():
@@ -136,7 +139,7 @@ class Sessions:
                 pass
         else:
             logging.getLogger("audit").warning("Removing session %s" % session.get_id())
-            if session.get_id() in self._sessions:
+            if self.get(session.get_id()):
                 session.deactivate()
                 del self._sessions[session.get_id()]
             if os.path.exists(session.get_filename()):

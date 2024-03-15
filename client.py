@@ -5,14 +5,16 @@ import sys
 import tempfile
 import threading
 import time
-from threading import Thread
-
 import _queue
 import configargparse
 import logging
 import logging.handlers
 import secrets
 import subprocess
+
+if multiprocessing.parent_process():
+    if multiprocessing.current_process().name != "GUI":
+        os.environ["NO_KIVY"] = "1"
 
 os.environ["KIVY_NO_ARGS"] = "1"
 # os.environ['KIVY_NO_FILELOG'] = '1'  # eliminate file log
@@ -57,7 +59,7 @@ def test_binary(args):
         sys.exit(1)
 
 
-def auto_connect(sessions, ctrl, proxy_queue, should_exit):
+def auto_connect(sessions, ctrl, proxy_queue, wallet_queue):
     connects = Registry.cfg.auto_connect.split(",")
     active = Connections(ctrl["connections"])
     if "paid" in connects:
@@ -70,54 +72,62 @@ def auto_connect(sessions, ctrl, proxy_queue, should_exit):
             if not active.get_by_sessionid(session.get_id()):
                 proxy_queue.put(Messages.connect(session))
                 time.sleep(5)
-    active = Connections(ctrl["connections"])
-    for url in connects:
-        if url == "active" or url == "paid":
-            # We have injected active sessions already
-            continue
-        try:
-            print("Trying to connect to %s" % url)
-            (gateid, spaceid) = url.split("/")
-            if gateid in Registry.cfg.vdp.gate_ids() and spaceid in Registry.cfg.vdp.space_ids():
-                sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
-                if len(sess) > 0 and not active.get_by_sessionid(sess[0]):
-                    proxy_queue.put(Messages.connect(sess[0]))
-                else:
-                    space = Registry.cfg.vdp.get_space(spaceid)
-                    mr = ManagerRpcCall(space.get_manager_url())
-                    try:
-                        gate = Registry.cfg.vdp.get_gate(gateid)
+    while not ctrl["should_exit"]:
+        active = Connections(ctrl["connections"])
+        for url in connects:
+            if url == "active" or url == "paid":
+                # We have injected active sessions already
+                continue
+            try:
+                (gateid, spaceid) = url.split("/")
+                if gateid in Registry.cfg.vdp.gate_ids() and spaceid in Registry.cfg.vdp.space_ids():
+                    sess = sessions.find(gateid=gateid, spaceid=spaceid, active=True)
+                    if len(sess) > 0 and not active.get_by_sessionid(sess[0]):
+                        print("Trying to connect active session to %s[%s]" % (url, sess[0].get_id()))
+                        proxy_queue.put(Messages.connect(sess[0]))
+                        time.sleep(10)
+                    else:
                         space = Registry.cfg.vdp.get_space(spaceid)
-                        session = Session(mr.create_session(gate, space))
-                        if session.is_fresh():
-                            session.save()
-                            sessions.add(session)
-                            proxy_queue.put(Messages.connect(session))
-                        else:
-                            raise VDPException("Error requesting session from manager")
-                    except Exception as e:
-                        logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
-                        if Registry.cfg.auto_reconnect and not should_exit:
-                            logging.getLogger("client").warning("Waiting for %s seconds to try to reconnect." % Registry.cfg.auto_reconnect)
-                            for i in range(1, Registry.cfg.auto_reconnect):
-                                time.sleep(1)
-                                if should_exit:
-                                    return
-                            auto_connect(sessions, ctrl, proxy_queue, should_exit)
-            else:
-                logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-                print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
-        except Exception as e:
-            logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
+                        mr = ManagerRpcCall(space.get_manager_url())
+                        try:
+                            print("Trying to create session to %s" % url)
+                            gate = Registry.cfg.vdp.get_gate(gateid)
+                            space = Registry.cfg.vdp.get_space(spaceid)
+                            session = Session(mr.create_session(gate, space))
+                            if session.is_fresh():
+                                if Registry.cfg.auto_pay_days:
+                                    for m in session.get_pay_msgs():
+                                        wallet_queue.put(m)
+                                session.save()
+                                sessions.add(session)
+                                proxy_queue.put(Messages.connect(session))
+                                time.sleep(10)
+                            else:
+                                raise VDPException("Error requesting session from manager")
+                        except Exception as e:
+                            logging.getLogger("client").error("Cannot connect to %s: %s" % (gateid, e))
+                            if Registry.cfg.auto_reconnect and not ctrl["should_exit"]:
+                                continue
+                            elif not Registry.cfg.auto_reconnect:
+                                return
+                else:
+                    logging.getLogger("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+                    print("Cannot connect to autoconnect uri %s: gate or space does not exists." % (url))
+            except Exception as e:
+                logging.getLogger("Cannot connect to autoconnect uri %s: %s" % (url, e))
+        if Registry.cfg.auto_reconnect:
+            if ctrl["should_exit"]:
+                return
+            logging.getLogger("client").warning("Waiting for %s seconds to try to reconnect." % Registry.cfg.auto_reconnect)
+            for i in range(1, Registry.cfg.auto_reconnect):
+                time.sleep(1)
+                if ctrl["should_exit"]:
+                    return
+        else:
+            return
 
 
 def main():
-    if "NO_KIVY" not in os.environ:
-        #splash = multiprocessing.Process(target=splash_screen)
-        #splash.start()
-        splash = False
-    else:
-        splash = False
     if getattr(sys, 'frozen', False):
         # If the application is run as a bundle, the PyInstaller bootloader
         # extends the sys module by a flag frozen=True and sets the app
@@ -279,11 +289,9 @@ def main():
         pids[p.name] = p.pid
     ctrl.pids = pids
 
-    if splash:
-        splash.kill()
-
     should_exit = False
-    ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, should_exit])
+    ctrl["should_exit"] = False
+    ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, wallet_queue])
     ac.start()
 
     while not should_exit:
@@ -344,6 +352,10 @@ def main():
         p.kill()
         while p.is_alive():
             time.sleep(0.1)
+    proxy_queue.close()
+    wallet_queue.close()
+    gui_queue.close()
+    ctrl["should_exit"] = True
     ac.join()
     time.sleep(3)
     try:

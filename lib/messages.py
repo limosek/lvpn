@@ -125,3 +125,4 @@ class Messages:
         ctrl["wallet_address"] = ""
         ctrl["wg_interfaces"] = []
         ctrl["vdp"] = Registry.vdp
+        ctrl["should_exit"] = False
