@@ -59,6 +59,7 @@ class ClientWallet(Wallet):
                 err = False
             except WalletException as e:
                 cls.log_gui("wallet", str(e))
+                time.sleep(5)
                 err = True
         b = threading.Thread(target=cls.update_wallet_info)
         cls.processes.append(b)
