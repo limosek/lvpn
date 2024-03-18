@@ -3,6 +3,7 @@ class Registry:
 
     vdp = None
     cfg = None
+    dbs = []
 
     @classmethod
     def init(cls, cfg, ctrl, vdp):

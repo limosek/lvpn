@@ -76,7 +76,6 @@ class TestProxies(unittest.TestCase):
     def runTLSproxy(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
-        sessions.load()
         ctrl = {}
         connection = Connection(session, port=8888)
         kwargs = {
@@ -91,7 +90,6 @@ class TestProxies(unittest.TestCase):
     def runTLSproxy2(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
-        sessions.load()
         ctrl = {}
         connection = Connection(session, port=8888)
         kwargs = {
@@ -107,7 +105,6 @@ class TestProxies(unittest.TestCase):
     def runSSHproxy(self, session, sessions):
         queue = Queue(multiprocessing.get_context(), "test1")
         queue2 = Queue(multiprocessing.get_context(), "test2")
-        sessions.load()
         ctrl = {}
         connection = Connection(session, port=8888)
         session = sessions.find(gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh")[0]

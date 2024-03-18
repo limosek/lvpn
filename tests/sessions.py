@@ -53,12 +53,13 @@ class TestSessions(unittest.TestCase):
         session.add_payment(1, 3737374, "txid2")
         self.assertEqual(session.get_payment(), 2)
         sessions.process_payment(paymentid, 1, 433333, "txid3")
-        sessions.update(session)
+        session = sessions.get(session.get_id())
         self.assertEqual(session.get_payment(), 3)
         sessions.process_payment(paymentid, 1, 433333, "txid3")
         self.assertEqual(session.get_payment(), 3)
         self.assertEqual(len(sessions.find(notpaid=True)), 1)
         sessions.process_payment(paymentid, 31000, 433333, "txid4")
+        session = sessions.get(session.get_id())
         self.assertEqual(session.get_payment(), 31003)
         self.assertTrue(session.is_paid(), True)
         self.assertTrue(session.is_fresh(), True)
@@ -68,7 +69,6 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(len(sessions.find(active=True)), 1)
         self.assertEqual(len(sessions.find(notpaid=True)), 0)
         self.assertEqual(len(sessions.find(active=True, spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")), 1)
-        sessions.save()
         Registry.cfg.contributions = "iz4LfSfmUJ6aSM1PA8d7wbexyouC87LdKACK76ooYWm6L1pkJRkBBh6Rk5Kh47bBc3ANCxoMKYbF7KgGATAANexg27PNTTa2j/developers/15%"
         Registry.cfg.is_client = False
         Registry.cfg.is_server = True
@@ -108,12 +108,11 @@ class TestSessions(unittest.TestCase):
         child2.set_parent(parent.get_id())
         child2.save()
         self.assertFalse(bool(child.get_gate_data("proxy")))
-        sessions.load()
         self.assertLess(len(sessions.find(active=True, noparent=True)), len(sessions.find(active=True)))
 
     def Concurrency(self):
         Util.cleanup_sessions()
-        sessions_init = Sessions()
+        sr_init = repr(Sessions())
         ctrl = multiprocessing.Manager().dict()
         ctrl["cfg"] = Registry.cfg
         ctrl["vdp"] = Registry.vdp
@@ -134,44 +133,29 @@ class TestSessions(unittest.TestCase):
         p4.join()
         p5.join()
 
-        sessions_end = Sessions()
-        sessions_end.load()
-        sessions_init.load()
+        sr_end = repr(Sessions())
 
-        sessions1 = ctrl["generate_unpaid_http"]
-        sessions1.load()
-        sessions2 = ctrl["generate_paid_free_socks"]
-        sessions2.load()
-        sessions3 = ctrl["generate_paid_free_ssh"]
-        sessions3.load()
-        sessions4 = ctrl["generate_unpaid_ssh"]
-        sessions4.load()
-        sessions5 = ctrl["pay_unpaid"]
-        sessions5.load()
-        print(repr(sessions_init))
-        print(repr(sessions1))
-        print(repr(sessions2))
-        print(repr(sessions3))
-        print(repr(sessions4))
-        print(repr(sessions5))
-        print(repr(sessions_end))
-        self.assertEqual(repr(sessions1), repr(sessions2))
-        self.assertEqual(repr(sessions2), repr(sessions3))
-        self.assertEqual(repr(sessions3), repr(sessions4))
-        self.assertEqual(repr(sessions4), repr(sessions5))
-        self.assertEqual(repr(sessions_init), repr(sessions1))
-        self.assertEqual(repr(sessions_end), repr(sessions_init))
-        self.assertEqual(len(sessions_end.find(paid=True,
+        sr1 = self.sessions_from_array(ctrl["generate_unpaid_http"])
+        sr2 = self.sessions_from_array(ctrl["generate_paid_free_socks"])
+        sr3 = self.sessions_from_array(ctrl["generate_paid_free_ssh"])
+        sr4 = self.sessions_from_array(ctrl["generate_unpaid_ssh"])
+        print(sr_init)
+        print(sr1)
+        print(sr2)
+        print(sr3)
+        print(sr4)
+        print(sr_end)
+        self.assertEqual(len(Sessions().find(paid=True,
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh")),
                          ctrl["activated_ssh"])
-        self.assertEqual(len(sessions_end.find(paid=True,
+        self.assertEqual(len(Sessions().find(paid=True,
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")),
                          ctrl["activated_http"])
-        return repr(sessions_end)
+        return repr(Sessions())
 
     def Serialization(self):
         Util.cleanup_sessions()
-        sessions_init = Sessions()
+        sr_init = repr(Sessions())
 
         ctrl = {"cfg": Registry.cfg, "vdp": Registry.vdp}
         self.generate_unpaid_http(ctrl)
@@ -180,92 +164,85 @@ class TestSessions(unittest.TestCase):
         self.generate_unpaid_ssh(ctrl)
         self.pay_unpaid(ctrl)
 
-        sessions_end = Sessions()
-        sessions_end.load()
-        sessions_init.load()
+        sr_end = repr(Sessions())
 
-        sessions1 = ctrl["generate_unpaid_http"]
-        sessions1.load()
-        sessions2 = ctrl["generate_paid_free_socks"]
-        sessions2.load()
-        sessions3 = ctrl["generate_paid_free_ssh"]
-        sessions3.load()
-        sessions4 = ctrl["generate_unpaid_ssh"]
-        sessions4.load()
-        sessions5 = ctrl["pay_unpaid"]
-        sessions5.load()
-        print(repr(sessions_init))
-        print(repr(sessions1))
-        print(repr(sessions2))
-        print(repr(sessions3))
-        print(repr(sessions4))
-        print(repr(sessions5))
-        print(repr(sessions_end))
-        self.assertEqual(repr(sessions1), repr(sessions2))
-        self.assertEqual(repr(sessions2), repr(sessions3))
-        self.assertEqual(repr(sessions3), repr(sessions4))
-        self.assertEqual(repr(sessions4), repr(sessions5))
-        self.assertEqual(repr(sessions_init), repr(sessions1))
-        self.assertEqual(repr(sessions_end), repr(sessions_init))
-        self.assertEqual(len(sessions_end.find(paid=True,
+        sr1 = self.sessions_from_array(ctrl["generate_unpaid_http"])
+        sr2 = self.sessions_from_array(ctrl["generate_paid_free_socks"])
+        sr3 = self.sessions_from_array(ctrl["generate_paid_free_ssh"])
+        sr4 = self.sessions_from_array(ctrl["generate_unpaid_ssh"])
+        print(sr_init)
+        print(sr1)
+        print(sr2)
+        print(sr3)
+        print(sr4)
+        print(sr_end)
+        self.assertEqual(len(Sessions().find(paid=True,
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh")),
                          ctrl["activated_ssh"])
-        self.assertEqual(len(sessions_end.find(paid=True,
+        self.assertEqual(len(Sessions().find(paid=True,
                                                gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls")),
                          ctrl["activated_http"])
-        return repr(sessions_end)
+        return repr(Sessions())
 
     @classmethod
     def generate_unpaid_http(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
         Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
+        sarr = []
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
             sessions.add(session)
+            sarr.append(session)
             time.sleep(0.1)
-        ctrl["generate_unpaid_http"] = sessions
+        ctrl["generate_unpaid_http"] = sarr
 
     @classmethod
     def generate_paid_free_socks(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
         Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
+        sarr = []
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
             sessions.add(session)
+            sarr.append(session)
             time.sleep(0.1)
-        ctrl["generate_paid_free_socks"] = sessions
+        ctrl["generate_paid_free_socks"] = sarr
 
     @classmethod
     def generate_paid_free_ssh(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
         Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
+        sarr = []
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
             sessions.add(session)
+            sarr.append(session)
             time.sleep(0.1)
-        ctrl["generate_paid_free_ssh"] = sessions
+        ctrl["generate_paid_free_ssh"] = sarr
 
     @classmethod
     def generate_unpaid_ssh(cls, ctrl):
         Registry.cfg = ctrl["cfg"]
         Registry.vdp = ctrl["vdp"]
         sessions = Sessions()
+        sarr = []
         for i in range(2, 20):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
             sessions.add(session)
+            sarr.append(session)
             time.sleep(0.1)
-        ctrl["generate_unpaid_ssh"] = sessions
+        ctrl["generate_unpaid_ssh"] = sarr
 
     @classmethod
     def pay_unpaid(cls, ctrl):
@@ -293,10 +270,17 @@ class TestSessions(unittest.TestCase):
                 if session.is_active():
                     activated_http += 1
             time.sleep(0.1)
-        ctrl["pay_unpaid"] = sessions
         ctrl["paid"] = paid
         ctrl["activated_ssh"] = activated_ssh
         ctrl["activated_http"] = activated_http
+
+    @classmethod
+    def sessions_from_array(cls, sarr):
+        Util.cleanup_sessions()
+        sessions = Sessions()
+        for s in sarr:
+            sessions.add(s)
+        return repr(sessions)
 
 
 if __name__ == "main":

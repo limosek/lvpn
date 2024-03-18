@@ -33,6 +33,9 @@ class ClientArguments:
         p.add_argument('--free-session-days', type=int,
                        help='How many days to request for free service', default=1)
 
+        p.add_argument('--reuse-session-ahead', type=int,
+                       help='For paid sessions, we will try to refresh them this number of seconds before expiry.', default=300)
+
         p.add_argument('--wg-shutdown-on-disconnect', type=int, choices=[0, 1],
                        help='If set to 1, WG interface will be destroyed during disconnect.', default=1)
 

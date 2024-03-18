@@ -1,7 +1,8 @@
 import ipaddress
 import os
-import shutil
 import unittest
+
+from tests.util import Util
 
 os.environ["NO_KIVY"] = "1"
 
@@ -9,52 +10,15 @@ from client.wg_service import WGClientService
 from lib.registry import Registry
 from lib.session import Session
 from lib.sessions import Sessions
-from lib.wg_service import WGService
 from server.wg_service import WGServerService
-from lib.service import ServiceException
 from lib.wg_engine import WGEngine
-import configargparse
-from client.arguments import ClientArguments
-from lib.arguments import SharedArguments
 from lib.vdp import VDP
-from server.arguments import ServerArguments
 
 
 class TestWGService(unittest.TestCase):
 
-    @classmethod
-    def parse_args(cls, args):
-        p = configargparse.ArgParser(
-            default_config_files=[])
-        vardir = os.path.abspath("./var/")
-        if os.path.exists(os.path.abspath(vardir + "/../config")):
-            appdir = os.path.abspath(vardir + "/../")
-        elif os.path.exists(os.path.dirname(__file__) + "/../config"):
-            appdir = os.path.abspath(os.path.dirname(__file__) + "/../")
-        else:
-            appdir = os.path.abspath(os.environ["PYTHONPATH"])
-        os.environ["WLS_CFG_DIR"] = os.path.abspath("./var/")
-        p = SharedArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir, "WLS_", "server")
-        p = ClientArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
-        p = ServerArguments.define(p, os.environ["WLS_CFG_DIR"], vardir, appdir)
-        args.extend(["--wallet-rpc-password=1234", "--log-file=%s/sessions.log" % vardir])
-        cfg = p.parse_args(args)
-        cfg.l = cfg.log_level
-        cfg.readonly_providers = []
-        if os.path.exists("./var"):
-            shutil.rmtree("./var")
-        os.mkdir("./var")
-        os.mkdir("./var/sessions")
-        os.mkdir("./var/providers")
-        os.mkdir("./var/gates")
-        os.mkdir("./var/spaces")
-        os.mkdir("./var/ssh")
-        os.mkdir("./var/tmp")
-        os.mkdir("./var/ca")
-        return cfg
-
     def testAll(self):
-        Registry.cfg = self.parse_args(
+        Registry.cfg = Util.parse_args(
             ["--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY=",
              "--wg-cmd-route", ""
              ])
@@ -97,6 +61,8 @@ class TestWGService(unittest.TestCase):
         return session
 
     def ActivateServer(self, session):
+        print(WGServerService.activate_on_server(session, show_only=True))
+        print(session.get_gate_data("wg")["server_ipv4_address"][:4])
         self.assertRegex(
             WGServerService.activate_on_server(session, show_only=True),
             session.get_gate_data("wg")["server_ipv4_address"][:4])
@@ -117,7 +83,7 @@ class TestWGService(unittest.TestCase):
             session.get_gate_data("wg")["server_public_key"][:7])
 
     def testPeersMatch(self):
-        Registry.cfg = self.parse_args([])
+        Registry.cfg = Util.parse_args([])
         Registry.vdp = VDP()
         WGEngine.show_cmds = True
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg")

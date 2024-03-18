@@ -1,10 +1,12 @@
-import glob
 import json
 import logging
 import sys
+import time
+from functools import lru_cache
 import requests
 import urllib3
 
+from lib.db import DB
 from lib.registry import Registry
 from lib.space import Space
 from lib.provider import Provider
@@ -40,32 +42,14 @@ class VDP:
                     if "providers" in self._data:
                         for p in self._data["providers"]:
                             prov = Provider(p)
-                            oldprov = self.get_provider(prov.get_id())
-                            # Check if we have newer revision, otherwise do not update
-                            if oldprov:
-                                if oldprov.get_revision() <= prov.get_revision():
-                                    self._providers[prov.get_id()] = prov
-                                else:
-                                    logging.getLogger("vdp").warning("Ignoring provider %s with lower revision" % prov.get_id())
-                                    self._outdated.append(prov)
-                            else:
-                                self._providers[prov.get_id()] = prov
+                            prov.save()
                     if "spaces" in self._data:
                         for s in self._data["spaces"]:
                             spc = Space(s, vdp=self)
                             if not spc.get_provider_id() in self.provider_ids():
                                 raise VDPException(
                                     "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
-                            oldspc = self.get_space(spc.get_id())
-                            # Check if we have newer revision, otherwise do not update
-                            if oldspc:
-                                if oldspc.get_revision() <= spc.get_revision():
-                                    self._spaces[spc.get_id()] = spc
-                                else:
-                                    logging.getLogger("vdp").warning("Ignoring Space %s with lower revision" % spc.get_id())
-                                    self._outdated.append(spc)
-                            else:
-                                self._spaces[spc.get_id()] = spc
+                            spc.save()
                     if "gates" in self._data:
                         for g in self._data["gates"]:
                             gw = lib.Gateway(g, vdp=self)
@@ -75,16 +59,7 @@ class VDP:
                             for s in gw.space_ids():
                                 if s not in self.space_ids():
                                     raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
-                            oldgw = self.get_gate(gw.get_id())
-                            # Check if we have newer revision, otherwise do not update
-                            if oldgw:
-                                if oldgw.get_revision() <= gw.get_revision():
-                                    self._gates[gw.get_id()] = gw
-                                else:
-                                    logging.getLogger("vdp").warning("Ignoring gate %s with lower revision" % gw.get_id())
-                                    self._outdated.append(gw)
-                            else:
-                                self._gates[gw.get_id()] = gw
+                            gw.save()
                 else:
                     if vdpfile:
                         logging.error("Bad VDP file %s" % vdpfile)
@@ -95,228 +70,155 @@ class VDP:
             except Exception as e:
                 raise VDPException(str(e))
 
-        else:
-            if my_only:
-                providerfiles = glob.glob(Registry.cfg.my_providers_dir + "/*lprovider")
-            else:
-                providerfiles = glob.glob(Registry.cfg.providers_dir + "/*lprovider")
-                providerfiles.extend(glob.glob(Registry.cfg.app_dir + "/config/providers/*lprovider"))
-                providerfiles.extend(glob.glob(Registry.cfg.my_providers_dir + "/*lprovider"))
-            for providerf in providerfiles:
-                with open(providerf, "r") as f:
-                    jsn = f.read(-1)
-                    try:
-                        prov = Provider(json.loads(jsn), providerf)
-                        if providerf.startswith(Registry.cfg.my_providers_dir):
-                            logging.getLogger().debug("Loading local provider %s" % providerf)
-                            prov.set_as_local()
-                        else:
-                            logging.getLogger().debug("Loading provider %s" % providerf)
-                        if not prov.is_local():
-                            oldprov = self.get_provider(prov.get_id())
-                            # Check if we have newer revision, otherwise do not update
-                            if oldprov:
-                                if oldprov.get_revision() <= prov.get_revision():
-                                    self._providers[prov.get_id()] = prov
-                                else:
-                                    logging.getLogger("vdp").warning("Ignoring Provider %s[file=%s] with lower revision" % (prov.get_id(), prov._file))
-                                    self._outdated.append(prov)
-                            else:
-                                self._providers[prov.get_id()] = prov
-                        else:
-                            self._providers[prov.get_id()] = prov
-                    except Exception as e:
-                        print("Error loading %s: %s" % (providerf, e))
-
-            if my_only:
-                spacefiles = glob.glob(Registry.cfg.my_spaces_dir + "/*lspace")
-            else:
-                spacefiles = glob.glob(Registry.cfg.spaces_dir + "/*lspace")
-                spacefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/spaces/*lspace"))
-                spacefiles.extend(glob.glob(Registry.cfg.my_spaces_dir + "/*lspace"))
-            for spacef in spacefiles:
-                logging.getLogger().debug("Loading space %s" % spacef)
-                with open(spacef, "r") as f:
-                    jsn = f.read(-1)
-                    try:
-                        spc = Space(json.loads(jsn), spacef, vdp=self)
-                        if not spc.get_provider_id() in self.provider_ids():
-                            raise VDPException(
-                                "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
-                        oldspc = self.get_space(spc.get_id())
-                        # Check if we have newer revision, otherwise do not update
-                        if oldspc:
-                            if oldspc.get_revision() <= spc.get_revision():
-                                self._spaces[spc.get_id()] = spc
-                            else:
-                                logging.getLogger("vdp").warning("Ignoring Space %s[file=%s] with lower revision" % (spc.get_id(), spc._file))
-                                self._outdated.append(spc)
-                        else:
-                            self._spaces[spc.get_id()] = spc
-                    except Exception as e:
-                        print("Error loading %s: %s" % (spacef, e))
-
-            if my_only:
-                gatefiles = glob.glob(Registry.cfg.my_gates_dir + "/*lgate")
-            else:
-                gatefiles = glob.glob(Registry.cfg.gates_dir + "/*lgate")
-                gatefiles.extend(glob.glob(Registry.cfg.app_dir + "/config/gates/*lgate"))
-                gatefiles.extend(glob.glob(Registry.cfg.my_gates_dir + "/*lgate"))
-            for gwf in gatefiles:
-                logging.getLogger().debug("Loading gate %s" % gwf)
-                with open(gwf, "r") as f:
-                    jsn = f.read(-1)
-                    try:
-                        gw = lib.Gateway(json.loads(jsn), gwf, vdp=self)
-                        if not gw.get_provider_id() in self.provider_ids():
-                            raise VDPException(
-                                "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
-                        for s in gw.space_ids():
-                            if s not in self._spaces.keys():
-                                raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
-                        gw.set_provider(self._providers[gw.get_provider_id()])
-                        oldgw = self.get_gate(gw.get_id())
-                        # Check if we have newer revision, otherwise do not update
-                        if oldgw:
-                            if oldgw.get_revision() <= gw.get_revision():
-                                self._gates[gw.get_id()] = gw
-                            else:
-                                logging.getLogger("vdp").warning("Ignoring gate %s[file=%s] with lower revision" % (gw.get_id(), gw._file))
-                                self._outdated.append(gw)
-                        else:
-                            self._gates[gw.get_id()] = gw
-                    except Exception as e:
-                        print("Error loading %s: %s" % (gwf, e))
-
-        objects = self.providers(fresh=False)
-        objects.extend(self.spaces(fresh=False))
-        objects.extend(self.gates(fresh=False))
-        for o in objects:
-            if not o.is_fresh():
-                logging.getLogger("vdp").warning(
-                    "VDP object %s[file=%s] is outdated (ttl=%s)" % (o.get_id(), o._file, o["ttl"]))
-
-        self._dict = {
-            "file_type": "VPNDescriptionProtocol",
-            "file_version": "1.1",
-            "spaces": json.loads(self.spaces(as_json=True)),
-            "gates": json.loads(self.gates(as_json=True)),
-            "providers": json.loads(self.providers(as_json=True)),
-            "signatures": []
-        }
-        self._json = json.dumps(self._dict, indent=2)
-        self._localdict = {
-            "file_type": "VPNDescriptionProtocol",
-            "file_version": "1.1",
-            "spaces": json.loads(self.spaces(my_only=True, as_json=True)),
-            "gates": json.loads(self.gates(my_only=True, as_json=True)),
-            "providers": json.loads(self.providers(my_only=True, as_json=True)),
-            "signatures": []
-        }
-        self._localjson = json.dumps(self._localdict, indent=2)
-        VDPObject.validate(self._dict, "Vdp")
-        VDPObject.validate(self._localdict, "Vdp")
-        logging.getLogger("vdp").warning(repr(self))
-
     def get_outdated(self):
         return self._outdated
 
+    def objects(self, tpe, only_id, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False, deleted=False):
+        db = DB()
+        ands = []
+        if filter:
+            ands.append("data LIKE %%%s%%" % filter)
+        if my_only:
+            ands.append("my IS TRUE")
+        if fresh:
+            ands.append("expiry > %s" % time.time())
+        if only_id:
+            attr = "id"
+        else:
+            attr = "data"
+        if spaceid:
+            ands.append("data LIKE '%%\"spaces\": [%%%s%%]%%' " % spaceid)
+        if not internal:
+            ands.append(" NOT " + db.cmp_bool_attr("internal"))
+        if not deleted:
+            ands.append("deleted IS FALSE")
+        srows = db.select("SELECT %s,my from vdp WHERE tpe='%s' %s" % (attr, tpe, db.parse_ands(ands)))
+        db.close()
+        rows = []
+        if Registry.cfg.is_server:
+            try:
+                with open(Registry.cfg.provider_public_key, "r") as pf:
+                    providerid = pf.read(-1).strip()
+            except FileNotFoundError:
+                providerid = "none"
+        else:
+            providerid = "none"
+        for r in srows:
+            if only_id:
+                rows.append(r[0])
+            elif as_json:
+                rows.append(json.loads(r[0]))
+            else:
+                if tpe == "Provider":
+                    s = Provider(json.loads(r[0]))
+                    if r[1] or s.get_id() == providerid:
+                        s.set_as_local()
+                elif tpe == "Space":
+                    s = Space(json.loads(r[0]))
+                    if r[1] or s.get_id() == providerid:
+                        s.set_as_local()
+                elif tpe == "Gate":
+                    s = lib.Gateway(json.loads(r[0]))
+                    if r[1] or s.get_id() == providerid:
+                        s.set_as_local()
+                else:
+                    raise VDPException("Bad object type %s" % tpe)
+                rows.append(s)
+        if as_json:
+            return json.dumps(rows)
+        else:
+            return rows
+
     def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False):
         """Return all gates"""
-        gates = []
-        for g in self._gates.values():
-            if not internal and g.is_internal():
-                continue
-            if my_only and not g.is_local():
-                continue
-            if fresh and not g.is_fresh():
-                continue
-            if (filter == "") or g.get_json().find(filter) >= 0:
-                if spaceid:
-                    if g.is_for_space(spaceid):
-                        if as_json:
-                            gates.append(g.get_dict())
-                        else:
-                            gates.append(g)
-                else:
-                    if as_json:
-                        gates.append(g.get_dict())
-                    else:
-                        gates.append(g)
-        if as_json:
-            return json.dumps(gates)
-        else:
-            return gates
+        return self.objects('Gate', False, filter=filter, spaceid=spaceid, my_only=my_only, internal=internal, fresh=fresh, as_json=as_json)
 
     def spaces(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
-        spaces = []
-        for s in self._spaces.values():
-            if my_only and not s.is_local():
-                continue
-            if fresh and not s.is_fresh():
-                continue
-            if (filter == "") or s.get_json().find(filter) >= 0:
-                if as_json:
-                    spaces.append(s.get_dict())
-                else:
-                    spaces.append(s)
-        if as_json:
-            return json.dumps(spaces)
-        else:
-            return spaces
+        return self.objects('Space', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
 
     def providers(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
-        providers = []
-        for s in self._providers.values():
-            if my_only and not s.is_local():
-                continue
-            if fresh and not s.is_fresh():
-                continue
-            if (filter == "") or s.get_json().find(filter) >= 0:
-                if as_json:
-                    providers.append(s.get_dict())
-                else:
-                    providers.append(s)
-        if as_json:
-            return json.dumps(providers)
-        else:
-            return providers
+        return self.objects('Provider', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
 
     def get_json(self, my_only: bool = False):
-        if my_only:
-            return self._localjson
-        else:
-            return self._json
+        return json.dumps(self.get_dict(my_only), indent=2)
 
-    def get_dict(self):
-        return self._dict
+    def get_dict(self, my_only=False):
+        objects = self.providers(fresh=False)
+        objects.extend(self.spaces(fresh=False))
+        objects.extend(self.gates(fresh=False))
+
+        d = {
+            "file_type": "VPNDescriptionProtocol",
+            "file_version": "1.1",
+            "spaces": json.loads(self.spaces(as_json=True, my_only=my_only)),
+            "gates": json.loads(self.gates(as_json=True, my_only=my_only)),
+            "providers": json.loads(self.providers(as_json=True, my_only=my_only)),
+            "signatures": []
+        }
+        VDPObject.validate(d, "Vdp")
+        return d
 
     def gate_ids(self):
-        return self._gates.keys()
+        return self.objects('Gate', True)
 
     def space_ids(self):
-        return self._spaces.keys()
+        return self.objects('Space', True)
 
     def provider_ids(self):
-        return self._providers.keys()
+        return self.objects('Provider', True)
 
+    @lru_cache()
     def get_gate(self, gwid):
-        if gwid in self._gates:
-            return self._gates[gwid]
+        db = DB()
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Gate' AND id='%s'" % gwid)
+        db.close()
+        if len(p) > 0:
+            data = lib.Gateway(json.loads(p[0][0]))
+            if p[0][1]:
+                data.set_as_local()
+            return data
         else:
             return None
 
+    @lru_cache()
     def get_space(self, spaceid):
-        if spaceid in self._spaces:
-            return self._spaces[spaceid]
+        db = DB()
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Space' AND id='%s'" % spaceid)
+        db.close()
+        if len(p) > 0:
+            data = Space(json.loads(p[0][0]))
+            if p[0][1]:
+                data.set_as_local()
+            return data
+        else:
+            db.close()
+            return None
+
+    @lru_cache()
+    def get_provider(self, providerid):
+        db = DB()
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Provider' AND id='%s'" % providerid)
+        db.close()
+        if len(p) > 0:
+            data = Provider(json.loads(p[0][0]))
+            if p[0][1]:
+                data.set_as_local()
+            return data
         else:
             return None
 
-    def get_provider(self, providerid):
-        if providerid in self._providers:
-            return self._providers[providerid]
-        else:
-            return None
+    @classmethod
+    def load_file(cls, file, vdp):
+        with open(file, "r") as f:
+            jsn = json.loads(f.read(-1))
+            if file.endswith(".lprovider"):
+                return Provider(jsn, file)
+            elif file.endswith(".lspace"):
+                return Space(jsn, file, vdp)
+            elif file.endswith(".lgate"):
+                return lib.Gateway(jsn, file, vdp)
+            else:
+                raise VDPException("Unknown file type %s" % file)
 
     def save(self, cfg=None):
         if cfg:
@@ -334,7 +236,7 @@ class VDP:
                 ignored_gates += 1
                 continue
             saved_gates += 1
-            go.save(cfg=cfg)
+            go.save()
         for s in self.space_ids():
             so = self.get_space(s)
             if so.get_provider().get_id() in Registry.cfg.readonly_providers:
@@ -342,7 +244,7 @@ class VDP:
                 ignored_spaces += 1
                 continue
             saved_spaces += 1
-            so.save(cfg=cfg)
+            so.save()
         for p in self.provider_ids():
             if p in Registry.cfg.readonly_providers:
                 logging.getLogger("vdp").debug("Not saving provider %s (Readonly provider)" % p)
@@ -350,7 +252,7 @@ class VDP:
                 continue
             po = self.get_provider(p)
             saved_providers += 1
-            po.save(cfg=cfg)
+            po.save()
         return {
             "saved_spaces": saved_spaces,
             "saved_providers": saved_providers,
@@ -361,4 +263,4 @@ class VDP:
         }
 
     def __repr__(self):
-        return "VDP[providers=%s,spaces=%s,gates=%s,local_providers=%s,fresh_providers=%s]" % (len(self._providers), len(self._spaces), len(self._gates), len(self.providers(my_only=True)), len(self.providers(fresh=True)))
+        return "VDP[providers=%s,spaces=%s,gates=%s,local_providers=%s,fresh_providers=%s]" % (len(self.providers()), len(self.spaces()), len(self.gates()), len(self.providers(my_only=True)), len(self.providers(fresh=True)))

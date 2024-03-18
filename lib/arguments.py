@@ -41,23 +41,13 @@ class SharedArguments:
 
         if mode == "server":
             p.add_argument('--wallet-rpc-password', help='Wallet RPC password. If not entered, wallet subprocess is not started and payments are not processed.')
+            p.add_argument('--db', type=str, default="%s/server.sqlite" % os.getenv(env_prefix + "_VAR_DIR"),
+                           help="Database file to use. Default to client.sqlite or server.sqlite")
         else:
             p.add_argument('--wallet-rpc-password', help='Wallet RPC password. Default is to generate random.')
+            p.add_argument('--db', type=str, default="%s/client.sqlite" % os.getenv(env_prefix + "_VAR_DIR"),
+                           help="Database file to use. Default to client.sqlite or server.sqlite")
         p.add_argument('--wallet-address', help='Wallet public address')
-
-        p.add_argument("--spaces-dir", help="Directory containing all spaces VDPs",
-                       default=os.path.abspath(vardir + "/spaces"))
-        p.add_argument("--gates-dir", help="Directory containing all gateway VDPs",
-                       default=os.path.abspath(vardir + "/gates"))
-        p.add_argument("--providers-dir", help="Directory containing all provider VDPs",
-                       default=os.path.abspath(vardir + "/providers"))
-
-        p.add_argument("--my-spaces-dir", help="Directory containing our VDPs",
-                       default=os.path.abspath(cfgdir + "/spaces"))
-        p.add_argument("--my-gates-dir", help="Directory containing our gateway VDPs",
-                       default=os.path.abspath(cfgdir + "/gates"))
-        p.add_argument("--my-providers-dir", help="Directory containing our provider VDPs",
-                       default=os.path.abspath(cfgdir + "/providers"))
 
         if mode == "server":
             p.add_argument('--manager-local-bind', help='Bind address to use for manager', default="0.0.0.0")
@@ -109,6 +99,9 @@ class SharedArguments:
                            help="Wireguard command to delete interface. Default to not manage interfaces")
             p.add_argument('--wg-cmd-route', type=str, default="route add {network} MASK {mask} {gw}",
                            help="Wireguard command to route network.")
+            p.add_argument('--wg-cmd-nat', type=str,
+                           default="",
+                           help="Wireguard command to masquerade route")
         else:
             p.add_argument('--wg-cmd-set-ip', type=str, default="ip addr add dev {iface} {ip}/{prefix}",
                        help="Wireguard command to assign IP address to interface")
@@ -124,6 +117,8 @@ class SharedArguments:
                        help="Wireguard command to delete interface.")
             p.add_argument('--wg-cmd-route', type=str, default="ip route add {network} via {gw}",
                            help="Wireguard command to route network.")
+            p.add_argument('--wg-cmd-nat', type=str, default="",
+                           help="Wireguard command to masquerade route")
 
         p.add_argument("--enable-wg", type=int, choices=[0, 1], help="Enable wireguard support", default=0)
 

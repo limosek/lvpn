@@ -211,6 +211,20 @@ ListenPort = {port}
                 raise ServiceException(2, str(e))
         else:
             cls.log_warning("Not adding route - missing wg_cmd_route")
+        if Registry.cfg.is_client:
+            if Registry.cfg.wg_cmd_nat:
+                cls.log_info("Setting NAT: dev=%s,ipnet=%s,gw=%s" % (iface, ipnet, gw))
+                wgargs = shlex.split(
+                    cls.replace_macros(
+                        Registry.cfg.wg_cmd_nat, iface=iface, network=str(ipnet), gw=str(gw), mask=str(ipn.netmask), prefix=str(ipn.prefixlen)
+                    ))
+                try:
+                    ret = cls.wg_run_cmd(*wgargs)
+                    return ret
+                except Exception as e:
+                    raise ServiceException(2, str(e))
+            else:
+                cls.log_warning("Not adding NAT rule - missing wg_cmd_nat")
 
     @classmethod
     def parse_show_dump(cls, dump):
@@ -291,8 +305,9 @@ ListenPort = {port}
             args.extend(["endpoint", endpoint])
         if preshared:
             args.extend(["preshared-key", cls.save_key(preshared)])
-        logging.getLogger("audit").debug("Adding peer %s/%s" % (iname, public))
-        return cls.wg_run_cmd(*args, show_only=show_only)
+        if Registry.cfg.enable_wg:
+            logging.getLogger("audit").debug("Adding peer %s/%s" % (iname, public))
+            return cls.wg_run_cmd(*args, show_only=show_only)
 
     @classmethod
     def remove_peer(cls, iname: str, public: str, show_only: bool = False):
@@ -304,8 +319,9 @@ ListenPort = {port}
             public,
             "remove"
         ]
-        logging.getLogger("audit").debug("Removing peer %s/%s" % (iname, public))
-        return cls.wg_run_cmd(*args, show_only=show_only)
+        if Registry.cfg.enable_wg:
+            logging.getLogger("audit").debug("Removing peer %s/%s" % (iname, public))
+            return cls.wg_run_cmd(*args, show_only=show_only)
 
     @classmethod
     def loop(cls):

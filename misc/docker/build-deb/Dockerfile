@@ -5,8 +5,14 @@ LABEL description="LVPN"
 
 RUN apt-get update; \
     apt-get upgrade -y; \
-    apt-get install -y devscripts debianutils python3 python3-virtualenv python3-pip dh-virtualenv wget;
+    apt-get install -y devscripts debianutils \
+      python3 python3-virtualenv python3-pip dh-virtualenv
 
+RUN apt-get install -y python3-kivy python3-sdl2 wget
+
+RUN apt-get install -y libxau6 libjpeg62-turbo libwebp7
+
+RUN apt-get install -y python3-cryptography python3-nacl python3-socks python3-paramiko python3-urllib3 python3-flask python3-sshtunnel python3-stripe python3-jsonschema python3-icmplib python3-requests python3-dnspython
 
 COPY client/* /usr/src/lvpn/client/
 COPY server/* /usr/src/lvpn/server/
@@ -25,5 +31,6 @@ COPY ./debian/ /usr/src/lvpn/debian/
 
 WORKDIR /usr/src/lvpn/
 
-RUN dh binary --with python-virtualenv
+RUN dh binary --with python-virtualenv --use-system-packages
+
 

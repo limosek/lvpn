@@ -1,6 +1,9 @@
-lvpn (0.1+nmu1) UNRELEASED; urgency=medium
+lvpn (0.5) UNRELEASED; urgency=medium
 
+  [ Lukas Macura ]
   * Initial release.
   * Verion 0.5
+  [ Lukas Macura ]
+  * First deb
 
  -- Lukas Macura <lukas@macura.cz>  Sun, 03 Mar 2024 20:11:24 +0100

@@ -59,9 +59,10 @@ def test_binary(args):
         sys.exit(1)
 
 
-def auto_connect(sessions, ctrl, proxy_queue, wallet_queue):
+def auto_connect(ctrl, proxy_queue, wallet_queue):
     connects = Registry.cfg.auto_connect.split(",")
     active = Connections(ctrl["connections"])
+    sessions = Sessions()
     if "paid" in connects:
         for session in sessions.find(paid=True, notfree=True, noparent=True):
             if not active.get_by_sessionid(session.get_id()):
@@ -206,6 +207,8 @@ def main():
     cfg.var_dir = vardir
     cfg.bin_dir = bindir
     cfg.app_dir = appdir
+    cfg.is_client = True
+    cfg.is_server = False
     Registry.cfg = cfg
     wizard = False
     Wizard.files(cfg, vardir)
@@ -235,8 +238,6 @@ def main():
     cd_queue = Queue(multiprocessing.get_context(), "daemonrpc")
     http_queue = Queue(multiprocessing.get_context(), "http")
     cfg.tmp_dir = tempfile.mkdtemp(prefix="%s/tmp/" % cfg.var_dir)
-    cfg.is_client = True
-    cfg.is_server = False
     sessions = Sessions()
     tmpdir = cfg.tmp_dir
     Messages.init_ctrl(ctrl)
@@ -297,13 +298,13 @@ def main():
     should_exit = False
     ctrl["should_exit"] = False
     if Registry.cfg.connect_and_exit:
-        auto_connect(sessions, ctrl, proxy_queue, wallet_queue)
+        auto_connect(ctrl, proxy_queue, wallet_queue)
         wallet_queue.put(Messages.EXIT)
         cd_queue.put(Messages.EXIT)
         proxy_queue.put(Messages.EXIT)
         should_exit = True
     else:
-        ac = threading.Thread(target=auto_connect, args=[sessions, ctrl, proxy_queue, wallet_queue])
+        ac = threading.Thread(target=auto_connect, args=[ctrl, proxy_queue, wallet_queue])
         ac.start()
 
     while not should_exit:

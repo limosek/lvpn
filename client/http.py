@@ -171,7 +171,7 @@ def get_session():
     if notauth:
         return notauth
     if "sessionid" in request.args:
-        sessions = Sessions(noload=True)
+        sessions = Sessions()
         session = sessions.get(request.args["sessionid"])
         if session:
             if not session.is_active():
@@ -190,7 +190,7 @@ def connect(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(noload=True)
+    sessions = Sessions()
     session = sessions.get(sessionid)
     if session:
         if session.is_active():
@@ -243,7 +243,7 @@ def pay_session(sessionid):
     notauth = check_authentication()
     if notauth:
         return notauth
-    sessions = Sessions(noload=True)
+    sessions = Sessions()
     session = sessions.get(sessionid)
     if session:
         if session.is_active():

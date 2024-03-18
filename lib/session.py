@@ -1,9 +1,11 @@
 import json
 import logging
+import sqlite3
 import time
 import secrets
 from copy import copy
 
+from lib.db import DB
 from lib.registry import Registry
 from lib.runcmd import RunCmd
 from lib.vdpobject import VDPException, VDPObject
@@ -264,29 +266,38 @@ class Session:
     def get_filename(self):
         return "%s/%s.lsession" % (Registry.cfg.sessions_dir, self.get_id())
 
-    def save(self, file=None):
+    def save(self):
         if self.is_fresh():
-            if not file:
-                file = self.get_filename()
-            with open(file, "w") as f:
-                logging.getLogger("audit").debug("Saving session %s" % self.get_id())
-                f.write(json.dumps(self._data))
+            if self.get_parent():
+                parent = "'%s'" % self.get_parent()
+            else:
+                parent = False
+            db = DB()
+            db.begin()
+            db.execute("DELETE FROM sessions WHERE id='%s'" % self.get_id())
+            db.execute("""
+              INSERT INTO sessions 
+                (id, data, activated, created, expires, paymentid, paid, gateid, spaceid, parent, price, deleted)
+                VALUES ('{id}', '{data}', {activated}, {created}, {expires}, '{paymentid}', {paid}, '{gateid}', '{spaceid}', {parent}, {price}, {deleted})
+            """.format(
+                id=self.get_id(),
+                data=json.dumps(self.get_dict()),
+                activated=self.get_activation(),
+                created=self.get_created(),
+                expires=self.get_expiry(),
+                paymentid=self.get_paymentid(),
+                paid=self.is_paid(),
+                gateid=self.get_gateid(),
+                spaceid=self.get_spaceid(),
+                parent=parent,
+                price=self.get_price(),
+                deleted=False
+            ))
+            db.commit()
+            db.close()
         else:
             logging.getLogger("audit").info("Not saving session which is incomplete.")
             pass
-
-    def load(self, file):
-        #logging.getLogger("audit").debug("Trying to load session from file %s" % file)
-        with open(file, "r") as f:
-            buf = f.read(-1)
-            self._data = json.loads(buf)
-            #logging.getLogger("audit").debug("Loaded session %s from file %s" % (self.get_id(), file))
-        self._gate = Registry.vdp.get_gate(self._data["gateid"])
-        self._space = Registry.vdp.get_space(self._data["spaceid"])
-        if not self._gate:
-            raise VDPException("Gate %s for session %s unknown!" % (self._data["gateid"], self.get_id()))
-        if not self._space:
-            raise VDPException("Space %s for session %s unknown!" % (self._data["spaceid"], self.get_id()))
 
     def is_for_gate(self, gateid):
         return self._gate.get_id() == gateid

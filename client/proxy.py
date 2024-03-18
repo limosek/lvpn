@@ -69,7 +69,7 @@ class Proxy(Service):
 
     @classmethod
     def connect(cls, connections, sessionid):
-        session = Sessions(noload=True).get(sessionid)
+        session = Sessions().get(sessionid)
         if not session:
             cls.log_error(ProxyException("Unknown sessionid %s" % sessionid))
             return False

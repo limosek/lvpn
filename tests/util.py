@@ -2,6 +2,9 @@ import logging
 import os
 import shutil
 
+from lib import Sessions
+from lib.db import DB
+
 os.environ["NO_KIVY"] = "1"
 
 import configargparse
@@ -37,10 +40,11 @@ class Util:
         if os.path.exists("./var"):
             shutil.rmtree("./var")
         os.mkdir("./var")
-        os.mkdir("./var/sessions")
         os.mkdir("./var/ssh")
         os.mkdir("./var/tmp")
         os.mkdir("./var/ca")
+        Registry.cfg = cfg
+        Wizard().files(cfg, vardir)
         Wizard().ssh_ca(cfg)
         Wizard().ca(cfg)
         cfg.is_server = True
@@ -56,5 +60,9 @@ class Util:
 
     @classmethod
     def cleanup_sessions(self):
-        shutil.rmtree("./var/sessions")
-        os.mkdir("./var/sessions")
+        db = DB()
+        db.begin()
+        db.execute("DELETE FROM sessions")
+        db.commit()
+        db.close()
+        pass

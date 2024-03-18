@@ -87,6 +87,18 @@ class ManagerRpcCall:
         else:
             raise ManagerException("%s -- %s" % (self._baseurl, "Not a WG session for rekey"))
 
+    def reuse_session(self, session, days=None):
+        if not days:
+            days = session.days()
+        r = requests.get(
+            self._baseurl + "/api/session/reuse?sessionid=%s&days=%s" % (
+                urllib.parse.quote(session.get_id()), urllib.parse.quote(days))
+        )
+        if r.status_code == 402:
+            return self.parse_response(r.text)
+        else:
+            raise ManagerException("%s -- %s" % (self._baseurl, r.text))
+
     def push_vdp(self, vdp: VDP):
         vdp_jsn = vdp.get_json()
         try:

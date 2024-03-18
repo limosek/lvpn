@@ -8,6 +8,8 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Provider(VDPObject):
 
+    tpe = 'Provider'
+
     def __init__(self, providerinfo, file=None):
         self.validate(providerinfo, "Provider", file)
         self._data = providerinfo
@@ -32,17 +34,6 @@ class Provider(VDPObject):
             logging.getLogger("vdp").warning("Using forced manager URL %s" % Registry.cfg.force_manager_url)
             return Registry.cfg.force_manager_url
         return self._data["manager-url"]
-
-    def save(self, cfg=None, origfile=False):
-        if cfg:
-            Registry.cfg = cfg
-        if origfile:
-            fname = self._file
-        else:
-            fname = "%s/%s.lprovider" % (Registry.cfg.providers_dir, self.get_id())
-        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
-        with open(fname, "w") as f:
-            f.write(self.get_json())
 
     def __repr__(self):
         if Registry.cfg.is_server:

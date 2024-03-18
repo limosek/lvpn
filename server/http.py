@@ -177,41 +177,50 @@ def post_session():
     if not gate.is_for_space(space.get_id()):
         return make_response(462, "Gate %s cannot be used with space %s" % (gate.get_id(), space.get_id()))
     sessions = Sessions()
-    if "like_sessionid" in request.openapi.body:
-        session = sessions.find_by_id(request.openapi.body["like_sessionid"])
-        if session:
-            if session.is_free():
-                return make_response(404, "Unknown sessionid to reuse", request.openapi.body["reuse_sessionid"])
-            elif session.get_gate().get_id() != request.openapi.body["gateid"] or session.get_get_space().get_id() != request.openapi.body["spaceid"]:
-                return make_response(464, "Cannot reuse with different gate or space")
-            elif session.is_paid() and session.is_fresh():
-                session.reuse(request.openapi.body["days"])
-                return make_response(402, "Waiting for payment", session.get_dict())
-            else:
-                return make_response(404, "Bad sessionid to reuse", request.openapi.body["reuse_sessionid"])
+    session = Session()
+    session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
+    if session.is_free() and session.days_left() > Registry.cfg.max_free_session_days:
+        return make_response(463, "No permission for free service and %s days", "too-many-days-for-free-service: %s" % request.openapi.body["days"])
+    if gate.get_type() == "wg":
+        if "wg" in request.openapi.body:
+            WGServerService.prepare_server_session(session, request.openapi.body["wg"])
         else:
-            return make_response(463, "No permission to reuse session", request.openapi.body["reuse_sessionid"])
-    else:
-        session = Session()
-        session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
-        if session.is_free() and session.days_left() > Registry.cfg.max_free_session_days:
-            return make_response(463, "No permission for free service and %s days", "too-many-days-for-free-service: %s" % request.openapi.body["days"])
-        if gate.get_type() == "wg":
-            if "wg" in request.openapi.body:
-                WGServerService.prepare_server_session(session, request.openapi.body["wg"])
-            else:
-                return make_response(465, "Missing WG endpoint data")
-        sessions.add(session)
+            return make_response(465, "Missing WG endpoint data")
+    sessions.add(session)
     if not session.is_active():
         return make_response(402, "Waiting for payment", session.get_dict())
     else:
         return make_response(200, "OK", session.get_dict())
 
 
+@app.route('/api/session/reuse', methods=['GET'])
+@openapi_validated
+def reuse_session():
+    if "sessionid" in request.args:
+        sessions = Sessions()
+        session = sessions.get(request.args["sessionid"])
+        if session:
+            if session.is_paid() and session.is_fresh():
+                if "days" in request.args:
+                    days = request.args["days"]
+                else:
+                    days = session.days()
+                session.reuse(days)
+                session.save()
+                sessions.add(session)
+                return make_response(402, "Waiting for payment", session.get_dict())
+            else:
+                return make_response(414, "No permission to reuse", request.args["sessionid"])
+        else:
+            return make_response(404, "Unknown sessionid to reuse", request.args["sessionid"])
+    else:
+        return make_response(400, "Missing sessionid")
+
+
 @app.route('/api/session', methods=['GET'])
 @openapi_validated
 def get_session():
-    sessions = Sessions(noload=True)
+    sessions = Sessions()
     if "sessionid" in request.args:
         session = sessions.get(request.args["sessionid"])
         if session:
@@ -228,7 +237,7 @@ def get_session():
 @app.route('/api/session/rekey', methods=['GET'])
 @openapi_validated
 def rekey_session():
-    sessions = Sessions(noload=True)
+    sessions = Sessions()
     if "sessionid" in request.args:
         session = sessions.get(request.args["sessionid"])
         if session:

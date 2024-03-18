@@ -98,8 +98,6 @@
           type: string
         days:
           type: integer
-        like_sessionid:
-          type: string
         wg:
           $ref: '#/components/schemas/WgSessionRequestData'
       required:

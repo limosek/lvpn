@@ -1,5 +1,6 @@
 import json
 import logging
+import sqlite3
 import tempfile
 import os
 import time
@@ -9,6 +10,7 @@ import openapi_schema_validator
 from jsonschema.exceptions import ValidationError
 from openapi_core import OpenAPI
 
+from lib.db import DB
 from lib.registry import Registry
 
 
@@ -22,11 +24,13 @@ class VDPException(Exception):
 
 
 class VDPObject:
-
     cfg = False
+    tpe = None
 
     @classmethod
-    def validate(cls, data, schema, file=None):
+    def validate(cls, data, schema=None, file=None):
+        if not schema:
+            schema = cls.tpe
         openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/server.yaml")
         spc = openapi.spec.contents()
         resolver = jsonschema.validators.RefResolver.from_schema(spc)
@@ -109,6 +113,18 @@ class VDPObject:
         else:
             return 0
 
+    def get_ttl(self):
+        if "ttl" in self._data:
+            return self._data["ttl"]
+        else:
+            return 3600*24*30
+
+    def get_expiry(self):
+        if self.get_revision() and self.get_ttl():
+            return self.get_revision() + self.get_ttl()
+        else:
+            return int(time.time() + 3600*24*30)
+
     def is_internal(self):
         if "internal" in self._data:
             if self._data["internal"]:
@@ -117,6 +133,51 @@ class VDPObject:
 
     def toJson(self):
         return self.get_json()
+
+    def save(self):
+        db = DB()
+        if self.get_revision() > 0:
+            sql = "SELECT COUNT(*) FROM vdp WHERE tpe='{tpe}' and id='{id}' AND revision>{revision}".format(
+                tpe=self.tpe,
+                id=self.get_id(),
+                revision=self.get_revision()
+            )
+            cnt = db.select(sql)[0][0]
+        else:
+            cnt = 0
+        if cnt == 0:
+            db.begin()
+            sql = "DELETE FROM vdp WHERE tpe='{tpe}' and id='{id}'".format(
+                tpe=self.tpe,
+                id=self.get_id()
+            )
+            db.execute(sql)
+            sql = """
+                INSERT INTO vdp
+                  (id, tpe, data, deleted, my, readonly, expiry, revision, ttl)
+                  VALUES ('{id}', '{tpe}', '{data}', False, {my}, '{ro}', {expiry}, {revision}, {ttl})
+                """.format(
+                    tpe=self.tpe,
+                    id=self.get_id(),
+                    data=json.dumps(self.get_dict()),
+                    my=self.is_local(),
+                    ro=self.get_provider_id() in Registry.cfg.readonly_providers,
+                    expiry=self.get_expiry(),
+                    revision=self.get_revision(),
+                    ttl=self.get_ttl()
+                )
+            db.execute(sql)
+            db.commit()
+        else:
+            sql = "SELECT id,revision FROM vdp WHERE tpe='{tpe}' and id='{id}' AND revision>{revision}".format(
+                tpe=self.tpe,
+                id=self.get_id(),
+                revision=self.get_revision()
+            )
+            fresh = db.select(sql)
+            logging.getLogger("vdp").warning("Not saving vdp object %s/revision=%s because we have fresher object in DB (revision=%s)" % (self.get_id(), self.get_revision(), fresh[0][0]))
+        db.close()
+        pass
 
     def __getitem__(self, item):
         if item in self._data:

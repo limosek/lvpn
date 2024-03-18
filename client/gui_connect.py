@@ -134,7 +134,7 @@ class Connect(GridLayout):
                     session = Session(mr.create_session(gate, space))
                     session.save()
                     client.gui.GUI.queue.put(Messages.connect(session))
-                except requests.exceptions.RequestException as e:
+                except lib.ManagerException as e:
                     logging.getLogger("gui").error("Cannot connect to %s/%s: %s" % (
                     client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e))
                     client.gui.GUI.queue.put(Messages.gui_popup("Cannot connect to %s/%s: %s" % (
@@ -305,7 +305,7 @@ class Connect(GridLayout):
                 state = "down"
             else:
                 state = "normal"
-            btn = GateButton(text=g.get_name(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled,
+            btn = GateButton(text=g.get_title(), on_press=self.select_gate, gateid=g.get_id(), disabled=disabled,
                              state=state)
             setattr(self.ids, g.get_id(), btn)
             self.ids.choose_gate.add_widget(btn)
@@ -317,7 +317,7 @@ class Connect(GridLayout):
                 state = "down"
             else:
                 state = "normal"
-            btn = SpaceButton(text=s.get_name(), on_press=self.select_space, spaceid=s.get_id(), state=state)
+            btn = SpaceButton(text=s.get_title(), on_press=self.select_space, spaceid=s.get_id(), state=state)
             setattr(self.ids, s.get_id(), btn)
             self.ids.choose_space.add_widget(btn)
 

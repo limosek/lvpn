@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os.path
 import socket
@@ -15,10 +16,13 @@ from lib.vdpobject import VDPObject, VDPException
 
 class Gateway(VDPObject):
 
+    tpe = 'Gate'
+
     def __init__(self, gwinfo, file=None, vdp=None):
         if not vdp:
             vdp = Registry.vdp
-        self.validate(gwinfo, "Gate", file)
+        if file:
+            self.validate(gwinfo, "Gate", file)
         self._data = gwinfo
         self._provider = vdp.get_provider(self._data["providerid"])
         if not self._provider:
@@ -45,30 +49,36 @@ class Gateway(VDPObject):
         self._local = self._provider.is_local()
 
     def get_endpoint(self, resolve=False, dnsservers=None):
-        if not resolve:
-            return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
-        else:
-            try:
-                if 0 and self.is_internal():
-                    """Internal resolver is disabled for now"""
-                    resolver = dns.resolver.Resolver()
-                    if dnsservers:
-                        resolver.nameservers = dnsservers
-                    dns.resolver.override_system_resolver(resolver)
-                    answers = dns.resolver.resolve(self._data[self.get_type()]["host"], 'A')
-                    if len(answers.rrset) > 0:
-                        ip = str(answers.rrset[0])
+        if "host" in self._data[self.get_type()]:
+            if not resolve:
+                return "%s:%s" % (self._data[self.get_type()]["host"], self._data[self.get_type()]["port"])
+            else:
+                try:
+                    if 0 and self.is_internal():
+                        """Internal resolver is disabled for now"""
+                        resolver = dns.resolver.Resolver()
+                        if dnsservers:
+                            resolver.nameservers = dnsservers
+                        dns.resolver.override_system_resolver(resolver)
+                        answers = dns.resolver.resolve(self._data[self.get_type()]["host"], 'A')
+                        if len(answers.rrset) > 0:
+                            ip = str(answers.rrset[0])
+                        else:
+                            return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
                     else:
-                        return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
-                else:
-                    ip = socket.gethostbyname(self._data[self.get_type()]["host"])
-                return tuple([ip, self._data[self.get_type()]["port"]])
-            except socket.error:
-                logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
-                return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
-            except dns.resolver.NXDOMAIN:
-                logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
-                return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
+                        ip = socket.gethostbyname(self._data[self.get_type()]["host"])
+                    return tuple([ip, self._data[self.get_type()]["port"]])
+                except socket.error:
+                    logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
+                    return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
+                except dns.resolver.NXDOMAIN:
+                    logging.getLogger("vdp").error("Error resolving %s" % self._data[self.get_type()]["host"])
+                    return tuple([self._data[self.get_type()]["host"], self._data[self.get_type()]["port"]])
+        else:
+            if self.get_type() == "wg":
+                return self._data["wg"]["endpoint"]
+            else:
+                return None
 
     def set_endpoint(self, host, port):
         self._data[self.get_type()]["host"] = host
@@ -125,19 +135,11 @@ class Gateway(VDPObject):
     def space_ids(self):
         return self._data["spaces"]
 
-    def save(self, cfg=None, origfile=False):
-        if cfg:
-            Registry.cfg = cfg
-        if origfile:
-            fname = self._file
-        else:
-            fname = "%s/%s.lgate" % (Registry.cfg.gates_dir, self.get_id())
-        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
-        with open(fname, "w") as f:
-            f.write(self.get_json())
-
     def get_title(self):
-        return self._data["name"]
+        return "%s, endpoint=%s, expiry=%s" % (
+            self._data["name"],
+            self.get_endpoint(),
+            datetime.datetime.fromtimestamp(self.get_expiry()))
 
     def get_gate_data(self, gate):
         if gate in self._data:

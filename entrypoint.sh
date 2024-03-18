@@ -74,7 +74,7 @@ fi
 
 if [ -z "$LVPNS_ARGS" ]
 then
-  LVPNS_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 "
+  LVPNS_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 --wg-cmd-nat='iptables -t nat -I POSTROUTING -o {iface} -d {network} -j MASQUERADE'"
 fi
 
 if [ -z "$DAEMON_ARGS" ]

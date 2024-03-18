@@ -90,27 +90,34 @@ def main():
     p.add_argument("args", help="Args for command", nargs="*")
 
     cfg = p.parse_args()
+    if os.getenv("WLC_CLIENT"):
+        cfg.is_client = True
+        cfg.is_server = False
+        cfg.db = cfg.var_dir + "/client.sqlite"
+    else:
+        cfg.is_client = False
+        cfg.is_server = True
+        cfg.db = cfg.var_dir + "/server.sqlite"
     cfg.readonly_providers = []
     cfg.l = cfg.log_level
     logging.basicConfig(level=cfg.l)
     Registry.cfg = cfg
     Registry.cfg.log_file = cfg.var_dir + "/lvpn-mgmt.log"
-    #Registry.vdp = VDP()
+    Wizard.files(cfg)
+    Registry.vdp = VDP()
 
     if cfg.cmd == "show-vdp":
-        vdp = VDP()
-        print(vdp.get_json())
+        print(Registry.vdp.get_json())
 
     elif cfg.cmd == "fetch-vdp":
         if cfg.args and len(cfg.args) == 1:
-            vdp = VDP()
             if cfg.args[0].startswith("http"):
                 url = cfg.args[0]
             else:
-                if not vdp.get_provider(cfg.args[0]):
+                if not Registry.vdp.get_provider(cfg.args[0]):
                     print("Unknown providerid!")
                     sys.exit(4)
-                url = vdp.get_provider(cfg.args[0]).get_manager_url()
+                url = Registry.get_provider(cfg.args[0]).get_manager_url()
             mgr = ManagerRpcCall(url)
             try:
                 jsn = mgr.fetch_vdp()
@@ -156,9 +163,6 @@ def main():
         else:
             print("Use refresh-vdp")
             sys.exit(1)
-        Registry.cfg.spaces_dir = Registry.cfg.my_spaces_dir
-        Registry.cfg.providers_dir = Registry.cfg.my_providers_dir
-        Registry.cfg.gates_dir = Registry.cfg.my_gates_dir
         vdp = VDP()
         for g in vdp.gates(my_only=True, fresh=False):
             g.set_as_fresh()
@@ -299,9 +303,6 @@ def main():
             fqdn = cfg.args[2]
             wallet = cfg.args[3]
             manager_url = cfg.args[4]
-            cfg.providers_dir = cfg.my_providers_dir
-            cfg.spaces_dir = cfg.my_spaces_dir
-            cfg.gates_dir = cfg.my_gates_dir
             Wizard.provider_vdp(cfg, name,  space, wallet, fqdn, manager_url)
         else:
             logging.error("Need generate-vdp 'name' 'space' 'fqdn' 'wallet' 'manager_url'")

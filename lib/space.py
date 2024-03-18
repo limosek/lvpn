@@ -1,12 +1,12 @@
-import json
-import logging
-import sys
+import datetime
 
 from lib.registry import Registry
 from lib.vdpobject import VDPObject, VDPException
 
 
 class Space(VDPObject):
+
+    tpe = 'Space'
 
     def __init__(self, spaceinfo, file=None, vdp=None):
         if not vdp:
@@ -19,7 +19,6 @@ class Space(VDPObject):
         self._local = self._provider.is_local()
         self._file = file
 
-
     def get_id(self):
         return self.get_provider_id() + "." + self._data["spaceid"]
 
@@ -30,19 +29,14 @@ class Space(VDPObject):
         self._provider = provider
         self._local = self._provider.is_local()
 
-    def save(self, cfg=None, origfile=False):
-        if cfg:
-            Registry.cfg = cfg
-        if origfile:
-            fname = self._file
-        else:
-            fname = "%s/%s.lspace" % (Registry.cfg.spaces_dir, self.get_id())
-        logging.getLogger("vdp").debug("Saving VDP object to file %s" % fname)
-        with open(fname, "w") as f:
-            f.write(self.get_json())
-
     def get_title(self):
-        return self._data["name"]
+        return "%s, provider=%s, revision=%s, ttl=%s, expiry=%s" % (
+            self._data["name"],
+            self.get_provider().get_name(),
+            self.get_revision(),
+            self.get_ttl(),
+            datetime.datetime.fromtimestamp(self.get_expiry())
+        )
 
     def activate_client(self, session):
         pass

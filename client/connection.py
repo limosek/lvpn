@@ -16,7 +16,7 @@ class Connection:
                  port: int = None):
         if connection:
             self._data = connection
-            sessions = lib.Sessions(noload=True)
+            sessions = lib.Sessions()
             session = sessions.get(connection["sessionid"])
             if not session:
                 raise Exception(

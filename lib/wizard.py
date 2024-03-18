@@ -1,7 +1,9 @@
+import glob
 import json
 import logging
 import os
 import secrets
+import sqlite3
 import time
 
 import nacl
@@ -10,6 +12,8 @@ import nacl.encoding
 from ownca import CertificateAuthority
 from copy import copy
 
+from lib import Registry
+from lib.db import DB
 from lib.runcmd import RunCmd
 from lib.messages import Messages
 from lib.signverify import Sign, Verify
@@ -21,7 +25,6 @@ class Wizard:
 
     @staticmethod
     def files(cfg, vardir=None):
-        cfgc = copy(cfg)
         if not vardir:
             vardir = cfg.var_dir
         logging.getLogger().warning("Initializing default files")
@@ -36,27 +39,41 @@ class Wizard:
             pass
 
         try:
-            os.mkdir(cfg.gates_dir)
-        except FileExistsError as e:
+            db = DB()
+            db.create_schema()
+            db.close()
+        except Exception as e:
+            logging.error("Cannot create db %s" % cfg.db)
+            raise
+        vdp = VDP()
+        if Registry.cfg.is_server:
+            try:
+                with open(Registry.cfg.provider_public_key, "r") as pf:
+                    providerid = pf.read(-1).strip()
+            except FileNotFoundError:
+                providerid = "none"
+        else:
+            providerid = "none"
+        files = []
+        files.extend(glob.glob(cfg.app_dir + "/config/providers/*lprovider"))
+        files.extend(glob.glob(cfg.app_dir + "/config/spaces/*lspace"))
+        files.extend(glob.glob(cfg.app_dir + "/config/gates/*lgate"))
+        for f in files:
+            o = vdp.load_file(f, vdp)
+            if Registry.cfg.is_server:
+                if providerid == o.get_id():
+                    o.set_as_local()
+            o.save()
             pass
-
-        try:
-            os.mkdir(cfg.spaces_dir)
-        except FileExistsError as e:
+        files = []
+        files.extend(glob.glob(cfg.cfg_dir + "/providers/*lprovider"))
+        files.extend(glob.glob(cfg.cfg_dir + "/spaces/*lspace"))
+        files.extend(glob.glob(cfg.cfg_dir + "/gates/*lgate"))
+        for f in files:
+            o = vdp.load_file(f, vdp)
+            o.set_as_local()
+            o.save()
             pass
-
-        try:
-            os.mkdir(cfg.providers_dir)
-        except FileExistsError as e:
-            pass
-
-        try:
-            os.mkdir(cfg.sessions_dir)
-        except FileExistsError as e:
-            pass
-
-        v = VDP()
-        v.save(cfgc)
 
     @staticmethod
     def cfg(cfg, p, vardir):
@@ -218,5 +235,6 @@ wallet-rpc-password = %s
             "gates": [httpgatef, httpgatei],
             "spaces": [spacef, spacei]
         })
-        vdp.save(cfg)
+        vdp.save()
+        print(vdp.get_json(my_only=True))
 
