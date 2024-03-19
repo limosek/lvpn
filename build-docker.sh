@@ -49,8 +49,7 @@ done
 docker stop testwg
 
 # Test server
-docker run --name testserver -d --rm -p18123:8123 --sysctl net.ipv6.conf.all.disable_ipv6=0 --cap-add=NET_ADMIN -ti limosek/lvpn:dev lvpns -l INFO --manager-local-bind=0.0.0.0 --enable-wg=1 --ignore-wg-key-mismatch=1 \
-  --my-providers-dir=/usr/src/lvpn/config/providers --my-spaces-dir=/usr/src/lvpn/config/spaces --my-gates-dir=/usr/src/lvpn/config/gates
+docker run --name testserver -d --rm -p18123:8123 --sysctl net.ipv6.conf.all.disable_ipv6=0 --cap-add=NET_ADMIN -ti limosek/lvpn:dev lvpns -l INFO --ignore-wg-key-mismatch=1 --provider-id="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"
 while ! curl -q http://127.0.0.1:18123
 do
   sleep 1

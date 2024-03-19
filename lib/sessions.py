@@ -11,7 +11,7 @@ import lib
 class Sessions:
 
     def __init__(self):
-        self.cleanup()
+        pass
 
     def cleanup(self):
         db = DB()
@@ -24,6 +24,7 @@ class Sessions:
         db.close()
 
     def refresh_status(self):
+        self.cleanup()
         if Registry.cfg.is_client:
             for s in self.find(notpaid=True):
                 mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
@@ -121,7 +122,10 @@ class Sessions:
         if self.get(session.get_id()):
             session.deactivate()
         db = DB()
+        db.begin()
         db.execute("UPDATE sessions set deleted=TRUE WHERE id='%s'" % session.get_id())
+        db.commit()
+        db.close()
 
     def update(self, session):
         session.save()

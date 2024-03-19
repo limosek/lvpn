@@ -60,21 +60,40 @@ ConnectPort 8080
 EOF
 }
 
+server_ini(){
+  cat >"$WLS_CFG_DIR/server.ini" <<EOF
+[global]
+enable-wg=1
+wg-cmd-prefix=sudo
+manager-local-bind=0.0.0.0
+EOF
+}
+
+client_ini(){
+  cat >"$WLC_CFG_DIR/client.ini" <<EOF
+[global]
+enable-wg=1
+wg-cmd-prefix=sudo
+local-bind=0.0.0.0
+manager-local-bind=0.0.0.0
+wg-shutdown-on-disconnect=0
+EOF
+}
+
 mkdir -p "$WLS_TMP_DIR" "$WLC_TMP_DIR" "$WLC_CFG_DIR" "$WLC_VAR_DIR" "$WLS_VAR_DIR" "$WLS_CFG_DIR"
+
+if ! [ -f "$WLC_CFG_DIR/client.ini" ]
+then
+  client_ini
+fi
+if ! [ -f "$WLS_CFG_DIR/server.ini" ]
+then
+  server_ini
+fi
 
 if [ -n "$DAEMON_HOST" ]
 then
   CARGS="--daemon-host $DAEMON_HOST"
-fi
-
-if [ -z "$LVPNC_ARGS" ]
-then
-  LVPNC_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --local-bind=0.0.0.0 --manager-local-bind=0.0.0.0 --wg-shutdown-on-disconnect=0"
-fi
-
-if [ -z "$LVPNS_ARGS" ]
-then
-  LVPNS_ARGS="--enable-wg=1 --wg-cmd-prefix=sudo --manager-local-bind=0.0.0.0 --wg-cmd-nat='iptables -t nat -I POSTROUTING -o {iface} -d {network} -j MASQUERADE'"
 fi
 
 if [ -z "$DAEMON_ARGS" ]
@@ -274,6 +293,10 @@ easy-provider)
   if [ -z "$EASY_FQDN" ]
   then
     export EASY_FQDN=localhost
+  fi
+  if [ -z "$EASY_ENDPOINT" ]
+  then
+    export EASY_ENDPOINT=localhost
   fi
   WLS_CFG_DIR=/home/lvpn/easy LMGMT="/usr/src/lvpn/venv/bin/python3 /usr/src/lvpn/mgmt.py" easy-provider.sh "$@"
   echo "Do not forget to save /home/lvpn/easy directory!"

@@ -47,11 +47,14 @@ class Wizard:
             raise
         vdp = VDP()
         if Registry.cfg.is_server:
-            try:
-                with open(Registry.cfg.provider_public_key, "r") as pf:
-                    providerid = pf.read(-1).strip()
-            except FileNotFoundError:
-                providerid = "none"
+            if Registry.cfg.provider_id:
+                providerid = Registry.cfg.provider_id
+            else:
+                try:
+                    with open(Registry.cfg.provider_public_key, "r") as pf:
+                        providerid = pf.read(-1).strip()
+                except FileNotFoundError:
+                    providerid = "none"
         else:
             providerid = "none"
         files = []

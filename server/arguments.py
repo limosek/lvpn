@@ -9,10 +9,12 @@ class ServerArguments:
         p.add_argument("--stripe-plink-id", help="Stripe payment link id for payment")
         p.add_argument("--tradeogre-api-key", help="TradeOgre API key for conversions")
         p.add_argument("--tradeogre-api-secret", help="TradeOgre API secret key for conversions")
-        p.add_argument("--provider-private-key", help="Private provider key",
+        p.add_argument("--provider-private-key", help="Private provider key file",
                        default=cfgdir + "/provider.private")
-        p.add_argument("--provider-public-key", help="Public provider key",
+        p.add_argument("--provider-public-key", help="Public provider key file",
                        default=cfgdir + "/provider.public")
+        p.add_argument("--provider-id", help="Providerid used as local provider to serve. Defaults to read from provider-public-key",
+                       default="")
         p.add_argument("--ca-dir", help="Directory for Certificate authority",
                        default=cfgdir + "/ca")
         p.add_argument("--ca-name", help="Common name for CA creation",
