@@ -150,14 +150,14 @@ class Connection:
                     s.close()
                     logging.getLogger().info("Connection %s is alive" % self.get_id())
                     return True
-                except Exception as e:
+                except TimeoutError as e:
                     logging.getLogger().error("Connection %s is dead: %s" % (self.get_id(), e))
                     return False
 
         elif self.get_gate().get_type() == "wg":
             if Registry.cfg.enable_wg:
                 try:
-                    result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2)
+                    result = icmplib.ping(self.get_session().get_gate_data("wg")["server_ipv4_address"], count=2, privileged=False)
                     if result.is_alive:
                         return True
                     else:

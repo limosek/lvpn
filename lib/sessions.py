@@ -58,12 +58,11 @@ class Sessions:
                         s = Session(data)
                         self.update(s)
                         logging.getLogger("audit").info("Reused session %s" % s.get_id())
-                except Exception as e:
+                except lib.ManagerException as e:
                     logging.getLogger("audit").error("Cannot reuse session %s: %s" % (s.get_id(), e))
         else:
             for s in self.find(inactive=True, fresh=True):
-                if s.activate():
-                    s.save()
+                s.activate()
 
     def get(self, sessionid: str):
         db = DB()
@@ -111,7 +110,16 @@ class Sessions:
         data = db.select("SELECT data FROM sessions WHERE deleted IS FALSE %s" % db.parse_ands(ands))
         db.close()
         for s in data:
-            res.append(Session(json.loads(s[0])))
+            session = Session(json.loads(s[0]))
+            if needs_reuse:
+                if session.get_gate().get_type() != "wg":
+                    # Only WG paid sessions needs reuse
+                    continue
+                else:
+                    if session.is_free():
+                        continue
+            res.append(session)
+
         return res
 
     def add(self, session):
@@ -147,4 +155,7 @@ class Sessions:
             len(self.find(needpay=True)))
 
     def __len__(self):
-        return len(self._sessions)
+        db = DB()
+        cnt = db.select("SELECT COUNT(*) FROM sessions WHERE expires>%s" % time.time())
+        db.close()
+        return cnt[0][0]

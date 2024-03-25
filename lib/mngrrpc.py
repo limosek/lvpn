@@ -82,8 +82,11 @@ class ManagerRpcCall:
             )
             if r.status_code == 200:
                 return self.parse_response(r.text)
+            elif r.status_code == 404:
+                logging.getLogger("vdp").error("Session %s to rekey is not anymore on server." % session.get_id())
+                return False
             else:
-                raise ManagerException("%s -- %s" % (self._baseurl, r.text))
+                raise ManagerException("%s -- %s/%s" % (self._baseurl, r.status_code, r.text))
         else:
             raise ManagerException("%s -- %s" % (self._baseurl, "Not a WG session for rekey"))
 

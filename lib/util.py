@@ -1,11 +1,14 @@
 import codecs
+import logging
 import os
 import platform
 import random
+import shutil
 import time
 import socket
 from contextlib import closing
 
+from lib import Registry
 from lib.runcmd import RunCmd
 
 
@@ -87,3 +90,51 @@ class Util:
         except socket.error as e:
             return False
 
+    @classmethod
+    def run_edge(cls, instance, incognito: bool = True, wait: bool = False):
+        if incognito:
+            incognito = "--inprivate"
+        args = [Registry.cfg.edge_bin]
+        if incognito:
+            args.append(incognito)
+            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
+        if instance.proxy:
+            args.append("--proxy-server=%s" % instance.proxy)
+        args.append(instance.url)
+        logging.getLogger().debug("Running %s" % " ".join(args))
+        try:
+            if wait:
+                RunCmd.run_wait(args)
+            else:
+                RunCmd.run(args, shell=False)
+        except Exception as e:
+            logging.getLogger("gui").error(e)
+
+    @classmethod
+    def run_chromium(cls, instance, incognito: bool = True, wait: bool = False):
+        if incognito:
+            incognito = "--incognito"
+        args = [Registry.cfg.chromium_bin]
+        if incognito:
+            args.append(incognito)
+            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
+        if instance.proxy:
+            args.append("--proxy-server=%s" % instance.proxy)
+        args.append(instance.url)
+        logging.getLogger().debug("Running %s" % " ".join(args))
+        try:
+            if wait:
+                RunCmd.run_wait(args)
+            else:
+                RunCmd.run(args, shell=False)
+        except Exception as e:
+            logging.getLogger("gui").error(e)
+
+    @classmethod
+    def run_browser(cls, instance):
+        if shutil.which(Registry.cfg.chromium_bin):
+            cls.run_chromium(instance, incognito=instance.anonymous)
+        elif shutil.which(Registry.cfg.edge_bin):
+            cls.run_edge(instance, incognito=instance.anonymous)
+        else:
+            pass

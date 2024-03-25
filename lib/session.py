@@ -153,6 +153,7 @@ class Session:
             self._data["expires"] = now + self._data["days"] * 3600 * 24
             self._data["activated"] = now
             logging.getLogger("audit").warning("Activated session %s" % self.get_id())
+            self.save()
             return True
         else:
             return False

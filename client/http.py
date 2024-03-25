@@ -4,7 +4,7 @@ import threading
 
 import _queue
 import jsonschema
-from flask import Flask, request, Response
+from flask import Flask, request, Response, render_template
 import time
 import json
 from jsonschema.exceptions import ValidationError
@@ -21,7 +21,7 @@ from lib.sessions import Sessions
 from lib.messages import Messages
 from lib.vdp import VDP
 
-app = Flask(__name__)
+app = Flask("lvpnc", template_folder=os.path.abspath(os.path.dirname(__file__) + "/../misc/html"))
 openapi = OpenAPI.from_file_path(os.path.dirname(__file__) + "/../misc/schemas/client.yaml")
 openapi_validated = FlaskOpenAPIViewDecorator(openapi)
 
@@ -48,6 +48,18 @@ def check_authentication():
 @app.errorhandler(404)
 def error_404(e):
     return make_response(404, "Not found")
+
+
+@app.route('/', methods=['GET'])
+def home():
+    print(Manager.get_value("connections"))
+    return render_template("home.html",
+                           connections=Manager.get_value("connections"),
+                           sessions=Sessions().find(fresh=True),
+                           spaces=Registry.vdp.spaces(),
+                           gates=Registry.vdp.gates(),
+                           providers=Registry.vdp.providers()
+                           )
 
 
 @app.route('/api/vdp', methods=['GET'])
@@ -144,12 +156,15 @@ def create_session():
         if fresh.is_active():
             return make_response(200, "OK", fresh.get_dict())
         else:
-            if Registry.cfg.auto_pay_days > days:
+            if Registry.cfg.auto_pay_days > days and not fresh.is_paid():
                 for m in fresh.get_pay_msgs():
                     Manager.queue.put(m)
                 return make_response(402, "Payment sent, awaiting server", fresh.get_dict())
             else:
-                return make_response(402, "Awaiting payment", fresh.get_dict())
+                if fresh.is_paid():
+                    return make_response(200, "OK", fresh.get_dict())
+                else:
+                    return make_response(402, "Awaiting payment", fresh.get_dict())
     else:
         try:
             mngr = ManagerRpcCall(space.get_manager_url())

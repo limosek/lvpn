@@ -10,6 +10,7 @@ configargparse
 pynacl
 pysocks
 requests~=2.31.0
+kivy
 kivy[base]
 kivy-garden.qrcode
 kivy-garden
@@ -23,4 +24,4 @@ icmplib~=3.0.4
 urllib3~=2.1.0
 jsonschema~=4.20.0
 ptw~=1.0.1
-
+cachetools

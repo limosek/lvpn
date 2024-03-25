@@ -86,11 +86,15 @@ class WGClientService(WGService):
         for g in cls.gate["gates"]:
             gate = Registry.vdp.get_gate(g)
             if gate:
+                fresh = sessions.find(gateid=gate.get_id(), spaceid=cls.space.get_id(), active=True, free=True)
+                if len(fresh) > 0:
+                    for s in fresh:
+                        sessions.remove(s)
                 mr = lib.ManagerRpcCall(cls.space.get_manager_url())
                 session = Session(mr.create_session(gate, cls.space))
                 session.set_parent(cls.session.get_id())
                 session.save()
-                sessions.add(session)
+                Sessions().add(session)
                 messages.append(Messages.connect(session))
             else:
                 cls.log_error("Non-existent WG gateway %s" % g)

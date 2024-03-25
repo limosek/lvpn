@@ -122,6 +122,8 @@ class SharedArguments:
 
         p.add_argument("--enable-wg", type=int, choices=[0, 1], help="Enable wireguard support", default=0)
 
+        p.add_argument("--provider-id", help="Providerid used as local provider to serve. Defaults to read from provider-public-key",
+                       default="")
         p.add_argument('--is-client', type=bool, help='For internal usage', default=False)
         p.add_argument('--is-server', type=bool, help='For internal usage', default=False)
         p.add_argument('--single-thread', type=int, choices=[0, 1], help='For internal usage', default=0)

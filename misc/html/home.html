@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="10">
+    <title>LVPN Client internal status</title>
+  </head>
+
+  <body>
+
+  <h1>Internal LVPN client main page</h1>
+
+  <h2>Internal LTHN resources</h2>
+  <ul>
+    <li><a href="http://www.lthn">www.lthn</a></li>
+    <li><a href="http://zabbix.lthn">Network status</a></li>
+  </ul>
+
+  <h2>VDP</h2>
+  <a href="/api/vdp">Download VDP</a>
+
+  <h2>Connections</h2>
+  <ul>
+    {% for c in connections %}
+    <li>
+      {{ c }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>Sessions</h2>
+  <ul>
+    {% for s in sessions %}
+    <li>
+      {{ s }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>Providers</h2>
+  <ul>
+    {% for s in providers %}
+    <li>
+      {{ s }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>Spaces</h2>
+  <ul>
+    {% for s in spaces %}
+    <li>
+      {{ s }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>Gates</h2>
+  <ul>
+    {% for s in gates %}
+    <li>
+      {{ s }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  </body>
+</html>

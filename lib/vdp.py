@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 import time
-from functools import lru_cache
+import cachetools.func
 import requests
 import urllib3
 
@@ -132,13 +132,16 @@ class VDP:
         else:
             return rows
 
+    @cachetools.func.ttl_cache(ttl=60)
     def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False):
         """Return all gates"""
         return self.objects('Gate', False, filter=filter, spaceid=spaceid, my_only=my_only, internal=internal, fresh=fresh, as_json=as_json)
 
+    @cachetools.func.ttl_cache(ttl=60)
     def spaces(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
         return self.objects('Space', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
 
+    @cachetools.func.ttl_cache(ttl=60)
     def providers(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
         return self.objects('Provider', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
 
@@ -161,50 +164,53 @@ class VDP:
         VDPObject.validate(d, "Vdp")
         return d
 
+    @cachetools.func.ttl_cache(ttl=60)
     def gate_ids(self):
         return self.objects('Gate', True)
 
+    @cachetools.func.ttl_cache(ttl=60)
     def space_ids(self):
         return self.objects('Space', True)
 
+    @cachetools.func.ttl_cache(ttl=60)
     def provider_ids(self):
         return self.objects('Provider', True)
 
-    @lru_cache()
+    @cachetools.func.ttl_cache(ttl=60)
     def get_gate(self, gwid):
         db = DB()
-        p = db.select("SELECT data,my FROM vdp WHERE tpe='Gate' AND id='%s'" % gwid)
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Gate' AND id='%s' AND deleted IS FALSE" % gwid)
         db.close()
         if len(p) > 0:
             data = lib.Gateway(json.loads(p[0][0]))
-            if p[0][1]:
+            if p[0][1] or data.get_provider_id() == Registry.cfg.provider_id:
                 data.set_as_local()
             return data
         else:
             return None
 
-    @lru_cache()
+    @cachetools.func.ttl_cache(ttl=60)
     def get_space(self, spaceid):
         db = DB()
-        p = db.select("SELECT data,my FROM vdp WHERE tpe='Space' AND id='%s'" % spaceid)
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Space' AND id='%s' AND deleted IS FALSE" % spaceid)
         db.close()
         if len(p) > 0:
             data = Space(json.loads(p[0][0]))
-            if p[0][1]:
+            if p[0][1] or data.get_provider_id() == Registry.cfg.provider_id:
                 data.set_as_local()
             return data
         else:
             db.close()
             return None
 
-    @lru_cache()
+    @cachetools.func.ttl_cache(ttl=60)
     def get_provider(self, providerid):
         db = DB()
-        p = db.select("SELECT data,my FROM vdp WHERE tpe='Provider' AND id='%s'" % providerid)
+        p = db.select("SELECT data,my FROM vdp WHERE tpe='Provider' AND id='%s' AND deleted IS FALSE" % providerid)
         db.close()
         if len(p) > 0:
             data = Provider(json.loads(p[0][0]))
-            if p[0][1]:
+            if p[0][1] or data.get_id() == Registry.cfg.provider_id:
                 data.set_as_local()
             return data
         else:

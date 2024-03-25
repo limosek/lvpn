@@ -30,8 +30,14 @@ class ClientArguments:
         p.add_argument('--auto-reconnect', type=int, help='Auto reconnect on failure. 0 to disable, positive number is seconds to wait between reconnect', default=0)
         p.add_argument('--auto-pay-days', type=int, default=0,
                        help='Auto pay service when there is an request to connect for this number of days. By default, payment must be confirmed by GUI')
+
         p.add_argument('--free-session-days', type=int,
                        help='How many days to request for free service', default=1)
+
+        p.add_argument('--auto-run-browser', type=str,
+                       help='Auto run browser on successful connection',
+                       choices=["normal", "incognito", "no"],
+                       default="incognito")
 
         p.add_argument('--reuse-session-ahead', type=int,
                        help='For paid sessions, we will try to refresh them this number of seconds before expiry.', default=300)

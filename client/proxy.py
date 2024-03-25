@@ -16,6 +16,7 @@ from lib.runcmd import RunCmd, Process
 from lib.service import Service, ServiceException
 from lib.sessions import Sessions
 from lib.messages import Messages
+from lib.util import Util
 from lib.wg_engine import WGEngine
 import lib
 
@@ -93,6 +94,16 @@ class Proxy(Service):
             connection = cls.run_tls_proxy(gate.get_local_port(), session)
             connections.add(connection)
             cls.update_connections(connections)
+            if gate.get_type() == "http-proxy" and Registry.cfg.auto_run_browser:
+                time.sleep(10)
+                btn = lambda: None
+                btn.proxy = "http://127.0.0.1:%s" % connection.get_port()
+                btn.url = "http://www.lthn"
+                if Registry.cfg.auto_run_browser == "incognito":
+                    btn.anonymous = True
+                else:
+                    btn.anonymous = False
+                Util.run_browser(btn)
 
         elif gate.get_type() == "ssh":
             connection = Connection(session)
@@ -169,7 +180,6 @@ class Proxy(Service):
             cls.processes.append(p)
             connections.add(connection)
             cls.update_connections(connections)
-            pass
 
         else:
             cls.log_error("Unknown gate type %s" % gate.get_type())
@@ -251,6 +261,16 @@ class Proxy(Service):
                                 parent.add_children(connection.get_id())
                         cls.connections.add(connection)
                         cls.processes.append(p)
+                        if connection.get_gate().get_type() == "http-proxy" and Registry.cfg.auto_run_browser != "no":
+                            btn = lambda: None
+                            btn.proxy = "http://127.0.0.1:%s" % connection.get_port()
+                            btn.url = "http://www.lthn"
+                            if Registry.cfg.auto_run_browser == "incognito":
+                                btn.anonymous = True
+                            else:
+                                btn.anonymous = False
+                            Util.run_browser(btn)
+
                 except _queue.Empty:
                     continue
             if once:

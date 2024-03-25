@@ -1,4 +1,5 @@
 import os
+
 os.environ["NO_KIVY"] = "1"
 
 import unittest
@@ -26,13 +27,15 @@ class TestVDP(unittest.TestCase):
 
     def test_get_ca(self):
         Util.parse_args()
-        gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
+        gate = Registry.vdp.get_gate(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
         a = gate.get_ca()
         self.assertEqual(type(a), str)
 
     def test_ro_providers(self):
         Util.parse_args(["--readonly-providers=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"])
-        gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
+        gate = Registry.vdp.get_gate(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
         old_endpoint = gate.get_endpoint()
         gate.set_endpoint("127.0.0.1", 1111)
         Registry.vdp.save()
@@ -46,6 +49,19 @@ class TestVDP(unittest.TestCase):
         gate = Registry.vdp.get_gate(
             "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy")
         e = gate.get_endpoint(resolve=True)
+        pass
+
+    def test_local(self):
+        Util.parse_args(["--provider-id=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091"])
+        gate = Registry.vdp.get_gate(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls")
+        self.assertEqual(gate.is_local(), True)
+        space = Registry.vdp.get_space(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
+        self.assertEqual(space.is_local(), True)
+        prov = Registry.vdp.get_provider(
+            "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091")
+        self.assertEqual(prov.is_local(), True)
         pass
 
 

@@ -96,7 +96,7 @@ def auto_connect(ctrl, proxy_queue, wallet_queue):
                             space = Registry.cfg.vdp.get_space(spaceid)
                             session = Session(mr.create_session(gate, space))
                             if session.is_fresh():
-                                if Registry.cfg.auto_pay_days:
+                                if Registry.cfg.auto_pay_days and not session.is_paid():
                                     for m in session.get_pay_msgs():
                                         wallet_queue.put(m)
                                 session.save()

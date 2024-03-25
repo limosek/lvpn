@@ -112,6 +112,12 @@ class WGEngine(Service):
         else:
             af = "ipv6"
             tpe = ""
+        if Registry.cfg.wg_cmd_unset_ips:
+            cls.log_info("Removing IPs from WG interface: dev=%s" % iface)
+            cls.wg_run_cmd(
+                *shlex.split(cls.replace_macros(
+                    Registry.cfg.wg_cmd_unset_ips, iface=iface, af=af, type=tpe
+                )))
         if Registry.cfg.wg_cmd_set_ip:
             cls.log_info("Setting WG interface IP: dev=%s,ip=%s,ipnet=%s" % (iface, ip, ipnet))
             cls.wg_run_cmd(

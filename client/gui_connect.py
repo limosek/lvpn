@@ -1,6 +1,4 @@
 import logging
-import shutil
-
 import requests.exceptions
 from kivy.clock import Clock
 from kivy.uix.button import Button
@@ -16,6 +14,7 @@ from lib.runcmd import RunCmd
 from lib.session import Session
 from lib.sessions import Sessions
 from lib.messages import Messages
+from lib.util import Util
 
 
 class SpaceButton(ToggleButton):
@@ -37,10 +36,11 @@ class DisconnectButton(Button):
 
 
 class BrowserButton(Button):
-    def __init__(self, proxy=None, url=None, **kwargs):
+    def __init__(self, proxy=None, url=None, anonymous=True, **kwargs):
         super().__init__(**kwargs)
         self.proxy = proxy
         self.url = url
+        self.anonymous = anonymous
 
 
 class PayButton(Button):
@@ -147,49 +147,6 @@ class Connect(GridLayout):
     def remove_session(self, instance):
         if type(instance) is SessionButton:
             Sessions().remove(instance.session)
-
-    @classmethod
-    def run_edge(cls, instance, incognito: bool = True):
-        if incognito:
-            incognito = "--inprivate"
-        args = [Registry.cfg.edge_bin]
-        if incognito:
-            args.append(incognito)
-            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
-        if instance.proxy:
-            args.append("--proxy-server=%s" % instance.proxy)
-        args.append(instance.url)
-        logging.getLogger().debug("Running %s" % " ".join(args))
-        try:
-            RunCmd.run(args, shell=False)
-        except Exception as e:
-            logging.getLogger("gui").error(e)
-
-    @classmethod
-    def run_chromium(cls, instance, incognito: bool = True):
-        if incognito:
-            incognito = "--incognito"
-        args = [Registry.cfg.chromium_bin]
-        if incognito:
-            args.append(incognito)
-            args.append("--user-data-dir=%s" % Registry.cfg.tmp_dir)
-        if instance.proxy:
-            args.append("--proxy-server=%s" % instance.proxy)
-        args.append(instance.url)
-        logging.getLogger().debug("Running %s" % " ".join(args))
-        try:
-            RunCmd.run(args, shell=False)
-        except Exception as e:
-            logging.getLogger("gui").error(e)
-
-    @classmethod
-    def run_browser(cls, instance, incognito=True):
-        if shutil.which(Registry.cfg.chromium_bin):
-            cls.run_chromium(instance, incognito=incognito)
-        elif shutil.which(Registry.cfg.edge_bin):
-            cls.run_edge(instance, incognito=incognito)
-        else:
-            pass
 
     def main(self):
         self.clear_widgets()
@@ -324,7 +281,7 @@ class Connect(GridLayout):
     def fill_connections(self, dt):
         self.ids.connections_info.clear_widgets()
         for c in client.gui.GUI.ctrl["connections"]:
-            row = GridLayout(cols=3, rows=1, size_hint_y=0.2)
+            row = GridLayout(cols=4, rows=1, size_hint_y=0.2)
             if c.get_gate().is_internal():
                 lbl = Label(text=c.get_title(short=True), color=(0.2, 0.2, 2))
             else:
@@ -334,9 +291,13 @@ class Connect(GridLayout):
                                        on_press=self.show_connection)
             row.add_widget(lbl)
             if c.get_gate().get_type() == "http-proxy":
-                bbtn = BrowserButton(text="Run browser", proxy="http://127.0.0.1:%s" % c.get_port(),
-                                     url="http://www.lthn",
-                                     on_press=self.run_browser, size_hint_x=0.1)
+                abbtn = BrowserButton(text="Incognito", proxy="http://127.0.0.1:%s" % c.get_port(),
+                                     url="http://www.lthn", anonymous=True,
+                                     on_press=Util.run_browser, size_hint_x=0.1)
+                bbtn = BrowserButton(text="Browser", proxy="http://127.0.0.1:%s" % c.get_port(),
+                                     url="http://www.lthn", anonymous=False,
+                                     on_press=Util.run_browser, size_hint_x=0.1)
+                row.add_widget(abbtn)
                 row.add_widget(bbtn)
             else:
                 bbtn = BrowserButton(text="N/A", proxy=0, url="http://www.lthn",
