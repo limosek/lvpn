@@ -1,10 +1,34 @@
 
-$Env:PATH = ""
-$version = "0.5"
+$version = "0.6"
 $python_version = "3.12.1"
 $lethean_version = "v5.0.1"
-$lvpn_branch = "main"
+$lvpn_branch = "release/v0_6"
 $root = "${env:HOMEDRIVE}${env:HOMEPATH}\lvpn"
+
+if (-Not (winget)) {
+    Write-Error "Need winget to continue"
+    Pause
+    Exit-PSSession
+}
+
+if (-Not (winget list |findstr /I gsudo)) {
+   winget install gsudo
+   # Rerun script to refresh PATH
+   $0
+   exit
+}
+
+if (-Not (winget list |findstr /I wireguard.wireguard)) {
+   winget install wireguard.wireguard
+   # Rerun script to refresh PATH
+   $0
+   exit
+}
+
+gsudo config CacheMode Auto
+
+# Clear path
+$Env:PATH = ""
 
 #############################################################################
 # Create LVPN home directory
@@ -17,13 +41,13 @@ if (-not (Test-Path "${root}"))
 #############################################################################
 # Create LVPN app directory
 #############################################################################
-if (-not (Test-Path "${root}\app"))
+if (Test-Path "${root}\app")
 {
-  mkdir "${root}\app"
+    Remove-Item "${root}\app" -Recurse -Force
 }
+mkdir "${root}\app"
 $appdir = "${root}\app"
 $logfile = "${root}\setup.log"
-
 Set-Location $appdir
 
 #############################################################################
@@ -89,4 +113,12 @@ $Shortcut.IconLocation = "${appdir}/config/lvpn.ico"
 $Shortcut.WorkingDirectory = "${appdir}"
 $Shortcut.Save()
 
+$Shortcut2 = $WshShell.CreateShortcut([Environment]::GetFolderPath("Desktop") + "\lvpn-wg.lnk")
+$Shortcut2.TargetPath = "cmd"
+$Shortcut2.Arguments = "/c gsudo ${appdir}/lvpnc.cmd --enable-wg=1 --auto-connect=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
+$Shortcut2.IconLocation = "${appdir}/config/lvpn.ico"
+$Shortcut2.WorkingDirectory = "${appdir}"
+$Shortcut2.Save()
+
 Write-Output OK
+

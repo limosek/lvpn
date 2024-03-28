@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="lvpn",
-    version="0.5",
+    version="0.6",
     author="Lukas Macura",
     author_email="lukas@macura.cz",
     description="Lvpn",

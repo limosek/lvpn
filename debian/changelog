@@ -1,4 +1,4 @@
-lvpn (0.5) UNRELEASED; urgency=medium
+lvpn (0.5+nmu1) UNRELEASED; urgency=medium
 
   [ Lukas Macura ]
   * Initial release.
@@ -6,4 +6,7 @@ lvpn (0.5) UNRELEASED; urgency=medium
   [ Lukas Macura ]
   * First deb
 
- -- Lukas Macura <lukas@macura.cz>  Sun, 03 Mar 2024 20:11:24 +0100
+  [ ntb1-lm ]
+  * Version 0.6
+
+ -- ntb1-lm <lm-a@ntb1-lm.>  Wed, 27 Mar 2024 12:47:18 +0100
