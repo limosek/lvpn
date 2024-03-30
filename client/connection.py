@@ -42,16 +42,17 @@ class Connection:
         else:
             self._gate = Registry.vdp.get_gate(self._session.get_gateid())
             self._space = Registry.vdp.get_space(self._session.get_spaceid())
-        if self._gate.get_type() == "http-proxy" \
-                and "tls" in self._gate.get_gate_data("http-proxy") \
-                and not self._gate.get_gate_data("http-proxy")["tls"]:
-            self._data["port"] = self._gate.get_gate_data("http-proxy")["port"]
-            self._data["host"] = self._gate.get_gate_data("http-proxy")["host"]
+        if host:
+            self._data["host"] = host
+            if self._gate.get_type() == "http-proxy" \
+                    and "tls" in self._gate.get_gate_data("http-proxy") \
+                    and not self._gate.get_gate_data("http-proxy")["tls"]:
+                self._data["port"] = self._gate.get_gate_data("http-proxy")["port"]
+                self._data["host"] = self._gate.get_gate_data("http-proxy")["host"]
         else:
+            self._data["host"] = "127.0.0.1"
             if port:
                 self._data["port"] = port
-            if host:
-                self._data["host"] = host
 
     def get_id(self) -> str:
         return self._data["connectionid"]
@@ -70,6 +71,12 @@ class Connection:
             return self._data["port"]
         else:
             return None
+
+    def set_port(self, port):
+        self._data["port"] = port
+
+    def set_host(self, host):
+        self._data["host"] = host
 
     def get_proxy_url(self):
         if "port" in self._data and "host" in self._data:

@@ -92,6 +92,10 @@ class Proxy(Service):
                 time.sleep(1)
         if gate.get_type() in ["http-proxy", "daemon-rpc-proxy", "daemon-p2p-proxy", "socks-proxy"]:
             connection = cls.run_tls_proxy(gate.get_local_port(), session)
+            parent = Sessions().get(session.get_parent())
+            if parent and parent.get_gate().get_type() == "wg" and gate.get_type() == "http-proxy":
+                connection.set_host(gate.get_gate_data("http-proxy")["host"])
+                connection.set_port(gate.get_gate_data("http-proxy")["port"])
             connections.add(connection)
             cls.update_connections(connections)
             if gate.get_type() == "http-proxy" and Registry.cfg.auto_run_browser:
