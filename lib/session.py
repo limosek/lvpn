@@ -73,7 +73,10 @@ class Session:
             self.payment_sent("Zero-Free-payment")
         else:
             if not days:
-                self._data["days"] = Registry.cfg.auto_pay_days
+                if Registry.cfg.is_client:
+                    self._data["days"] = Registry.cfg.auto_pay_days
+                else:
+                    raise VDPException("Missing days for session")
             else:
                 self._data["days"] = int(days)
             self._data["price"] = (

@@ -304,6 +304,7 @@ easy-provider)
 
 tests)
   shift
+  set -e
   cp -R /usr/src/lvpn/tests/ /tmp/tests
   cd /tmp/tests
   sudo ./tests.sh /usr/src/lvpn

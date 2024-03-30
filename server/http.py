@@ -165,6 +165,33 @@ def post_vdp():
         return make_response(443, "Bad Request data", {"error": str(e)})
 
 
+@app.route('/api/session/reuse', methods=['GET'])
+@openapi_validated
+def reuse_session():
+    if "sessionid" in request.args:
+        sessions = Sessions()
+        session = sessions.get(request.args["sessionid"])
+        if session:
+            if session.is_paid() and session.is_fresh():
+                if "days" in request.args:
+                    days = request.args["days"]
+                else:
+                    days = session.days()
+                session.reuse(days)
+                session.save()
+                sessions.add(session)
+                return make_response(402, "Waiting for payment", session.get_dict())
+            else:
+                if not session.is_paid():
+                    return make_response(414, "Session is no paid - cannot reuse")
+                else:
+                    return make_response(414, "Session expired")
+        else:
+            return make_response(404, "Unknown sessionid to reuse")
+    else:
+        return make_response(400, "Missing sessionid")
+
+
 @app.route('/api/session', methods=['POST'])
 @openapi_validated
 def post_session():
@@ -191,30 +218,6 @@ def post_session():
         return make_response(402, "Waiting for payment", session.get_dict())
     else:
         return make_response(200, "OK", session.get_dict())
-
-
-@app.route('/api/session/reuse', methods=['GET'])
-@openapi_validated
-def reuse_session():
-    if "sessionid" in request.args:
-        sessions = Sessions()
-        session = sessions.get(request.args["sessionid"])
-        if session:
-            if session.is_paid() and session.is_fresh():
-                if "days" in request.args:
-                    days = request.args["days"]
-                else:
-                    days = session.days()
-                session.reuse(days)
-                session.save()
-                sessions.add(session)
-                return make_response(402, "Waiting for payment", session.get_dict())
-            else:
-                return make_response(414, "No permission to reuse", request.args["sessionid"])
-        else:
-            return make_response(404, "Unknown sessionid to reuse", request.args["sessionid"])
-    else:
-        return make_response(400, "Missing sessionid")
 
 
 @app.route('/api/session', methods=['GET'])
@@ -248,7 +251,8 @@ def rekey_session():
                     return make_response(200, "OK", session.get_dict())
                 else:
                     return make_response(400, "Missing wg_public_key", {})
-            return make_response(200, "OK", session.get_dict())
+            else:
+                return make_response(400, "This is not WG session to rekey", {})
         else:
             return make_response(404, "Session not found", {})
     else:

@@ -5,6 +5,9 @@ import unittest
 import requests
 
 import lib.vdp
+from client.wg_service import WGClientService
+from lib import Session, ManagerRpcCall, Registry, ManagerException
+from tests.util import Util
 
 if not "MANAGER_URL" in os.environ:
     os.environ["MANAGER_URL"] = "http://127.0.0.1:8123"
@@ -105,6 +108,46 @@ class TestAPI(unittest.TestCase):
 
     def test_vdp_from_url(self):
         vdp = lib.VDP("http://127.0.0.1:8123/api/vdp")
+        pass
+
+    def testRekeyReuseSession(self):
+        Util.parse_args()
+        m = ManagerRpcCall(os.environ["MANAGER_URL"])
+        s1 = m.create_session(
+            Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy"),
+            Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"), 1)
+        s1 = Session(s1)
+        with self.assertRaises(ManagerException):
+            m.rekey_session(s1, "aaaaaa")
+
+        s2 = m.create_session(
+            Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg"),
+            Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"), 1, prepare_data={"wg": {
+                "endpoint": "dynamic",
+                "public_key": "uxn9r4nmw5GB1/+qoJnuVnk/bfReWkchI5O3DGwOLl4="
+            }})
+
+        s2 = Session(s2)
+        self.assertEqual(s2.is_active(), True)
+        s3 = m.rekey_session(s2, "mvaGhbvEHTfA+b5O5fAsE0dZKsd+WVEwsa2kmyPFV3A=")
+        s3 = Session(s3)
+        self.assertEqual(s3.get_gate_data("wg")["client_public_key"], "mvaGhbvEHTfA+b5O5fAsE0dZKsd+WVEwsa2kmyPFV3A=")
+
+        with self.assertRaises(ManagerException):
+            # Cannot reuse free session
+            m.reuse_session(s3)
+
+        s4 = m.create_session(
+            Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg"),
+            Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st"), 1, prepare_data={"wg": {
+                "endpoint": "dynamic",
+                "public_key": "mvaGhbvEHTfA+b5O5fAsE0dZKsd+WVEwsa2kmyPFV3A="
+            }})
+
+        s4 = Session(s4)
+        with self.assertRaises(ManagerException):
+            m.reuse_session(s4)
+
         pass
 
 

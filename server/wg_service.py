@@ -104,19 +104,21 @@ class WGServerService(lib.wg_service.WGService):
             psk = session.get_gate_data("wg")
         else:
             psk = None
-        return WGEngine.add_peer(ifname,
+        WGEngine.add_peer(ifname,
                                  session.get_gate_data("wg")["client_public_key"],
                                  ips,
                                  session.get_gate_data("wg")["client_endpoint"],
                                  psk, keepalive=None, show_only=show_only)
+        return True
 
     @classmethod
     def deactivate_on_server(cls, session, show_only=False):
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
         if session.get_gate_data("wg"):
-            return WGEngine.remove_peer(ifname,
+            WGEngine.remove_peer(ifname,
                                         session.get_gate_data("wg")["client_public_key"],
                                         show_only=show_only)
+            return True
         else:
             return False
 
@@ -188,3 +190,4 @@ class WGServerService(lib.wg_service.WGService):
                 raise ServiceException(10,
                                        "Inconsistent public key for WG gateway %s! Use --wg-map-privkey or update VDP public key to %s!" % (
                                            gate.get_id(), gather["iface"]["public"]))
+        return True

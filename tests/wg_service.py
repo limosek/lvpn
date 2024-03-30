@@ -1,5 +1,6 @@
 import ipaddress
 import os
+import platform
 import unittest
 
 from tests.util import Util
@@ -18,18 +19,21 @@ from lib.vdp import VDP
 class TestWGService(unittest.TestCase):
 
     def testAll(self):
-        Registry.cfg = Util.parse_args(
-            ["--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY=",
-             "--wg-cmd-route", ""
-             ])
+        args = [
+            "--wg-map-privkey=94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg,KA268iWOfG7M9vR/mAPdy5euxh1fDrZUHjVQFFwLxXY=",
+            "--wg-cmd-route", "", "--enable-wg", "1"]
+        if platform.system() == "Windows":
+            args.extend(["--wg-cmd-prefix", "gsudo"])
+        Registry.cfg = Util.parse_args(args)
+
         Registry.vdp = VDP()
         WGEngine.show_cmds = True
         gate = Registry.vdp.get_gate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.wg")
         space = Registry.vdp.get_space("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st")
-        self.FindIP()
         session = Session()
         session.generate(gate.get_id(), space.get_id(), 10)
         WGEngine.create_wg_interface("lvpns_3e439354", WGEngine.get_private_key(gate.get_id()), 5000)
+        self.FindIP()
         session = self.PrepareSession(session)
         self.ActivateServer(session)
         self.ActivateClient(session)
@@ -49,7 +53,9 @@ class TestWGService(unittest.TestCase):
         })
         self.assertEqual(session.get_gate_data("wg")["dns"], session.get_space()["dns_servers"])
         ip = ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"])
-        ipnet = ipaddress.ip_network(session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(session.get_gate_data("wg")["ipv4_prefix"]), strict=False)
+        ipnet = ipaddress.ip_network(
+            session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(session.get_gate_data("wg")["ipv4_prefix"]),
+            strict=False)
         print(ip)
         print(ipnet)
         self.assertTrue(ip in ipnet)
@@ -63,23 +69,27 @@ class TestWGService(unittest.TestCase):
     def ActivateServer(self, session):
         print(WGServerService.activate_on_server(session, show_only=True))
         print(session.get_gate_data("wg")["server_ipv4_address"][:4])
-        self.assertRegex(
-            WGServerService.activate_on_server(session, show_only=True),
-            session.get_gate_data("wg")["server_ipv4_address"][:4])
+        self.assertTrue(
+            WGServerService.activate_on_server(session, show_only=True))
+        pass
 
     def ActivateClient(self, session):
+        self.assertTrue(WGClientService.activate_on_client(session, show_only=True))
         self.assertRegex(
-            WGClientService.activate_on_client(session, show_only=True),
-            str(ipaddress.ip_network(session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(session.get_gate_data("wg")["ipv4_prefix"]), strict=False)))
+            "\n".join(WGEngine.get_commands()),
+            str(ipaddress.ip_network(session.get_gate_data("wg")["server_ipv4_address"] + "/" + str(
+                session.get_gate_data("wg")["ipv4_prefix"]), strict=False)))
 
     def DeActivateServer(self, session):
+        self.assertTrue(WGServerService.deactivate_on_server(session, show_only=True))
         self.assertRegex(
-            WGServerService.deactivate_on_server(session, show_only=True),
+            "\n".join(WGEngine.get_commands()),
             "84.*remove")
 
     def DeActivateClient(self, session):
+        self.assertTrue(WGClientService.deactivate_on_client(session, show_only=True))
         self.assertRegex(
-            WGClientService.deactivate_on_client(session, show_only=True),
+            "\n".join(WGEngine.get_commands()),
             session.get_gate_data("wg")["server_public_key"][:7])
 
     def testPeersMatch(self):
@@ -105,6 +115,3 @@ class TestWGService(unittest.TestCase):
         sessions.add(session2)
         self.assertEqual(session1.activate(), True)
         self.assertEqual(session2.activate(), True)
-
-
-

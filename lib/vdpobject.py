@@ -155,7 +155,7 @@ class VDPObject:
             sql = """
                 INSERT INTO vdp
                   (id, tpe, data, deleted, my, readonly, expiry, revision, ttl)
-                  VALUES ('{id}', '{tpe}', '{data}', False, {my}, '{ro}', {expiry}, {revision}, {ttl})
+                  VALUES ('{id}', '{tpe}', '{data}', False, {my}, {ro}, {expiry}, {revision}, {ttl})
                 """.format(
                     tpe=self.tpe,
                     id=self.get_id(),

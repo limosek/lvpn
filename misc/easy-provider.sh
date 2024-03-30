@@ -94,7 +94,6 @@ generate_ssh_ca
 generate_wallet "$WLS_CFG_DIR/vpn-wallet" "$EASY_WALLET_PASSWORD" >/dev/null 2>/dev/null
 
 # Generate VDP
-mkdir -p $WLS_CFG_DIR/gates $WLS_CFG_DIR/providers $WLS_CFG_DIR/spaces
 mgmt generate-vdp "$EASY_CA_CN" free "$EASY_ENDPOINT" "$(cat $WLS_CFG_DIR/vpn-wallet.address.txt)" https://$EASY_ENDPOINT:8881
 
 echo "Waiting for Wallet process to finish"

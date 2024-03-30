@@ -127,6 +127,7 @@ class WGClientService(WGService):
                 except ServiceException as s2:
                     raise ServiceException(4, "Cannot create WG tunnel interface: %s" % s)
                 pass
+        return True
 
     @classmethod
     def deactivate_interface_client(cls):
@@ -134,6 +135,7 @@ class WGClientService(WGService):
             cls.log_error("Wireguard not enabled. Ignoring activation")
             return False
         WGEngine.delete_wg_interface(cls.iface)
+        return True
 
     @classmethod
     def prepare_session_request(cls):
@@ -159,11 +161,11 @@ class WGClientService(WGService):
             if "client_ipv4_address" in session.get_gate_data("wg"):
                 WGEngine.set_interface_ip(ifname,
                                           ipaddress.ip_address(session.get_gate_data("wg")["client_ipv4_address"]),
-                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]))
+                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv4_network"]), unset=True)
             if "client_ipv6_address" in session.get_gate_data("wg"):
                 WGEngine.set_interface_ip(ifname,
                                           ipaddress.ip_address(session.get_gate_data("wg")["client_ipv6_address"]),
-                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]))
+                                          ipaddress.ip_network(session.get_gate()["wg"]["ipv6_network"]), unset=False)
 
         except ServiceException as e:
             cls.log_error("Error assigning IP: %s" % str(e))
@@ -189,18 +191,20 @@ class WGClientService(WGService):
             psk = session.get_gate_data("wg")
         else:
             psk = None
-        return WGEngine.add_peer(ifname,
+        WGEngine.add_peer(ifname,
                                  session.get_gate().get_gate_data("wg")["public_key"],
                                  nets,
                                  session.get_gate().get_gate_data("wg")["endpoint"],
                                  psk, keepalive=55, show_only=show_only)
+        return True
 
     @classmethod
     def deactivate_on_client(cls, session, show_only=False):
         if not Registry.cfg.enable_wg:
             cls.log_error("Wireguard not enabled. Ignoring deactivation")
         ifname = WGEngine.get_interface_name(session.get_gate().get_id())
-        return WGEngine.remove_peer(ifname,
+        WGEngine.remove_peer(ifname,
                                     session.get_gate().get_gate_data("wg")["public_key"],
                                     show_only=show_only)
+        return True
 

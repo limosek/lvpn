@@ -94,7 +94,11 @@ def auto_connect(ctrl, proxy_queue, wallet_queue):
                             print("Trying to create session to %s" % url)
                             gate = Registry.cfg.vdp.get_gate(gateid)
                             space = Registry.cfg.vdp.get_space(spaceid)
-                            session = Session(mr.create_session(gate, space))
+                            if space.get_price() == 0 and gate.get_price() == 0:
+                                days = Registry.cfg.free_session_days
+                            else:
+                                days = Registry.cfg.auto_pay_days
+                            session = Session(mr.create_session(gate, space, days))
                             if session.is_fresh():
                                 if Registry.cfg.auto_pay_days and not session.is_paid():
                                     for m in session.get_pay_msgs():

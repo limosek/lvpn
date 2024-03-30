@@ -35,40 +35,36 @@ class VDP:
                     vdpdata = json.loads(vdpdata)
                 except Exception as e:
                     raise VDPException(str(e))
-            try:
-                VDPObject.validate(vdpdata, "Vdp", vdpfile)
-                self._data = vdpdata
-                if "file_type" in self._data and self._data["file_type"] == 'VPNDescriptionProtocol':
-                    if "providers" in self._data:
-                        for p in self._data["providers"]:
-                            prov = Provider(p)
-                            prov.save()
-                    if "spaces" in self._data:
-                        for s in self._data["spaces"]:
-                            spc = Space(s, vdp=self)
-                            if not spc.get_provider_id() in self.provider_ids():
-                                raise VDPException(
-                                    "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
-                            spc.save()
-                    if "gates" in self._data:
-                        for g in self._data["gates"]:
-                            gw = lib.Gateway(g, vdp=self)
-                            if not gw.get_provider_id() in self.provider_ids():
-                                raise VDPException(
-                                    "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
-                            for s in gw.space_ids():
-                                if s not in self.space_ids():
-                                    raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
-                            gw.save()
+            VDPObject.validate(vdpdata, "Vdp", vdpfile)
+            self._data = vdpdata
+            if "file_type" in self._data and self._data["file_type"] == 'VPNDescriptionProtocol':
+                if "providers" in self._data:
+                    for p in self._data["providers"]:
+                        prov = Provider(p)
+                        prov.save()
+                if "spaces" in self._data:
+                    for s in self._data["spaces"]:
+                        spc = Space(s, vdp=self)
+                        if not spc.get_provider_id() in self.provider_ids():
+                            raise VDPException(
+                                "Providerid %s for space %s does not exists!" % (spc.get_provider_id(), spc))
+                        spc.save()
+                if "gates" in self._data:
+                    for g in self._data["gates"]:
+                        gw = lib.Gateway(g, vdp=self)
+                        if not gw.get_provider_id() in self.provider_ids():
+                            raise VDPException(
+                                "Providerid %s for gate %s does not exists!" % (gw.get_provider_id(), gw))
+                        for s in gw.space_ids():
+                            if s not in self.space_ids():
+                                raise VDPException("SpaceId %s for gate %s does not exists!" % (s, gw))
+                        gw.save()
+            else:
+                if vdpfile:
+                    logging.error("Bad VDP file %s" % vdpfile)
                 else:
-                    if vdpfile:
-                        logging.error("Bad VDP file %s" % vdpfile)
-                    else:
-                        logging.error("Bad VDP data %s" % vdpdata)
-                    sys.exit(1)
-
-            except Exception as e:
-                raise VDPException(str(e))
+                    logging.error("Bad VDP data %s" % vdpdata)
+                sys.exit(1)
 
     def get_outdated(self):
         return self._outdated
