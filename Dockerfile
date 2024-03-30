@@ -65,7 +65,7 @@ COPY misc/easy-provider.sh /usr/local/bin/
 COPY server.py client.py setup.cfg setup.py mgmt.py /usr/src/lvpn/
 COPY requirements.txt /usr/src/lvpn/
 COPY requirements-lite.txt /usr/src/lvpn/
-COPY build/* /usr/src/lvpn/build/
+COPY build/ /usr/src/lvpn/build/
 COPY tests/* /usr/src/lvpn/tests/
 COPY ./entrypoint.sh /
 COPY ./misc/profile-inc.sh /etc/profile.d/lvpn.sh
@@ -91,6 +91,7 @@ RUN /entrypoint.sh lvpnc -h
 RUN /entrypoint.sh lvpns -h
 RUN /entrypoint.sh lmgmt -h
 RUN /entrypoint.sh lmgmt list-providers
+RUN sudo rm -rf /usr/src/lvpn/build
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD [""]

@@ -2,6 +2,8 @@
 
 set -e
 
+mkdir -p build
+
 # Build
 docker build -t limosek/lvpn:dev .
 echo "Build successful"
