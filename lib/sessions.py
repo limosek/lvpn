@@ -34,7 +34,7 @@ class Sessions:
                     time.sleep(10)
                     if data:
                         s = Session(data)
-                        self.update(s)
+                        s.save()
                         logging.getLogger("audit").info("Updated session %s from server" % s.get_id())
                     else:
                         if s.get_created() < time.time():
@@ -42,7 +42,7 @@ class Sessions:
                                 time.sleep(120)
                                 logging.getLogger().warning(
                                     "Free session %s is not anymore on server. Removing." % (s.get_id()))
-                                self.remove(s)
+                                s.remove()
                             else:
                                 logging.getLogger("audit").error(
                                     "Paid session %s is not anymore on server!" % (s.get_id()))
@@ -56,7 +56,7 @@ class Sessions:
                     data = mrpc.reuse_session(s)
                     if data:
                         s = Session(data)
-                        self.update(s)
+                        s.save()
                         logging.getLogger("audit").info("Reused session %s" % s.get_id())
                 except lib.ManagerException as e:
                     logging.getLogger("audit").error("Cannot reuse session %s: %s" % (s.get_id(), e))
@@ -121,22 +121,6 @@ class Sessions:
             res.append(session)
 
         return res
-
-    def add(self, session):
-        session.save()
-
-    def remove(self, session):
-        logging.getLogger("audit").warning("Removing session %s" % session.get_id())
-        if self.get(session.get_id()):
-            session.deactivate()
-        db = DB()
-        db.begin()
-        db.execute("UPDATE sessions set deleted=TRUE WHERE id='%s'" % session.get_id())
-        db.commit()
-        db.close()
-
-    def update(self, session):
-        session.save()
 
     def process_payment(self, paymentid, amount, height, txid):
         sessions = self.find(paymentid=paymentid)

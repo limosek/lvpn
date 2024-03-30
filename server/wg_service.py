@@ -40,7 +40,7 @@ class WGServerService(lib.wg_service.WGService):
                         if cls.needed[peer].is_free():
                             cls.log_info("Removing peer %s - did not get handshake more than %s seconds" % (
                                 peer, Registry.cfg.max_free_wg_handshake_timeout))
-                            sessions.remove(cls.needed[peer])
+                            cls.needed[peer].remove()
                     continue
                 else:
                     WGEngine.remove_peer(cls.iface, peer)

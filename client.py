@@ -104,7 +104,6 @@ def auto_connect(ctrl, proxy_queue, wallet_queue):
                                     for m in session.get_pay_msgs():
                                         wallet_queue.put(m)
                                 session.save()
-                                sessions.add(session)
                                 proxy_queue.put(Messages.connect(session))
                                 time.sleep(10)
                             else:
@@ -199,6 +198,7 @@ def main():
     fh.setFormatter(formatter)
     sh.setFormatter(formatter)
     logging.getLogger("audit").addHandler(fh)
+    logging.getLogger("db").setLevel(cfg.l)
     print("Logging into: %s" % vardir + "/lvpn-client.log", file=sys.stderr)
     print("Appdir: %s" % appdir, file=sys.stderr)
     print("Vardir: %s" % vardir, file=sys.stderr)

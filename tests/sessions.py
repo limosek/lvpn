@@ -27,7 +27,6 @@ class TestSessions(unittest.TestCase):
         session = Session()
         session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls", "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", 30)
         session.save()
-        sessions.add(session)
         self.assertEqual(len(sessions.find()), 1)
         self.assertEqual(len(sessions.find(active=True)), 0)
         self.LoadSessions()
@@ -194,7 +193,7 @@ class TestSessions(unittest.TestCase):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
-            sessions.add(session)
+            session.save()
             sarr.append(session)
             time.sleep(0.1)
         ctrl["generate_unpaid_http"] = sarr
@@ -209,7 +208,7 @@ class TestSessions(unittest.TestCase):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-socks-proxy",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
-            sessions.add(session)
+            session.save()
             sarr.append(session)
             time.sleep(0.1)
         ctrl["generate_paid_free_socks"] = sarr
@@ -224,7 +223,7 @@ class TestSessions(unittest.TestCase):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 1)
-            sessions.add(session)
+            session.save()
             sarr.append(session)
             time.sleep(0.1)
         ctrl["generate_paid_free_ssh"] = sarr
@@ -239,7 +238,7 @@ class TestSessions(unittest.TestCase):
             session = Session()
             session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.ssh",
                              "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", i)
-            sessions.add(session)
+            session.save()
             sarr.append(session)
             time.sleep(0.1)
         ctrl["generate_unpaid_ssh"] = sarr
@@ -279,7 +278,7 @@ class TestSessions(unittest.TestCase):
         Util.cleanup_sessions()
         sessions = Sessions()
         for s in sarr:
-            sessions.add(s)
+            s.save()
         return repr(sessions)
 
 

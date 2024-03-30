@@ -24,9 +24,7 @@ class DB:
     def open(self):
         self._sql = sqlite3.connect(Registry.cfg.db)
         self._c = self._sql.cursor()
-        #self._c.execute("PRAGMA journal_mode=WAL")
         self._c.execute("PRAGMA busy_timeout=1000")
-        #self._c.execute("PRAGMA isolation_level=None")
         self._closed = False
 
     def begin(self):
