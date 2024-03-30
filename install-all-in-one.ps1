@@ -3,6 +3,7 @@ $version = "0.6"
 $python_version = "3.12.1"
 $lethean_version = "v5.0.1"
 $lvpn_branch = "release/v0_6"
+$lvpn_zip_dir = "lvpn-release-v0_6"
 $root = "${env:HOMEDRIVE}${env:HOMEPATH}\lvpn"
 
 if (-Not (winget)) {
@@ -58,8 +59,8 @@ if (-not (Test-Path "lvpn.zip"))
     Invoke-WebRequest "https://github.com/limosek/lvpn/archive/refs/heads/${lvpn_branch}.zip" -OutFile "lvpn.zip"
 }
 Expand-Archive lvpn.zip -DestinationPath .
-Move-Item lvpn-${lvpn_branch}/* .
-Remove-Item lvpn-${lvpn_branch} -Recurse -Force
+Move-Item ${lvpn_zip_dir}/* .
+Remove-Item ${lvpn_zip_dir} -Recurse -Force
 
 #############################################################################
 # Download Lethean CLI tools
