@@ -33,7 +33,7 @@ class ManagerRpcCall:
             logging.getLogger("client").error("Cannot get payment link: %s (%s)" % (r.status_code, r.text))
             return False
 
-    def create_session(self, gate, space: Space, days: int = None, prepare_data=None):
+    def create_session(self, gate, space: Space, days, prepare_data=None):
         session = Session()
         session.generate(gate.get_id(), space.get_id(), days)
         # Create fake session just for initializing data
@@ -95,7 +95,7 @@ class ManagerRpcCall:
             days = session.days()
         r = requests.get(
             self._baseurl + "/api/session/reuse?sessionid=%s&days=%s" % (
-                urllib.parse.quote(session.get_id()), urllib.parse.quote(days))
+                urllib.parse.quote(session.get_id().encode("utf-8")), days)
         )
         if r.status_code == 402:
             return self.parse_response(r.text)

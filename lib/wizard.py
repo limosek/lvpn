@@ -238,6 +238,13 @@ wallet-rpc-password = %s
             "gates": [httpgatef, httpgatei],
             "spaces": [spacef, spacei]
         })
+        vdp.get_provider(verification_key).set_as_local()
+        for g in vdp.gates():
+            g.set_as_local()
+            g.save()
+        for s in vdp.spaces():
+            s.set_as_local()
+            s.save()
         vdp.save()
         print(vdp.get_json(my_only=True))
 

@@ -2,6 +2,7 @@ import ipaddress
 import logging
 import os
 import platform
+import subprocess
 import tempfile
 import time
 import shlex
@@ -19,6 +20,7 @@ class WGEngine(Service):
     myname = "wg_engine"
     show_only = False
     show_cmds = False
+    commands = []
 
     @classmethod
     def wg_run_cmd(cls, *args, input=None, show_only: bool = False):
@@ -28,6 +30,7 @@ class WGEngine(Service):
             wgargs = []
         wgargs.extend(args)
         try:
+            cls.commands.append(" ".join(wgargs))
             if cls.show_cmds:
                 if input:
                     cls.log_error("%s | %s" % (input, " ".join(wgargs)))
@@ -41,15 +44,19 @@ class WGEngine(Service):
             else:
                 ret = RunCmd.get_output(wgargs, input=input)
                 return ret
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             logging.error(" ".join(wgargs))
-            raise ServiceException(2, str(e))
+            raise ServiceException(2, "%s\n%s\n%s" % (e, " ".join(wgargs), e.stderr))
 
     @classmethod
     def replace_macros(cls, txt: str, **kwargs):
         return txt.format(
             **kwargs
         )
+
+    @classmethod
+    def get_commands(cls):
+        return cls.commands
 
     @classmethod
     def generate_keys(cls):
@@ -105,14 +112,14 @@ class WGEngine(Service):
         return os.path.realpath(tmpfile)
 
     @classmethod
-    def set_interface_ip(cls, iface: str, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network):
+    def set_interface_ip(cls, iface: str, ip: ipaddress.ip_address, ipnet: ipaddress.ip_network, unset=True):
         if type(ip) is ipaddress.IPv4Address:
             af = "ipv4"
             tpe = "static"
         else:
             af = "ipv6"
             tpe = ""
-        if Registry.cfg.wg_cmd_unset_ips:
+        if unset and Registry.cfg.wg_cmd_unset_ips:
             cls.log_info("Removing IPs from WG interface: dev=%s" % iface)
             cls.wg_run_cmd(
                 *shlex.split(cls.replace_macros(
@@ -313,7 +320,8 @@ ListenPort = {port}
             args.extend(["preshared-key", cls.save_key(preshared)])
         if Registry.cfg.enable_wg:
             logging.getLogger("audit").debug("Adding peer %s/%s" % (iname, public))
-            return cls.wg_run_cmd(*args, show_only=show_only)
+            cls.wg_run_cmd(*args, show_only=show_only)
+        return True
 
     @classmethod
     def remove_peer(cls, iname: str, public: str, show_only: bool = False):
