@@ -179,7 +179,6 @@ def reuse_session():
                     days = session.days()
                 session.reuse(days)
                 session.save()
-                sessions.add(session)
                 return make_response(402, "Waiting for payment", session.get_dict())
             else:
                 if not session.is_paid():
@@ -213,7 +212,7 @@ def post_session():
             WGServerService.prepare_server_session(session, request.openapi.body["wg"])
         else:
             return make_response(465, "Missing WG endpoint data")
-    sessions.add(session)
+    session.save()
     if not session.is_active():
         return make_response(402, "Waiting for payment", session.get_dict())
     else:

@@ -134,14 +134,12 @@ class TestProxies(unittest.TestCase):
         session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         session.save()
-        sessions.add(session)
         self.runTLSproxy(session, sessions)
 
         session2 = Session()
         session2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
                           "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         session2.save()
-        sessions.add(session2)
         self.runTLSproxy(session2, sessions)
 
     def testTlsProxy2(self):
@@ -157,18 +155,12 @@ class TestProxies(unittest.TestCase):
         # Test bad certificate
         gate2 = copy(gate)
         gate2.set_endpoint("lethean.space", 443)
-        session = Session(mr.create_session(gate2, space))
+        session = Session(mr.create_session(gate2, space, 1))
         session.save()
-        sessions.add(session)
-        #rp = multiprocessing.Process(target=self.requestor, args=["http://www.lthn/", {"http": "http://127.0.0.1:8888"}])
-        #rp.start()
-        #with self.assertRaises(ServiceException):
-        #    self.runTLSproxy(session, sessions)
 
         # Test correct certificate
-        session = Session(mr.create_session(gate2, space))
+        session = Session(mr.create_session(gate2, space, 1))
         session.save()
-        sessions.add(session)
         with self.assertRaises(KeyboardInterrupt):
             self.runTLSproxy(session, sessions)
 
@@ -178,7 +170,6 @@ class TestProxies(unittest.TestCase):
                           "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
         session2.get_gate().set_endpoint("lethean.space", 80)
         session2.save()
-        sessions.add(session2)
         with self.assertRaises(KeyboardInterrupt):
             self.runTLSproxy(session, sessions)
         pass
@@ -196,13 +187,13 @@ class TestProxies(unittest.TestCase):
         session = Session()
         session.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy-tls",
                          "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
-        sessions.add(session)
+        session.save()
         proxy_queue.put(Messages.connect(session))
         Proxy2.loop(once=True)
         session2 = Session()
         session2.generate("94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-http-proxy",
                           "94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free", 30)
-        sessions.add(session2)
+        session.save()
         proxy_queue.put(Messages.connect(session2))
         Proxy2.loop(once=True)
         Proxy2.loop(once=True)
@@ -248,9 +239,8 @@ class TestProxies(unittest.TestCase):
         space = Registry.vdp.get_space(
             "9c74b2e8d51fade774d00b07cfb4a91db424f6448cdcc2e83a26e0654031ce0a.free")
         mr = ManagerRpcCall(space.get_manager_url())
-        session = Session(mr.create_session(gate, space))
+        session = Session(mr.create_session(gate, space, 1))
         session.save()
-        sessions.add(session)
         self.runTLSproxy2(session, sessions)
 
 

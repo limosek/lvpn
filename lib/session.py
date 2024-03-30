@@ -303,6 +303,16 @@ class Session:
             logging.getLogger("audit").info("Not saving session which is incomplete.")
             pass
 
+    def remove(self):
+        logging.getLogger("audit").warning("Removing session %s" % self.get_id())
+        if self.get_id():
+            self.deactivate()
+        db = DB()
+        db.begin()
+        db.execute("UPDATE sessions set deleted=TRUE WHERE id='%s'" % self.get_id())
+        db.commit()
+        db.close()
+
     def is_for_gate(self, gateid):
         return self._gate.get_id() == gateid
 

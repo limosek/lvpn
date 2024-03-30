@@ -54,7 +54,7 @@ class WGClientService(WGService):
 
         if not cls.session.get_gate_data("wg"):
             mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
-            sessions.remove(cls.session)
+            cls.session.remove()
             session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
                                         prepare_data={"wg": cls.prepare_session_request()})
             if not session:
@@ -62,13 +62,12 @@ class WGClientService(WGService):
             else:
                 cls.session = Session(session)
                 cls.session.save()
-                sessions.add(cls.session)
         elif cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
             # We are either missing WG session data or WG interface changed keys. So we need to request new session.
             mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
             rekey = mr.rekey_session(cls.session, cls.gathered["iface"]["public"])
             if not rekey:
-                sessions.remove(cls.session)
+                cls.session.remove()
                 session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
                                             prepare_data={"wg": cls.prepare_session_request()})
                 if not session:
@@ -76,11 +75,9 @@ class WGClientService(WGService):
                 else:
                     cls.session = Session(session)
                     cls.session.save()
-                    sessions.add(cls.session)
             else:
                 cls.session = Session(rekey)
                 cls.session.save()
-                sessions.add(cls.session)
 
         messages = []
         for g in cls.gate["gates"]:
@@ -89,12 +86,15 @@ class WGClientService(WGService):
                 fresh = sessions.find(gateid=gate.get_id(), spaceid=cls.space.get_id(), active=True, free=True)
                 if len(fresh) > 0:
                     for s in fresh:
-                        sessions.remove(s)
+                        s.remove()
                 mr = lib.ManagerRpcCall(cls.space.get_manager_url())
-                session = Session(mr.create_session(gate, cls.space))
+                if cls.space.get_price() == 0 and gate.get_price() == 0:
+                    days = Registry.cfg.free_session_days
+                else:
+                    days = Registry.cfg.auto_pay_days
+                session = Session(mr.create_session(gate, cls.space, days))
                 session.set_parent(cls.session.get_id())
                 session.save()
-                Sessions().add(session)
                 messages.append(Messages.connect(session))
             else:
                 cls.log_error("Non-existent WG gateway %s" % g)

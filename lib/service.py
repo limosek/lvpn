@@ -62,17 +62,7 @@ class Service:
         cls.myqueue = myqueue
         cls.args = args
         cls.kwargs = kwargs
-        for handler in logging.getLogger(cls.myname).handlers[:]:
-            logging.getLogger(cls.myname).removeHandler(handler)
-        fh = logging.FileHandler(Registry.cfg.log_file)
-        fh.setLevel(Registry.cfg.l)
-        sh = logging.StreamHandler()
-        sh.setLevel(Registry.cfg.l)
-        formatter = logging.Formatter('%(name)s[%(process)d]:%(levelname)s:%(message)s')
-        fh.setFormatter(formatter)
-        sh.setFormatter(formatter)
-        logging.getLogger(cls.myname).addHandler(fh)
-        logging.getLogger(cls.myname).addHandler(sh)
+        logging.getLogger("db").setLevel(Registry.cfg.l)
         logging.getLogger(cls.myname).debug("Starting Service %s" % cls.myname)
         try:
             if Registry.cfg.is_client:

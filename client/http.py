@@ -170,7 +170,6 @@ def create_session():
             mngr = ManagerRpcCall(space.get_manager_url())
             session = Session(mngr.create_session(gate, space, days))
             session.save()
-            sessions.add(session)
         except ManagerException as e:
             return make_response(501, "Manager RPC error", str(e))
         if session.is_active():

@@ -111,7 +111,7 @@ class TestWGService(unittest.TestCase):
             "endpoint": "dynamic",
             "public_key": "public2"
         })
-        sessions.add(session1)
-        sessions.add(session2)
+        session1.save()
+        session2.save()
         self.assertEqual(session1.activate(), True)
         self.assertEqual(session2.activate(), True)

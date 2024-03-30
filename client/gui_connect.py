@@ -131,7 +131,11 @@ class Connect(GridLayout):
                 try:
                     gate = Registry.vdp.get_gate(client.gui.GUI.ctrl["selected_gate"])
                     space = Registry.vdp.get_space(client.gui.GUI.ctrl["selected_space"])
-                    session = Session(mr.create_session(gate, space))
+                    if space.get_price() == 0 and gate.get_price() == 0:
+                        days = Registry.cfg.free_session_days
+                    else:
+                        days = Registry.cfg.auto_pay_days
+                    session = Session(mr.create_session(gate, space, days))
                     session.save()
                     client.gui.GUI.queue.put(Messages.connect(session))
                 except lib.ManagerException as e:
@@ -146,7 +150,7 @@ class Connect(GridLayout):
 
     def remove_session(self, instance):
         if type(instance) is SessionButton:
-            Sessions().remove(instance.session)
+            instance.session.remove()
 
     def main(self):
         self.clear_widgets()
