@@ -52,22 +52,13 @@ class WGClientService(WGService):
             cls.setup_interface_client(cls.session)
         cls.gathered = WGEngine.gather_wg_data(cls.iface)
 
-        if not cls.session.get_gate_data("wg"):
-            mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
-            cls.session.remove()
-            session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
-                                        prepare_data={"wg": cls.prepare_session_request()})
-            if not session:
-                raise ServiceException(33, "Error requesting WG session")
-            else:
-                cls.session = Session(session)
-                cls.session.save()
-        elif cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
+        if not cls.session.get_gate_data("wg") or \
+                cls.gathered["iface"]["public"] != cls.session.get_gate_data("wg")["client_public_key"]:
             # We are either missing WG session data or WG interface changed keys. So we need to request new session.
             mr = lib.mngrrpc.ManagerRpcCall(cls.gate.get_manager_url())
             rekey = mr.rekey_session(cls.session, cls.gathered["iface"]["public"])
             if not rekey:
-                cls.session.remove()
+                cls.session.remove(deactivate=False)
                 session = mr.create_session(cls.session.get_gate(), cls.session.get_space(), cls.session.days(),
                                             prepare_data={"wg": cls.prepare_session_request()})
                 if not session:

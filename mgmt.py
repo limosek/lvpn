@@ -117,7 +117,7 @@ def main():
                 if not Registry.vdp.get_provider(cfg.args[0]):
                     print("Unknown providerid!")
                     sys.exit(4)
-                url = Registry.get_provider(cfg.args[0]).get_manager_url()
+                url = Registry.vdp.get_provider(cfg.args[0]).get_manager_url()
             mgr = ManagerRpcCall(url)
             try:
                 jsn = mgr.fetch_vdp()
@@ -170,13 +170,13 @@ def main():
                 endpoint = g.get_endpoint()
                 endpoint[0] = ip
                 g.set_endpoint(ip, endpoint[1])
-            g.save(origfile=True)
+            g.save()
         for s in vdp.spaces(my_only=True, fresh=False):
             s.set_as_fresh()
-            s.save(origfile=True)
+            s.save()
         for p in vdp.providers(my_only=True, fresh=False):
             p.set_as_fresh()
-            p.save(origfile=True)
+            p.save()
         vdp = VDP()
         outdated = vdp.get_outdated()
         for o in outdated:

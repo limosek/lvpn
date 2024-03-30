@@ -95,9 +95,9 @@ class Proxy(Service):
             connections.add(connection)
             cls.update_connections(connections)
             if gate.get_type() == "http-proxy" and Registry.cfg.auto_run_browser:
-                time.sleep(10)
+                time.sleep(15)
                 btn = lambda: None
-                btn.proxy = "http://127.0.0.1:%s" % connection.get_port()
+                btn.proxy = connection.get_proxy_url()
                 btn.url = "http://www.lthn"
                 if Registry.cfg.auto_run_browser == "incognito":
                     btn.anonymous = True

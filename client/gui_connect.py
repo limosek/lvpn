@@ -295,10 +295,10 @@ class Connect(GridLayout):
                                        on_press=self.show_connection)
             row.add_widget(lbl)
             if c.get_gate().get_type() == "http-proxy":
-                abbtn = BrowserButton(text="Incognito", proxy="http://127.0.0.1:%s" % c.get_port(),
+                abbtn = BrowserButton(text="Incognito", proxy=c.get_proxy_url(),
                                      url="http://www.lthn", anonymous=True,
                                      on_press=Util.run_browser, size_hint_x=0.1)
-                bbtn = BrowserButton(text="Browser", proxy="http://127.0.0.1:%s" % c.get_port(),
+                bbtn = BrowserButton(text="Browser", proxy=c.get_proxy_url(),
                                      url="http://www.lthn", anonymous=False,
                                      on_press=Util.run_browser, size_hint_x=0.1)
                 row.add_widget(abbtn)
