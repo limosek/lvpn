@@ -303,9 +303,9 @@ class Session:
             logging.getLogger("audit").info("Not saving session which is incomplete.")
             pass
 
-    def remove(self):
+    def remove(self, deactivate=True):
         logging.getLogger("audit").warning("Removing session %s" % self.get_id())
-        if self.get_id():
+        if self.get_id() and deactivate:
             self.deactivate()
         db = DB()
         db.begin()

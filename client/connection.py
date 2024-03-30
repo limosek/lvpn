@@ -13,7 +13,7 @@ import lib.sessions
 class Connection:
 
     def __init__(self, session=None, data: dict = None, parent=None, connection: dict = None,
-                 port: int = None):
+                 port: int = None, host: str = None):
         if connection:
             self._data = connection
             sessions = lib.Sessions()
@@ -31,8 +31,6 @@ class Connection:
             }
             if parent:
                 self._data["parent"] = parent
-            if port:
-                self._data["port"] = port
         else:
             raise Exception("Need sessionid or data")
         if data:
@@ -44,6 +42,16 @@ class Connection:
         else:
             self._gate = Registry.vdp.get_gate(self._session.get_gateid())
             self._space = Registry.vdp.get_space(self._session.get_spaceid())
+        if self._gate.get_type() == "http-proxy" \
+                and "tls" in self._gate.get_gate_data("http-proxy") \
+                and not self._gate.get_gate_data("http-proxy")["tls"]:
+            self._data["port"] = self._gate.get_gate_data("http-proxy")["port"]
+            self._data["host"] = self._gate.get_gate_data("http-proxy")["host"]
+        else:
+            if port:
+                self._data["port"] = port
+            if host:
+                self._data["host"] = host
 
     def get_id(self) -> str:
         return self._data["connectionid"]
@@ -60,6 +68,15 @@ class Connection:
     def get_port(self) -> [int, None]:
         if "port" in self._data:
             return self._data["port"]
+        else:
+            return None
+
+    def get_proxy_url(self):
+        if "port" in self._data and "host" in self._data:
+            if self._gate.get_type() == "http-proxy":
+                return "http://%s:%s" % (self._data["host"], self._data["port"])
+            elif self._gate.get_type() == "socks-proxy":
+                return "socks5://%s:%s" % (self._data["host"], self._data["port"])
         else:
             return None
 
@@ -86,15 +103,15 @@ class Connection:
 
     def get_title(self, short: bool = False) -> str:
         if short:
-            txt = "%s,cid=%s,port=%s,%s" % (
+            txt = "%s,cid=%s,proxy=%s,%s" % (
                 self._gate.get_type(),
-                self.get_id(), self.get_port(),
+                self.get_id(), self.get_proxy_url(),
                 self.get_session().get_title(short=True))
         else:
-            txt = "%s,%s/%s[cid=%s,port=%s,%s]" % (
+            txt = "%s,%s/%s[cid=%s,proxy=%s,%s]" % (
                 self._gate.get_type(),
                 self.get_gate().get_title(), self.get_space().get_title(),
-                self.get_id(), self.get_port(),
+                self.get_id(), self.get_proxy_url(),
                 self.get_session().get_title(short=True))
         return txt
 

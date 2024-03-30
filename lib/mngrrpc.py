@@ -81,6 +81,7 @@ class ManagerRpcCall:
                     urllib.parse.quote(session.get_id()), urllib.parse.quote(public_key))
             )
             if r.status_code == 200:
+                logging.getLogger("vdp").info("Session %s rekeyed." % session.get_id())
                 return self.parse_response(r.text)
             elif r.status_code == 404:
                 logging.getLogger("vdp").error("Session %s to rekey is not anymore on server." % session.get_id())
