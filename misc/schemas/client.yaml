@@ -869,6 +869,8 @@ components:
           type: array
           items:
             type: string
+        host:
+          type: string
         port:
           type: number
         data:
