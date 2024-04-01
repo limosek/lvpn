@@ -154,7 +154,7 @@ class Wallet(Service):
                 time.sleep(1)
             except KeyboardInterrupt:
                 return
-            if Util.every_x_seconds(10):
+            if Util.every_x_seconds(60):
                 sessions = Sessions()
                 in_transfers = []
                 height = cls.get_height()

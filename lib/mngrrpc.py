@@ -56,10 +56,8 @@ class ManagerRpcCall:
                 )
             except SSLError as e:
                 raise ManagerException("%s -- %s" % (self._baseurl, e))
-        if r.status_code == 200 or r.status_code == 402:
+        if r.status_code == 200 or r.status_code == 402 or r.status_code == 465:
             return self.parse_response(r.text)
-        elif r.status_code == 465:
-            return session.get_dict()
         else:
             raise ManagerException("%s -- %s" % (self._baseurl, r.text))
 

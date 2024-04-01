@@ -202,7 +202,6 @@ def post_session():
         return make_response(461, "Unknown gate or space is not local")
     if not gate.is_for_space(space.get_id()):
         return make_response(462, "Gate %s cannot be used with space %s" % (gate.get_id(), space.get_id()))
-    sessions = Sessions()
     session = Session()
     session.generate(gate.get_id(), space.get_id(), request.openapi.body["days"])
     if session.is_free() and session.days_left() > Registry.cfg.max_free_session_days:
@@ -211,7 +210,8 @@ def post_session():
         if "wg" in request.openapi.body:
             WGServerService.prepare_server_session(session, request.openapi.body["wg"])
         else:
-            return make_response(465, "Missing WG endpoint data")
+            session.save()
+            return make_response(465, "Missing WG endpoint data", session.get_dict())
     session.save()
     if not session.is_active():
         return make_response(402, "Waiting for payment", session.get_dict())

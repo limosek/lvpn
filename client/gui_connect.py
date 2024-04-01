@@ -1,4 +1,6 @@
 import logging
+import time
+
 import requests.exceptions
 from kivy.clock import Clock
 from kivy.uix.button import Button
@@ -68,31 +70,7 @@ class PayBoxInfo(GridLayout):
     def __init__(self, session, **kwargs):
         super().__init__(**kwargs)
         self.session = session
-
-        self.ids.payboxinfo.text = """
-You are going to pay service:
-Gate: %s 
-Space: %s
-Days: %s
-
-Price for gate per day: %s
-Price for space per day: %s
-
-Overall price: %s
-
-Contributions:
-Price: %s
-[
-%s
-]
-""" % (session.get_gate(),
-       session.get_space(),
-       session.days(),
-       session.get_gate().get_price(),
-       session.get_space().get_price(),
-       session.get_price() + session.get_contributions_price(),
-       session.get_contributions_price(),
-       session.get_contributions_info())
+        self.ids.payboxinfo.text = session.get_overall_info()
 
     def main(self):
         Connect.main(self)
@@ -134,7 +112,10 @@ class Connect(GridLayout):
                     if space.get_price() == 0 and gate.get_price() == 0:
                         days = Registry.cfg.free_session_days
                     else:
-                        days = Registry.cfg.auto_pay_days
+                        if instance._days:
+                            days = instance._days
+                        else:
+                            days = Registry.cfg.auto_pay_days
                     session = Session(mr.create_session(gate, space, days))
                     session.save()
                     client.gui.GUI.queue.put(Messages.connect(session))
@@ -168,17 +149,22 @@ class Connect(GridLayout):
             data = mngr.create_session(gate, space, instance._days)
             session = Session(data=data)
             session.save()
-            if not session.is_paid():
-                if Registry.cfg.auto_pay_days > instance._days:
-                    for m in session.get_pay_msgs():
-                        client.gui.GUI.queue.put(m)
-                else:
-                    self.payboxinfo(session)
-
+            btn = lambda: None
+            btn.session = session
+            self.pay_session(btn)
         except Exception as e:
             logging.getLogger("gui").error("Cannot prepare payment: %s" % e)
             client.gui.GUI.queue.put(Messages.gui_popup("Cannot prepare payment to %s/%s: %s" % (
                 client.gui.GUI.ctrl["selected_gate"], client.gui.GUI.ctrl["selected_space"], e)))
+
+    def pay_session(self, instance):
+        session = instance.session
+        if not session.is_paid():
+            if Registry.cfg.auto_pay_days > session.days():
+                for m in session.get_pay_msgs():
+                    client.gui.GUI.queue.put(m)
+            else:
+                self.payboxinfo(session)
 
     def select_space(self, instance):
         if instance.state == "down":
@@ -325,6 +311,9 @@ class Connect(GridLayout):
             if s.is_active():
                 lbl = SessionButton(text="Connect", session=s, on_press=self.connect, size_hint_x=0.1)
                 row.add_widget(lbl)
+            if not s.is_free() and not s.is_paid() and s.get_expiry() > time.time() + 400:
+                pb = SessionButton(text="Pay", session=s, on_press=self.pay_session, size_hint_x=0.1)
+                row.add_widget(pb)
             lbl = SessionButton(text="Remove", session=s, on_press=self.remove_session, size_hint_x=0.1)
             row.add_widget(lbl)
             self.ids.sessions_info.add_widget(row)

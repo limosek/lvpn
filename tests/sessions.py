@@ -74,9 +74,10 @@ class TestSessions(unittest.TestCase):
         session2 = Session()
         session2.generate(gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls", spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", days=30)
         self.assertEqual(int(session2.get_price() + session2.get_contributions_price()), int(session.get_price()))
-        Registry.cfg.contributions = "iz4LfSfmUJ6aSM1PA8d7wbexyouC87LdKACK76ooYWm6L1pkJRkBBh6Rk5Kh47bBc3ANCxoMKYbF7KgGATAANexg27PNTTa2j/developers/15%"
+        self.assertEqual(int(session2.get_price() + session2.get_contributions_price()), int(session.get_price()))
         Registry.cfg.is_client = True
         Registry.cfg.is_server = False
+        self.assertEqual(int(session2.get_price() + session2.get_contributions_price()), int(session.get_price()))
         session3 = Session()
         session3.generate(gateid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.http-proxy-tls", spaceid="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.1st", days=30)
         self.assertEqual(int(session3.get_price()), int(session.get_price() + session3.get_contributions_price()))

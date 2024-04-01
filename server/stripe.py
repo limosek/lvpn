@@ -51,7 +51,7 @@ class StripeManager(Service):
                             cls.queue.put(m)
 
             cls.update_old_plinks()
-            for i in range(120):
+            for i in range(300):
                 if not cls.myqueue.empty():
                     msg = cls.myqueue.get(block=False, timeout=0.01)
                     orig_msg = Messages.get_msg_data(msg)

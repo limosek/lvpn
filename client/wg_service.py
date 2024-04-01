@@ -44,8 +44,10 @@ class WGClientService(WGService):
         try:
             # Let us try if interface already exists
             data = WGEngine.gather_wg_data(cls.iface)
-            if not "iface" in data:
-                # It does not exists, let us create
+            if data["iface"]:
+                cls.setup_interface_client(cls.session)
+            else:
+                cls.deactivate_interface_client()
                 cls.setup_interface_client(cls.session)
         except ServiceException as e:
             # It does not exists, let us create

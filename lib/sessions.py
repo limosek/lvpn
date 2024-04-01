@@ -31,14 +31,14 @@ class Sessions:
                 try:
                     """Fetch session status from manager"""
                     data = mrpc.get_session_info(s)
-                    time.sleep(10)
+                    time.sleep(30)
                     if data:
                         s = Session(data)
                         s.save()
                         logging.getLogger("audit").info("Updated session %s from server" % s.get_id())
                     else:
                         if s.get_created() < time.time():
-                            if not s.is_paid():
+                            if s.is_free():
                                 time.sleep(120)
                                 logging.getLogger().warning(
                                     "Free session %s is not anymore on server. Removing." % (s.get_id()))
@@ -47,8 +47,8 @@ class Sessions:
                                 logging.getLogger("audit").error(
                                     "Paid session %s is not anymore on server!" % (s.get_id()))
 
-                except Exception as e:
-                    pass
+                except lib.ManagerException as e:
+                    logging.getLogger("vdp").error(str(e))
             for s in self.find(needs_reuse=True):
                 mrpc = lib.mngrrpc.ManagerRpcCall(s.get_manager_url())
                 try:

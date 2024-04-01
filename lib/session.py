@@ -16,7 +16,6 @@ class Session:
 
     def __init__(self, data=None):
         self._data = data
-        self._contributions_price = 0
         if data:
             if "gateid" in data:
                 self._gate = Registry.vdp.get_gate(data["gateid"])
@@ -34,7 +33,13 @@ class Session:
             else:
                 if "contributions" not in self._data:
                     self._data["contributions"] = []
-                self.recalculate_contributions(True)
+                else:
+                    if Registry.cfg.is_client:
+                        """Clients contributes by adding price"""
+                        self.add_contributions(increase=True)
+                    elif Registry.cfg.is_server:
+                        """Server contributes by decreasing price"""
+                        self.add_contributions(increase=False)
 
     def generate(self, gateid: str, spaceid: str, days: int = None):
         if not Registry.vdp.get_space(spaceid):
@@ -43,7 +48,6 @@ class Session:
             raise VDPException("Unknown gate %s" % gateid)
         self._gate = Registry.vdp.get_gate(gateid)
         self._space = Registry.vdp.get_space(spaceid)
-        self._contributions_price = 0
         self._data = {
             "sessionid": "s-" + secrets.token_hex(32),
             "spaceid": spaceid,
@@ -80,43 +84,59 @@ class Session:
             else:
                 self._data["days"] = int(days)
             self._data["price"] = (
-                                    Registry.vdp.get_space(spaceid).get_price()
-                                    + Registry.vdp.get_gate(gateid).get_price()) * self._data["days"]
+                                          Registry.vdp.get_space(spaceid).get_price()
+                                          + Registry.vdp.get_gate(gateid).get_price()) * self._data["days"]
             if Registry.cfg.is_client:
                 """Clients contributes by adding price"""
-                self.recalculate_contributions(increase=True)
+                self.add_contributions(increase=True)
             elif Registry.cfg.is_server:
                 """Server contributes by decreasing price"""
-                self.recalculate_contributions(increase=False)
+                self.add_contributions(increase=False)
 
-    def recalculate_contributions(self, increase=False):
-        """Recalculate price by contributions. If increase is True, contributions are added to price, if False,
-        price is decreased by contributions"""
-        if Registry.cfg.contributions and not self.is_free():
+    def add_contributions(self, increase=False):
+        carr = []
+        if not Registry.cfg.contributions:
+            return
+        contributions = Registry.cfg.contributions.split(",")
+        for s in contributions:
             try:
-                carr = []
-                contributions = Registry.cfg.contributions.split(",")
-                for s in contributions:
-                    (swallet, purpose, amount) = s.split("/")
-                    if amount.find("%") > 0:
-                        amount = self.get_price() * (float(amount[:-1])/100)
-                    else:
-                        amount = float(amount)
-                    carr.append({"wallet": swallet, "purpose": purpose, "price": amount})
-                    self._contributions_price += amount
-                if increase:
-                    self._data["price"] += self._contributions_price
-                else:
-                    self._data["price"] -= self._contributions_price
-            except Exception as e:
-                logging.getLogger("audit").error("Bad contributions setting %s, but continuing" % Registry.cfg.contributions)
+                (swallet, purpose, amount) = s.split("/")
+            except ValueError:
+                logging.getLogger("audit").error(
+                    "Bad contributions setting %s, but continuing" % Registry.cfg.contributions)
+                raise
+            if increase:
+                purpose = purpose + ".client"
+            else:
+                purpose = purpose + ".server"
+            if amount.find("%") > 0:
+                amount = self.get_price() * (float(amount[:-1]) / 100)
+            else:
+                amount = float(amount)
+            carr.append({"wallet": swallet, "purpose": purpose, "price": amount})
+        will_skip = []
+        for active in self._data["contributions"]:
+            for new in carr:
+                if new["purpose"] == active["purpose"]:
+                    will_skip.append(new["purpose"])
+        for c in carr:
+            if c["purpose"] not in will_skip:
+                self._data["contributions"].append(c)
+        if increase:
+            self._data["price"] += self.get_contributions_price()
+        else:
+            self._data["price"] -= self.get_contributions_price()
+
+    def get_contributions_price(self):
+        price = 0
         for c in self._data["contributions"]:
-            self._contributions_price += c["price"]
+            price += c["price"]
+        return price
 
     def get_contributions_info(self):
         info = ""
         for c in self._data["contributions"]:
-            info += "  price: %s, purpose: %s, wallet: %s" % (c["price"], c["purpose"], c["wallet"])
+            info += "  price: %s, purpose: %s, wallet: %s\n" % (c["price"], c["purpose"], c["wallet"])
         return info
 
     def reuse(self, days):
@@ -134,7 +154,7 @@ class Session:
         self._data["activated"] = 0
         self._data["price"] = price,
         self._data["payment_sent"] = ""
-        self.recalculate_contributions(increase=False)
+        self.add_contributions(increase=False)
 
     def activate(self):
         if self.get_payment() >= self._data["price"] and not self.is_active():
@@ -205,9 +225,6 @@ class Session:
     def get_price(self):
         return self._data["price"]
 
-    def get_contributions_price(self):
-        return self._contributions_price
-
     def get_expiry(self):
         return self._data["expires"]
 
@@ -227,7 +244,8 @@ class Session:
                 logging.getLogger().debug(
                     "Ignoring payment to session %s (already processed,paid:%s)" % (self.get_id(), self.get_payment()))
                 return False
-        logging.getLogger("audit").info("Adding new payment to session %s (paid:%s)" % (self.get_id(), self.get_payment()))
+        logging.getLogger("audit").info(
+            "Adding new payment to session %s (paid:%s)" % (self.get_id(), self.get_payment()))
         self._data["payments"].append(payment)
         if self.get_payment() >= self._data["price"]:
             self._data["paid"] = True
@@ -305,7 +323,7 @@ class Session:
 
     def remove(self, deactivate=True):
         logging.getLogger("audit").warning("Removing session %s" % self.get_id())
-        if self.get_id() and deactivate:
+        if Registry.cfg.is_server and self.get_id() and deactivate:
             self.deactivate()
         db = DB()
         db.begin()
@@ -324,11 +342,11 @@ class Session:
 
     def days_left(self):
         seconds = (self._data["expires"] - time.time())
-        return int(seconds/3600/24)
+        return int(seconds / 3600 / 24)
 
     def hours_left(self):
         seconds = (self._data["expires"] - time.time())
-        return int(seconds/3600)
+        return int(seconds / 3600)
 
     def seconds_left(self):
         seconds = (self._data["expires"] - time.time())
@@ -404,13 +422,40 @@ class Session:
             txt = "%s%s" % (self.get_gate(), self.get_space())
         return txt
 
+    def get_overall_info(self):
+        return """
+You are going to pay service:
+Gate: %s 
+Space: %s
+Days: %s
+
+Price for gate per day: %s
+Price for space per day: %s
+
+Overall price: %s
+
+Contributions:
+Price: %s
+[
+%s
+]
+""" % (self.get_gate(),
+       self.get_space(),
+       self.days(),
+       self.get_gate().get_price(),
+       self.get_space().get_price(),
+       self.get_price() + self.get_contributions_price(),
+       self.get_contributions_price(),
+       self.get_contributions_info())
+
     def validate(self):
         VDPObject.validate(self._data, "Session")
 
     def __repr__(self):
         try:
-            txt = "Session-%s[%s/%s,days=%s,price=%s,payments=%s,paid=%s,fresh=%s]" % (self.get_id(), self.get_gate(), self.get_space(), self.days_left()
-                                                                                       , self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
+            txt = "Session-%s[%s/%s,days=%s,price=%s,payments=%s,paid=%s,fresh=%s]" % (
+            self.get_id(), self.get_gate(), self.get_space(), self.days_left()
+            , self.get_price(), self.get_payment(), self.is_paid(), self.is_fresh())
         except Exception as e:
             txt = "Session[Empty]"
         return txt

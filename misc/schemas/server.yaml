@@ -95,6 +95,10 @@ paths:
           description: Cannot reuse with different gate or space
         '465':
           description: Missing WG endpoint data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
         '500':
           description: Server error
     get:

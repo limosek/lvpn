@@ -83,6 +83,8 @@ def main():
         "generate-ca": "Generate certificate authority",
         "generate-vdp": "Generate basic VDP data for provider",
         "request-client-session": "Request session to connect to gate/space",
+        "flush-client-sessions": "Flush (delete) all client sessions",
+        "flush-server-sessions": "Flush (delete) all server sessions",
         "pay-client-session": "Pay requested session",
         "prepare-client-session": "Prepare client files based on sessionid",
         "create-paid-server-session": "Prepare session manually on server"
@@ -309,13 +311,10 @@ def main():
             sys.exit(1)
 
     elif cfg.cmd == "request-client-session":
-        if cfg.args and len(cfg.args) >= 2:
+        if cfg.args and len(cfg.args) == 3:
             gateid = cfg.args[0]
             spaceid = cfg.args[1]
-            if len(cfg.args) == 3:
-                days = int(cfg.args[2])
-            else:
-                days = None
+            days = cfg.args[2]
             cfg.vdp = VDP()
             Registry.vdp = cfg.vdp
             gate = cfg.vdp.get_gate(gateid)
@@ -330,8 +329,24 @@ def main():
                 logging.error("Unknown gate or space")
                 sys.exit(1)
         else:
-            logging.error("Use request-session gate space")
+            logging.error("Use request-session gate space days")
             sys.exit(1)
+
+    elif cfg.cmd == "flush-client-sessions":
+        Registry.cfg.is_server = False
+        Registry.cfg.is_client = True
+        Registry.cfg.db = Registry.cfg.var_dir + "/client.sqlite"
+        sessions = Sessions()
+        for s in sessions.find():
+            s.remove(deactivate=False)
+
+    elif cfg.cmd == "flush-server-sessions":
+        Registry.cfg.is_server = True
+        Registry.cfg.is_client = False
+        Registry.cfg.db = Registry.cfg.var_dir + "/server.sqlite"
+        sessions = Sessions()
+        for s in sessions.find():
+            s.remove(deactivate=True)
 
     elif cfg.cmd == "pay-client-session":
         if cfg.args and len(cfg.args) == 1:
