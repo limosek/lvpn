@@ -69,6 +69,7 @@ def main():
         "show-vdp": "Print VDP from actual spaces and gates to stdout",
         "push-vdp": "Push VDP to server",
         "fetch-vdp": "Fetch VDP and save locally",
+        "import-vdp": "Import VDP from file or stdin",
         "refresh-vdp": "Refresh revisions on all local VDP objects",
         "list-providers": "List actual known providers",
         "list-spaces": "List actual known spaces",
@@ -85,6 +86,8 @@ def main():
         "request-client-session": "Request session to connect to gate/space",
         "flush-client-sessions": "Flush (delete) all client sessions",
         "flush-server-sessions": "Flush (delete) all server sessions",
+        "show-server-session": "Show server session",
+        "show-client-session": "Show client session",
         "pay-client-session": "Pay requested session",
         "prepare-client-session": "Prepare client files based on sessionid",
         "create-paid-server-session": "Prepare session manually on server"
@@ -134,6 +137,19 @@ def main():
             print("Use fetch-vdp providerid-or-url")
             sys.exit(1)
 
+    elif cfg.cmd == "import-vdp":
+        if cfg.args and len(cfg.args) == 1:
+            with open(cfg.args[0], "r") as f:
+                dta = f.read(-1)
+        elif not cfg.args:
+            print("Waiting for VDP on stdin...", file=sys.stderr)
+            dta = sys.stdin.read(-1)
+        else:
+            print("Use import-vdp [file]")
+            sys.exit(1)
+        vdp = VDP(vdpdata=dta)
+        print(vdp.save())
+
     elif cfg.cmd == "push-vdp":
         if cfg.args and len(cfg.args) == 1:
             vdp = VDP()
@@ -180,11 +196,6 @@ def main():
             p.set_as_fresh()
             p.save()
         vdp = VDP()
-        outdated = vdp.get_outdated()
-        for o in outdated:
-            if o._file:
-                logging.getLogger("vdp").warning("Cleaning outdated VDP object %s[file=%s]" % (o, o._file))
-                os.unlink(o._file)
 
     elif cfg.cmd == "list-providers":
         vdp = VDP()
@@ -227,6 +238,34 @@ def main():
                 print_session_row(session)
         else:
             print(m.status_code, m.text)
+            sys.exit(2)
+
+    elif cfg.cmd == "show-client-session":
+        if len(cfg.args) == 1:
+            sessionid = cfg.args[0]
+            Registry.vdp = VDP()
+            m = requests.request("GET", cfg.client_mgmt_url + "/api/session/?sessionid=%s" % sessionid, headers={"Authorization": "Bearer %s" % Registry.cfg.manager_bearer_auth})
+            if m.status_code == 200:
+                print(m.text)
+            else:
+                print(m.status_code, m.text)
+                sys.exit(2)
+        else:
+            print("Use show-client-session sessionid")
+            sys.exit(2)
+
+    elif cfg.cmd == "show-server-session":
+        if len(cfg.args) == 1:
+            sessionid = cfg.args[0]
+            Registry.vdp = VDP()
+            m = requests.request("GET", cfg.server_mgmt_url + "/api/session/?sessionid=%s" % sessionid, headers={"Authorization": "Bearer %s" % Registry.cfg.manager_bearer_auth})
+            if m.status_code == 200:
+                print(m.text)
+            else:
+                print(m.status_code, m.text)
+                sys.exit(2)
+        else:
+            print("Use show-client-session sessionid")
             sys.exit(2)
 
     elif cfg.cmd == "init":

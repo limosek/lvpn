@@ -48,9 +48,9 @@ class BrowserButton(Button):
 class PayButton(Button):
     def __init__(self, gateid, spaceid, days, **kwargs):
         super().__init__(**kwargs)
-        self._spaceid = spaceid
-        self._gateid = gateid
-        self._days = days
+        self.spaceid = spaceid
+        self.gateid = gateid
+        self.days = days
 
 
 class ConnectionButton(Button):
@@ -112,8 +112,8 @@ class Connect(GridLayout):
                     if space.get_price() == 0 and gate.get_price() == 0:
                         days = Registry.cfg.free_session_days
                     else:
-                        if instance._days:
-                            days = instance._days
+                        if instance.days:
+                            days = instance.days
                         else:
                             days = Registry.cfg.auto_pay_days
                     session = Session(mr.create_session(gate, space, days))
@@ -142,11 +142,11 @@ class Connect(GridLayout):
         self.add_widget(PayBoxInfo(session))
 
     def pay_service(self, instance):
-        space = Registry.vdp.get_space(instance._spaceid)
-        gate = Registry.vdp.get_gate(instance._gateid)
+        space = Registry.vdp.get_space(instance.spaceid)
+        gate = Registry.vdp.get_gate(instance.gateid)
         try:
             mngr = lib.ManagerRpcCall(space.get_manager_url())
-            data = mngr.create_session(gate, space, instance._days)
+            data = mngr.create_session(gate, space, instance.days)
             session = Session(data=data)
             session.save()
             btn = lambda: None

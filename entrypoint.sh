@@ -252,7 +252,12 @@ node)
   while true
   do
     # Refresh VDP timestamps
-    $0 lmgmt refresh-vdp
+    if [ -n "$NODE_BEHIND_GW" ]
+    then
+      $0 lmgmt refresh-vdp "$NODE_BEHIND_GW"
+    else
+      $0 lmgmt refresh-vdp
+    fi
     # Push our VDP
     $0 lmgmt push-vdp 94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091 || true
     # Fetch fresh VDP from main server for client and server

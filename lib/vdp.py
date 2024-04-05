@@ -20,7 +20,6 @@ class VDP:
         self._gates = {}
         self._spaces = {}
         self._providers = {}
-        self._outdated = []
         if vdpfile:
             data = urllib3.util.parse_url(vdpfile)
             if data.scheme:
@@ -65,9 +64,6 @@ class VDP:
                 else:
                     logging.error("Bad VDP data %s" % vdpdata)
                 sys.exit(1)
-
-    def get_outdated(self):
-        return self._outdated
 
     def objects(self, tpe, only_id, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False, deleted=False):
         db = DB()
@@ -129,17 +125,17 @@ class VDP:
             return rows
 
     @cachetools.func.ttl_cache(ttl=60)
-    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False):
+    def gates(self, filter: str = "", spaceid: str = None, my_only: bool = False, internal: bool = True, fresh: bool = True, as_json: bool = False, deleted: bool = False):
         """Return all gates"""
-        return self.objects('Gate', False, filter=filter, spaceid=spaceid, my_only=my_only, internal=internal, fresh=fresh, as_json=as_json)
+        return self.objects('Gate', False, filter=filter, spaceid=spaceid, my_only=my_only, internal=internal, fresh=fresh, as_json=as_json, deleted=deleted)
 
     @cachetools.func.ttl_cache(ttl=60)
-    def spaces(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
-        return self.objects('Space', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
+    def spaces(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False, deleted: bool = False):
+        return self.objects('Space', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json, deleted=deleted)
 
     @cachetools.func.ttl_cache(ttl=60)
-    def providers(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False):
-        return self.objects('Provider', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json)
+    def providers(self, filter: str = "", my_only: bool = False, fresh: bool = True, as_json: bool = False, deleted: bool = False):
+        return self.objects('Provider', False, filter=filter, my_only=my_only, fresh=fresh, as_json=as_json, deleted=deleted)
 
     def get_json(self, my_only: bool = False):
         return json.dumps(self.get_dict(my_only), indent=2)

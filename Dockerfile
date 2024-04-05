@@ -22,10 +22,13 @@ ENV DAEMON_HOST="seed.lethean.io"
 ENV HTTP_PROXY=""
 ENV DAEMON_ARGS=""
 ENV NODE_AUTO_CONNECT="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
+# If set to yes, node will became server too
 ENV NODE_RUN_SERVER="yes"
 ENV NODE_SHARE_DIR="/home/lvpn/share"
 ENV NODE_TRACKER_URL="http://172.31.111.19:6969/announce"
 ENV NODE_RUN_SHARE="yes"
+# If set, we assume that node has no public IP but it is hidden begind Gate
+ENV NODE_BEHIND_GW="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg"
 
 # Client wallet RPC
 EXPOSE 1444

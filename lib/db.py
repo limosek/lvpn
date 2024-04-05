@@ -41,16 +41,14 @@ class DB:
     def execute(self, sql, close=True, select=False):
         if self._closed:
             self.open()
-        if select:
-            logging.getLogger("db").debug("SELECT(close=%s): %s" % (close, sql))
-        else:
-            logging.getLogger("db").debug("EXECUTE(close=%s): %s" % (close, sql))
         err = ""
         for i in range(1, 6):
             try:
                 data = self._c.execute(sql)
                 if not self._intransaction and close:
                     self.close()
+                if not select:
+                    logging.getLogger("db").debug("EXECUTE(close=%s): %s" % (close, sql))
                 return data
             except sqlite3.OperationalError as e:
                 err = str(e)
@@ -65,6 +63,7 @@ class DB:
         for row in data:
             rows.append(row)
         self.close()
+        logging.getLogger("db").debug("SELECT: %s, returns %s rows" % (sql, len(rows)))
         return rows
 
     def close(self):
