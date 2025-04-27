@@ -18,7 +18,7 @@ ENV EASY_CA_CN=""
 ENV EASY_ENDPOINT=""
 ENV EASY_CA_DAYS=""
 ENV MODE="client"
-ENV DAEMON_HOST="seed.lethean.io"
+ENV DAEMON_HOST="seed.lethean.space"
 ENV HTTP_PROXY=""
 ENV DAEMON_ARGS=""
 ENV NODE_AUTO_CONNECT="94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free-wg/94ece0b789b1031e0e285a7439205942eb8cb74b4df7c9854c0874bd3d8cd091.free"
@@ -68,7 +68,7 @@ COPY misc/easy-provider.sh /usr/local/bin/
 COPY server.py client.py setup.cfg setup.py mgmt.py /usr/src/lvpn/
 COPY requirements.txt /usr/src/lvpn/
 COPY requirements-lite.txt /usr/src/lvpn/
-COPY build/ /usr/src/lvpn/build/
+#COPY build/ /usr/src/lvpn/build/
 COPY tests/* /usr/src/lvpn/tests/
 COPY ./entrypoint.sh /
 COPY ./misc/profile-inc.sh /etc/profile.d/lvpn.sh
@@ -77,7 +77,8 @@ WORKDIR /usr/src/lvpn/build/
 RUN wget -nc -c $DAEMON_BIN_URL
 RUN mkdir -p /usr/src/lvpn/bin/ && tar -xf $(basename $DAEMON_BIN_URL) -C /usr/local/bin/
 
-RUN chown -R lvpn /home/lvpn /tmp
+RUN chown -R lvpn /home/lvpn /tmp /usr/src/lvpn/
+RUN chmod +x /entrypoint.sh
 
 WORKDIR /usr/src/lvpn/
 USER lvpn

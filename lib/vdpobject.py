@@ -175,7 +175,7 @@ class VDPObject:
                 revision=self.get_revision()
             )
             fresh = db.select(sql)
-            logging.getLogger("vdp").warning("Not saving vdp object %s/revision=%s because we have fresher object in DB (revision=%s)" % (self.get_id(), self.get_revision(), fresh[0][0]))
+            logging.getLogger("vdp").debug("Not saving vdp object %s/revision=%s because we have fresher object in DB (revision=%s)" % (self.get_id(), self.get_revision(), fresh[0][0]))
         db.close()
         pass
 

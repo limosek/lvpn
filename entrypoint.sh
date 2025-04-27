@@ -102,11 +102,19 @@ then
       --p2p-bind-ip=0.0.0.0 --rpc-bind-ip=0.0.0.0 --log-level=0 --restricted-rpc --add-exclusive-node 172.31.129.19 --add-priority-node 172.31.129.19 --add-peer 172.31.129.19"
 fi
 
+fetchVdp(){
+  if WLC_CLIENT=1 $0 lmgmt list-spaces |grep -vq 1st; then
+    echo "Importing VDP..."
+    curl -s https://mgr.lethean.space/api/vdp | WLC_CLIENT=1 lmgmt import-vdp 
+  fi
+}
+
 # Main logic here
 case $1 in
 
 client|lvpnc)
   shift
+  fetchVdp
   echo "Starting client:" lvpnc $LVPNC_ARGS $CARGS "$@"
   lvpnc $LVPNC_ARGS $CARGS "$@"
   ;;
