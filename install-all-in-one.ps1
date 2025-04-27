@@ -105,6 +105,12 @@ $Env:PATH += ";" + (Resolve-Path .\lethean-cli-windows)
 .\python\python -m pip install -r requirements.txt
 
 #############################################################################
+# Fetch VDP
+#############################################################################
+$Env:WLC_CLIENT = "1"
+.\python\python  ${appdir}/mgmt.py fetch-vdp https://mgr.lethean.space
+
+#############################################################################
 # Create shortcut
 #############################################################################
 $WshShell = New-Object -comObject WScript.Shell
